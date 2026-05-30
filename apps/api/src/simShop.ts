@@ -1,3 +1,4 @@
+import { appendCityFeed, feedActorName } from "./cityFeed.js";
 import { getDb, getPlayer, updatePlayer, type PlayerRow } from "./db.js";
 import {
   formatSimNumber,
@@ -74,7 +75,10 @@ export function registerSim(userId: number): { ok: true; number: string } | { ok
     rubles: player.rubles - SHOP_SIM_REGISTER_BASE_RUB,
     sim_balance_rub: SHOP_SIM_START_BALANCE_RUB,
   });
-  return { ok: true, number: formatSimNumber(parts) };
+  const number = formatSimNumber(parts);
+  const name = feedActorName(userId);
+  appendCityFeed(player.city_id, "shop:sim", `${name} оформил симку ${number}`, userId);
+  return { ok: true, number };
 }
 
 export type SimChangePart = "operator" | "mid" | "last";
@@ -109,7 +113,16 @@ export function changeSimPart(
   }
 
   applySimParts(userId, player, next, { rubles: player.rubles - cost });
-  return { ok: true, number: formatSimNumber(next) };
+  const number = formatSimNumber(next);
+  const partLabel = part === "operator" ? "оператор" : part === "mid" ? "середину" : "конец";
+  const name = feedActorName(userId);
+  appendCityFeed(
+    player.city_id,
+    "shop:sim",
+    `${name} сменил ${partLabel} номера → ${number}`,
+    userId,
+  );
+  return { ok: true, number };
 }
 
 export function topupSim(userId: number, amount: number): { ok: true; simBalance: number } | { ok: false; error: string } {

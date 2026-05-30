@@ -17,6 +17,7 @@ import {
   verifyAccessToken,
 } from "./auth.js";
 import { getDb, getPlayer, getUserById, listPlayersForAdmin, updatePlayer } from "./db.js";
+import { listCityFeed } from "./cityFeed.js";
 import { getCities, getCity, getCityJobs, getPhones, getTravel } from "./gameData.js";
 import {
   buyCar,
@@ -155,6 +156,7 @@ export async function registerRoutes(app: FastifyInstance) {
         : null,
       traveling: player.status === "traveling",
       travelArrivesAt: player.travel_arrives_at,
+      feed: listCityFeed(player.city_id),
     };
   });
 

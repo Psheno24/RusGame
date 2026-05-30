@@ -64,6 +64,18 @@ function migrate(database: Database.Database) {
       expires_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS city_feed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      city_id TEXT NOT NULL,
+      ts INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      actor_user_id INTEGER,
+      actor_name TEXT NOT NULL,
+      text TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_city_feed_city_ts ON city_feed(city_id, ts DESC);
+
     CREATE TABLE IF NOT EXISTS players (
       user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       display_name TEXT NOT NULL,

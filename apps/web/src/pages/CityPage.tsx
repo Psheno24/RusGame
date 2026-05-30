@@ -8,10 +8,14 @@ import {
   workShift,
   workSideGig,
   SKILL_LABELS,
+  type CityFeedEvent,
   type User,
 } from "../api";
+import { CityActivityFeed } from "../components/CityActivityFeed";
 import { PhoneShop } from "../components/PhoneShop";
+import { PlacesSection } from "../components/PlacesSection";
 import { useApp } from "../context";
+import { placeById, type PlaceId } from "../placesData";
 
 type CitySection = "shop" | "jobs" | "housing" | "places";
 type ShopTab = "products" | "phone" | "car";
@@ -48,6 +52,7 @@ export function CityPage() {
   const [arrivesAt, setArrivesAt] = useState<number | null>(null);
   const [section, setSection] = useState<CitySection | null>(null);
   const [shopTab, setShopTab] = useState<ShopTab | null>(null);
+  const [placeId, setPlaceId] = useState<PlaceId | null>(null);
   const [phoneNav, setPhoneNav] = useState({ inSub: false, title: "Телефон", backLabel: "Магазин" });
   const { register: registerSectionBack, tryBack: trySectionBack } = useNavBackSlot();
   const [sideGig, setSideGig] = useState<{
@@ -67,6 +72,7 @@ export function CityPage() {
     requiresPhone?: boolean;
     cooldown: { ready: boolean; remainingMs: number };
   } | null>(null);
+  const [feed, setFeed] = useState<CityFeedEvent[]>([]);
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
   const [, setTick] = useState(0);
@@ -79,6 +85,7 @@ export function CityPage() {
     setArrivesAt(data.travelArrivesAt);
     setSideGig(data.jobs?.sideGig ?? null);
     setShift(data.jobs?.shift ?? null);
+    setFeed(data.feed ?? []);
   }, []);
 
   useEffect(() => {
@@ -102,6 +109,10 @@ export function CityPage() {
   useEffect(() => {
     if (shopTab !== "phone") setPhoneNav({ inSub: false, title: "Телефон", backLabel: "Магазин" });
   }, [shopTab]);
+
+  useEffect(() => {
+    if (section !== "places") setPlaceId(null);
+  }, [section]);
 
   const showToast = (msg: string, isErr = false) => {
     setToast(msg);
@@ -149,6 +160,7 @@ export function CityPage() {
   const goCityHome = () => {
     setSection(null);
     setShopTab(null);
+    setPlaceId(null);
     setPhoneNav({ inSub: false, title: "Телефон", backLabel: "Магазин" });
   };
 
@@ -180,7 +192,9 @@ export function CityPage() {
               ? phoneNav.title
               : section === "shop" && shopTab
                 ? SHOP_CATEGORIES.find((c) => c.id === shopTab)!.title
-                : meta.title}
+                : section === "places" && placeId
+                  ? placeById(placeId).title
+                  : meta.title}
           </h2>
           {section === "jobs" && playable && sideGig ? (
             <JobsSection sideGig={sideGig} shift={shift} onSideGig={onSideGig} onShift={onShift} />
@@ -194,10 +208,17 @@ export function CityPage() {
               registerSectionBack={registerSectionBack}
               onPhoneNavChange={setPhoneNav}
             />
+          ) : section === "places" ? (
+            <PlacesSection
+              placeId={placeId}
+              onPlace={setPlaceId}
+              registerBack={registerSectionBack}
+            />
           ) : (
             <p>Раздел скоро появится. Пока загляните в другие кнопки или на карту.</p>
           )}
         </div>
+        <CityActivityFeed cityName={cityName} events={feed} />
         {error && !toast && <p style={{ color: "var(--danger)" }}>{error}</p>}
         {toast && <div className={`toast${error ? " error" : ""}`}>{toast}</div>}
       </>
@@ -227,6 +248,7 @@ export function CityPage() {
         ))}
       </div>
 
+      <CityActivityFeed cityName={cityName} events={feed} />
       {toast && <div className={`toast${error ? " error" : ""}`}>{toast}</div>}
     </>
   );

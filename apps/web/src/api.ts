@@ -123,6 +123,22 @@ export async function fetchMap() {
   }>("/api/map/cities");
 }
 
+export type CityFeedEvent = {
+  id: number;
+  ts: number;
+  type:
+    | "work:side"
+    | "work:shift"
+    | "travel:depart"
+    | "travel:arrive"
+    | "shop:car"
+    | "shop:phone"
+    | "shop:sim";
+  actorUserId: number | null;
+  actorName: string;
+  text: string;
+};
+
 export async function fetchCity() {
   return api<{
     city: { id: string; name: string; tier: number; playable: boolean } | null;
@@ -133,6 +149,7 @@ export async function fetchCity() {
     } | null;
     traveling: boolean;
     travelArrivesAt: number | null;
+    feed: CityFeedEvent[];
   }>("/api/city");
 }
 
