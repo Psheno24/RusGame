@@ -1,0 +1,47 @@
+{
+  "omsk": {
+    "sideGig": {
+      "id": "omsk_warehouse",
+      "title": "Подработка на складе",
+      "description": "Разгрузка коробок, без опыта.",
+      "cooldownMs": 1800000,
+      "payoutMin": 400,
+      "payoutMax": 750,
+      "skill": null
+    },
+    "shift": {
+      "id": "omsk_guard",
+      "title": "Смена: охрана двора",
+      "description": "Ночная смена. Полезно для стойкости.",
+      "cooldownMs": 7200000,
+      "payoutMin": 2200,
+      "payoutMax": 4800,
+      "skill": "stamina",
+      "skillMin": 0,
+      "skillGain": 1
+    }
+  },
+  "kazan": {
+    "sideGig": {
+      "id": "kazan_cafe",
+      "title": "Подработка в кафе",
+      "description": "Мытьё посуды и зал.",
+      "cooldownMs": 1800000,
+      "payoutMin": 450,
+      "payoutMax": 850,
+      "skill": null
+    },
+    "shift": {
+      "id": "kazan_courier",
+      "title": "Смена: курьер",
+      "description": "Нужна симка в профиле.",
+      "cooldownMs": 10800000,
+      "payoutMin": 2800,
+      "payoutMax": 5500,
+      "skill": "agility",
+      "skillMin": 1,
+      "skillGain": 1,
+      "requiresPhone": true
+    }
+  }
+}

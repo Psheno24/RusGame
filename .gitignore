@@ -1,0 +1,11 @@
+node_modules/
+dist/
+data/*.db
+data/*.db-shm
+data/*.db-wal
+.env
+*.log
+.DS_Store
+
+# Случайный пустой clone (не часть проекта)
+RusGame/
