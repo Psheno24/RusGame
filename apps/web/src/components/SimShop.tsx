@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import type { NavBackHandler } from "../navBack";
 import {
   changeSimPart,
   fetchSimShop,
@@ -16,15 +17,15 @@ type Props = {
   setUser: (u: User) => void;
   onToast: (msg: string, isErr?: boolean) => void;
   onNavChange: (state: { inSub: boolean; title: string; backLabel: string }) => void;
-  backToken: number;
+  registerBack: (handler: NavBackHandler | null) => void;
+  onExitToPhoneHub: () => void;
 };
 
-export function SimShop({ user, setUser, onToast, onNavChange, backToken }: Props) {
+export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onExitToPhoneHub }: Props) {
   const [view, setView] = useState<SimView>("main");
   const [info, setInfo] = useState<SimShopInfo | null>(null);
   const [topupAmount, setTopupAmount] = useState("500");
   const [busy, setBusy] = useState(false);
-  const handledBackToken = useRef(0);
   const p = user.player;
 
   const reload = () =>
@@ -39,14 +40,21 @@ export function SimShop({ user, setUser, onToast, onNavChange, backToken }: Prop
   useEffect(() => {
     const title = view === "change" ? "Изменить номер" : "Сим-карта";
     const backLabel = view === "change" ? "Сим-карта" : "Телефон";
-    onNavChange({ inSub: view !== "main", title, backLabel });
+    onNavChange({ inSub: true, title, backLabel });
   }, [view, onNavChange]);
 
   useEffect(() => {
-    if (backToken <= handledBackToken.current) return;
-    handledBackToken.current = backToken;
-    if (view === "change") setView("main");
-  }, [backToken, view]);
+    const handler: NavBackHandler = () => {
+      if (view === "change") {
+        setView("main");
+        return true;
+      }
+      onExitToPhoneHub();
+      return true;
+    };
+    registerBack(handler);
+    return () => registerBack(null);
+  }, [view, onExitToPhoneHub, registerBack]);
 
   const run = async (fn: () => Promise<{ user: User; number?: string; simBalanceRub?: number }>) => {
     setBusy(true);

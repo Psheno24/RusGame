@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { buyPhone, fetchShopPhones, type PhoneDevice, type User } from "../api";
+import type { NavBackHandler } from "../navBack";
 import { PhonePreview } from "./PhonePreview";
 import { SimShop } from "./SimShop";
 
@@ -10,17 +11,23 @@ type Props = {
   setUser: (u: User) => void;
   onToast: (msg: string, isErr?: boolean) => void;
   onNavChange: (state: { inSub: boolean; title: string; backLabel: string }) => void;
-  backToken: number;
+  registerBack: (handler: NavBackHandler | null) => void;
 };
 
-export function PhoneShop({ user, setUser, onToast, onNavChange, backToken }: Props) {
+export function PhoneShop({ user, setUser, onToast, onNavChange, registerBack }: Props) {
   const [nav, setNav] = useState<PhoneNav>("hub");
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [phones, setPhones] = useState<PhoneDevice[]>([]);
   const [busy, setBusy] = useState(false);
   const p = user.player;
   const selected = deviceId ? phones.find((d) => d.id === deviceId) : null;
-  const handledBackToken = useRef(0);
+  const simBackRef = useRef<NavBackHandler | null>(null);
+
+  const registerSimBack = useCallback((handler: NavBackHandler | null) => {
+    simBackRef.current = handler;
+  }, []);
+
+  const exitSimToHub = useCallback(() => setNav("hub"), []);
 
   useEffect(() => {
     if (nav === "sim") return;
@@ -37,11 +44,21 @@ export function PhoneShop({ user, setUser, onToast, onNavChange, backToken }: Pr
   }, [nav, onNavChange, selected]);
 
   useEffect(() => {
-    if (backToken <= handledBackToken.current) return;
-    handledBackToken.current = backToken;
-    if (nav === "detail") setNav("devices");
-    else if (nav !== "hub") setNav("hub");
-  }, [backToken, nav]);
+    const handler: NavBackHandler = () => {
+      if (nav === "sim") return simBackRef.current?.() ?? false;
+      if (nav === "detail") {
+        setNav("devices");
+        return true;
+      }
+      if (nav === "devices") {
+        setNav("hub");
+        return true;
+      }
+      return false;
+    };
+    registerBack(handler);
+    return () => registerBack(null);
+  }, [nav, registerBack]);
 
   useEffect(() => {
     if (nav === "devices" || nav === "detail") {
@@ -73,7 +90,16 @@ export function PhoneShop({ user, setUser, onToast, onNavChange, backToken }: Pr
   };
 
   if (nav === "sim") {
-    return <SimShop user={user} setUser={setUser} onToast={onToast} onNavChange={onNavChange} backToken={backToken} />;
+    return (
+      <SimShop
+        user={user}
+        setUser={setUser}
+        onToast={onToast}
+        onNavChange={onNavChange}
+        registerBack={registerSimBack}
+        onExitToPhoneHub={exitSimToHub}
+      />
+    );
   }
 
   if (nav === "hub") {

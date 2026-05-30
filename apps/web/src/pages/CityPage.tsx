@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavBackSlot } from "../navBack";
 import {
   buyCar,
   fetchCity,
@@ -48,7 +49,7 @@ export function CityPage() {
   const [section, setSection] = useState<CitySection | null>(null);
   const [shopTab, setShopTab] = useState<ShopTab | null>(null);
   const [phoneNav, setPhoneNav] = useState({ inSub: false, title: "Телефон", backLabel: "Магазин" });
-  const [phoneBackToken, setPhoneBackToken] = useState(0);
+  const { register: registerSectionBack, tryBack: trySectionBack } = useNavBackSlot();
   const [sideGig, setSideGig] = useState<{
     title: string;
     description: string;
@@ -136,6 +137,21 @@ export function CityPage() {
 
   const remaining = arrivesAt ? Math.max(0, arrivesAt - Date.now()) : 0;
 
+  const goBackInCity = () => {
+    if (trySectionBack()) return;
+    if (section === "shop" && shopTab) {
+      setShopTab(null);
+      return;
+    }
+    if (section) setSection(null);
+  };
+
+  const goCityHome = () => {
+    setSection(null);
+    setShopTab(null);
+    setPhoneNav({ inSub: false, title: "Телефон", backLabel: "Магазин" });
+  };
+
   if (traveling) {
     return (
       <div className="card">
@@ -150,26 +166,14 @@ export function CityPage() {
     const meta = SECTIONS.find((s) => s.id === section)!;
     return (
       <>
-        <button
-          type="button"
-          className="btn btn-secondary city-back-btn"
-          onClick={() => {
-            if (section === "shop" && shopTab === "phone" && phoneNav.inSub) {
-              setPhoneBackToken((t) => t + 1);
-              return;
-            }
-            // phoneNav.inSub covers симка → изменить номер via SimShop
-            if (section === "shop" && shopTab) setShopTab(null);
-            else setSection(null);
-          }}
-        >
-          ←{" "}
-          {section === "shop" && shopTab === "phone" && phoneNav.inSub
-            ? phoneNav.backLabel
-            : section === "shop" && shopTab
-              ? "Магазин"
-              : cityName}
-        </button>
+        <div className="city-nav-bar">
+          <button type="button" className="btn btn-secondary city-nav-btn" onClick={goBackInCity}>
+            Назад
+          </button>
+          <button type="button" className="btn btn-secondary city-nav-btn" onClick={goCityHome}>
+            В город
+          </button>
+        </div>
         <div className="card">
           <h2>
             {section === "shop" && shopTab === "phone" && phoneNav.inSub
@@ -187,7 +191,7 @@ export function CityPage() {
               user={user}
               setUser={setUser}
               onToast={(msg, isErr) => showToast(msg, isErr)}
-              phoneBackToken={phoneBackToken}
+              registerSectionBack={registerSectionBack}
               onPhoneNavChange={setPhoneNav}
             />
           ) : (
@@ -234,7 +238,7 @@ function ShopSection({
   user,
   setUser,
   onToast,
-  phoneBackToken,
+  registerSectionBack,
   onPhoneNavChange,
 }: {
   tab: ShopTab | null;
@@ -242,7 +246,7 @@ function ShopSection({
   user: User;
   setUser: (u: User) => void;
   onToast: (msg: string, isErr?: boolean) => void;
-  phoneBackToken: number;
+  registerSectionBack: (handler: (() => boolean) | null) => void;
   onPhoneNavChange: (state: { inSub: boolean; title: string; backLabel: string }) => void;
 }) {
   const [prices, setPrices] = useState<{ sim: number; car: number } | null>(null);
@@ -293,7 +297,7 @@ function ShopSection({
         user={user}
         setUser={setUser}
         onToast={onToast}
-        backToken={phoneBackToken}
+        registerBack={registerSectionBack}
         onNavChange={onPhoneNavChange}
       />
     );
