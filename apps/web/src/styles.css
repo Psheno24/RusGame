@@ -184,6 +184,13 @@ body {
   color: var(--text);
 }
 
+.btn-logout {
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  color: #fff;
+  border: 1px solid #b91c1c;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+}
+
 .btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -884,6 +891,77 @@ body {
 
 .city-job-block .btn {
   margin-top: 4px;
+}
+
+.app-main:has(.profile-page) {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-page-content {
+  flex: 1 1 auto;
+}
+
+.profile-page-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 20px;
+}
+
+.profile-page-footer .btn {
+  margin-top: 0;
+}
+
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  padding-bottom: calc(16px + var(--safe-bottom));
+  background: rgba(10, 14, 20, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.confirm-dialog {
+  width: 100%;
+  max-width: 400px;
+  padding: 20px 18px 18px;
+  border-radius: 18px;
+  background: var(--bg-card);
+  border: 1px solid #2d3f56;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.confirm-dialog-title {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.confirm-dialog-text {
+  margin: 0 0 16px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.confirm-dialog-actions .btn {
+  margin-top: 0;
 }
 
 .profile-stats {
