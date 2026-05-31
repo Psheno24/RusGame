@@ -14,6 +14,8 @@ import { viewBoxToString } from "../mapViewBox";
 import { chainToPoints, CITY_NODES, MAP_VB, ROUTE_CHAINS } from "../mapMetroLayout";
 import { staticMapCities } from "../mapStaticCities";
 
+const ROUTE_UNAVAILABLE = "Маршрут пока только между Омском и Казанью";
+
 function CityListButton({
   c,
   currentId,
@@ -49,9 +51,9 @@ export function MapPage() {
   const [arrivesAt, setArrivesAt] = useState<number | null>(null);
   const [selected, setSelected] = useState<CityPin | null>(null);
   const [quote, setQuote] = useState<{ priceRub: number; durationMs: number; toName?: string } | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
   const [toast, setToast] = useState("");
-  const [error, setError] = useState("");
-  const [routeNoticeDismissed, setRouteNoticeDismissed] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [view, setView] = useState<"list" | "map">("map");
 
   const load = useCallback(async () => {
@@ -61,9 +63,9 @@ export function MapPage() {
       if (data.currentCityId) setCurrentId(data.currentCityId);
       setTraveling(data.status === "traveling");
       setArrivesAt(data.travelArrivesAt);
-      setError("");
+      setLoadError("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка");
+      setLoadError(e instanceof Error ? e.message : "Ошибка");
     }
   }, []);
 
@@ -83,33 +85,40 @@ export function MapPage() {
     return () => clearInterval(t);
   }, [traveling, arrivesAt, load]);
 
+  const dismissSelected = useCallback(() => {
+    setSelected(null);
+    setQuote(null);
+    setQuoteLoading(false);
+  }, []);
+
   const pickCity = async (c: CityPin) => {
     setSelected(c);
     setQuote(null);
-    setError("");
-    setRouteNoticeDismissed(false);
-    if (c.id === currentId) return;
+    if (c.id === currentId) {
+      setQuoteLoading(false);
+      return;
+    }
+    setQuoteLoading(true);
     try {
       const q = await travelQuote(c.id);
       setQuote(q);
-    } catch (e) {
+    } catch {
       setQuote(null);
-      setError(e instanceof Error ? e.message : "Маршрут недоступен");
+    } finally {
+      setQuoteLoading(false);
     }
   };
 
   const goTravel = async () => {
     if (!selected) return;
-    setError("");
     try {
       const r = await travelStart(selected.id);
       setUser(r.user);
       setToast(`Билет куплен. Прибытие через ${formatDuration(r.arrivesAt - Date.now())}`);
-      setSelected(null);
-      setQuote(null);
+      dismissSelected();
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка");
+      setToast(e instanceof Error ? e.message : "Ошибка");
     }
   };
 
@@ -118,17 +127,20 @@ export function MapPage() {
 
   const mapCities = cities.filter((c) => CITY_NODES[c.id]);
 
+  const showRouteUnavailable =
+    selected != null && selected.id !== currentId && !quoteLoading && quote == null;
+
   return (
     <>
       <div className="card map-intro">
         <h2>Карта России</h2>
         <p>Щипок — масштаб, палец — двигать. При открытии — ваш город.</p>
-        {error && !selected && (
+        {loadError && !selected && (
           <DismissibleBanner
-            message={error}
+            message={loadError}
             isError
             className="map-error-text"
-            onDismiss={() => setError("")}
+            onDismiss={() => setLoadError("")}
           />
         )}
         {traveling && arrivesAt && (
@@ -228,33 +240,43 @@ export function MapPage() {
         </div>
       )}
 
-      {selected && (
+      {selected && quoteLoading && (
         <div className="card map-action-card">
           <h2>{selected.name}</h2>
-          {selected.id === currentId ? (
-            <p>Вы уже здесь. Вкладка «Город» — работа и магазин.</p>
-          ) : quote ? (
-            <>
-              <p>
-                Поезд: <strong>{quote.priceRub.toLocaleString("ru-RU")} ₽</strong>, в пути{" "}
-                <strong>{formatDuration(quote.durationMs)}</strong>
-              </p>
-              <button className="btn btn-primary" type="button" onClick={goTravel} disabled={traveling}>
-                Купить билет
-              </button>
-            </>
-          ) : !routeNoticeDismissed ? (
-            <DismissibleBanner
-              message={error || "Маршрут пока только между Омском и Казанью"}
-              isError
-              className="map-error-text"
-              onDismiss={() => {
-                setError("");
-                setRouteNoticeDismissed(true);
-              }}
-            />
-          ) : null}
+          <p className="map-action-hint">Проверяем маршрут…</p>
         </div>
+      )}
+
+      {selected && !quoteLoading && selected.id === currentId && (
+        <div className="card map-action-card">
+          <h2>{selected.name}</h2>
+          <p>Вы уже здесь. Вкладка «Город» — работа и магазин.</p>
+        </div>
+      )}
+
+      {selected && !quoteLoading && selected.id !== currentId && quote && (
+        <div className="card map-action-card">
+          <h2>{selected.name}</h2>
+          <p>
+            Поезд: <strong>{quote.priceRub.toLocaleString("ru-RU")} ₽</strong>, в пути{" "}
+            <strong>{formatDuration(quote.durationMs)}</strong>
+          </p>
+          <button className="btn btn-primary" type="button" onClick={goTravel} disabled={traveling}>
+            Купить билет
+          </button>
+        </div>
+      )}
+
+      {showRouteUnavailable && (
+        <DismissibleBanner
+          className="card map-action-card map-action-card--route-error"
+          isError
+          autoDismissMs={6000}
+          onDismiss={dismissSelected}
+        >
+          <h2>{selected!.name}</h2>
+          <p className="map-error-text">{ROUTE_UNAVAILABLE}</p>
+        </DismissibleBanner>
       )}
 
       {toast && (

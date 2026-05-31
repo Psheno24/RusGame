@@ -566,6 +566,33 @@ body {
   z-index: 2;
 }
 
+.map-action-card--route-error {
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.map-action-card--route-error h2 {
+  margin: 0 0 8px;
+}
+
+.map-action-card--route-error .map-error-text {
+  margin: 0;
+}
+
+.map-action-hint {
+  margin: 0 !important;
+  color: var(--text-muted) !important;
+}
+
+.dismissible-banner.card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--danger);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
 .map-error-text {
   color: var(--danger) !important;
 }

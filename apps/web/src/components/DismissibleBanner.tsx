@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 type Props = {
-  message: string;
+  message?: string;
+  children?: ReactNode;
   isError?: boolean;
   fixed?: boolean;
   autoDismissMs?: number;
@@ -11,6 +12,7 @@ type Props = {
 
 export function DismissibleBanner({
   message,
+  children,
   isError,
   fixed = false,
   autoDismissMs = 4500,
@@ -23,6 +25,7 @@ export function DismissibleBanner({
   const startX = useRef(0);
   const onDismissRef = useRef(onDismiss);
   onDismissRef.current = onDismiss;
+  const hasContent = Boolean(message || children);
 
   useEffect(() => {
     setGone(false);
@@ -33,9 +36,9 @@ export function DismissibleBanner({
       onDismissRef.current?.();
     }, autoDismissMs);
     return () => clearTimeout(t);
-  }, [message, autoDismissMs]);
+  }, [message, autoDismissMs, hasContent]);
 
-  if (!message || gone) return null;
+  if (!hasContent || gone) return null;
 
   const dismiss = () => {
     setGone(true);
@@ -79,7 +82,7 @@ export function DismissibleBanner({
       onTouchEnd={onTouchEnd}
       role="alert"
     >
-      {message}
+      {children ?? message}
     </div>
   );
 }
