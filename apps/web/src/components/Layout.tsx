@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useCityNav } from "../cityNav";
 import { useApp } from "../context";
 
 const NAV_ITEMS = [
@@ -55,6 +56,15 @@ const NAV_ITEMS = [
 export function Layout() {
   const { user } = useApp();
   const p = user?.player;
+  const location = useLocation();
+  const cityNav = useCityNav();
+
+  const onCityNavClick = (e: React.MouseEvent) => {
+    if (location.pathname === "/city") {
+      e.preventDefault();
+      cityNav?.resetHome();
+    }
+  };
 
   return (
     <div className="app-shell">
@@ -75,6 +85,7 @@ export function Layout() {
             <NavLink
               key={to}
               to={to}
+              onClick={to === "/city" ? onCityNavClick : undefined}
               className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
             >
               <span className="nav-item-icon">{icon}</span>

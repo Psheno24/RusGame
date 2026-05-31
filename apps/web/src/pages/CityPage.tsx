@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useCityNav } from "../cityNav";
 import { useNavBackSlot } from "../navBack";
 import {
   buyCar,
@@ -12,6 +13,7 @@ import {
   type User,
 } from "../api";
 import { CityActivityFeed } from "../components/CityActivityFeed";
+import { DismissibleBanner } from "../components/DismissibleBanner";
 import { PhoneShop } from "../components/PhoneShop";
 import { PlacesSection } from "../components/PlacesSection";
 import { useApp } from "../context";
@@ -46,7 +48,9 @@ const SHOP_CATEGORIES: { id: ShopTab; title: string; hint: string }[] = [
 
 export function CityPage() {
   const { user, setUser } = useApp();
+  const cityNav = useCityNav();
   const [cityName, setCityName] = useState("");
+  const [population, setPopulation] = useState(0);
   const [playable, setPlayable] = useState(true);
   const [traveling, setTraveling] = useState(false);
   const [arrivesAt, setArrivesAt] = useState<number | null>(null);
@@ -80,6 +84,7 @@ export function CityPage() {
   const load = useCallback(async () => {
     const data = await fetchCity();
     setCityName(data.city?.name ?? "—");
+    setPopulation(data.city?.population ?? 0);
     setPlayable(data.city?.playable ?? false);
     setTraveling(data.traveling);
     setArrivesAt(data.travelArrivesAt);
@@ -116,8 +121,12 @@ export function CityPage() {
 
   const showToast = (msg: string, isErr = false) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 4000);
     if (isErr) setError(msg);
+  };
+
+  const clearToast = () => {
+    setToast("");
+    setError("");
   };
 
   const onSideGig = async () => {
@@ -157,12 +166,17 @@ export function CityPage() {
     if (section) setSection(null);
   };
 
-  const goCityHome = () => {
+  const goCityHome = useCallback(() => {
     setSection(null);
     setShopTab(null);
     setPlaceId(null);
     setPhoneNav({ inSub: false, title: "Телефон", backLabel: "Магазин" });
-  };
+  }, []);
+
+  useEffect(() => {
+    cityNav?.registerReset(goCityHome);
+    return () => cityNav?.registerReset(null);
+  }, [cityNav, goCityHome]);
 
   if (traveling) {
     return (
@@ -218,9 +232,15 @@ export function CityPage() {
             <p>Раздел скоро появится. Пока загляните в другие кнопки или на карту.</p>
           )}
         </div>
-        <CityActivityFeed cityName={cityName} events={feed} />
         {error && !toast && <p style={{ color: "var(--danger)" }}>{error}</p>}
-        {toast && <div className={`toast${error ? " error" : ""}`}>{toast}</div>}
+        {toast && (
+          <DismissibleBanner
+            message={toast}
+            isError={!!error}
+            fixed
+            onDismiss={clearToast}
+          />
+        )}
       </>
     );
   }
@@ -228,7 +248,10 @@ export function CityPage() {
   return (
     <>
       <div className="card city-header-card">
-        <h2>{cityName}</h2>
+        <h2 className="city-header-title">
+          {cityName.toLocaleUpperCase("ru-RU")}{" "}
+          <span className="city-header-pop">(нас. {population.toLocaleString("ru-RU")})</span>
+        </h2>
         {!playable && (
           <p>Контент города скоро. Сейчас полностью доступны <strong>Омск</strong> и <strong>Казань</strong>.</p>
         )}
@@ -249,7 +272,14 @@ export function CityPage() {
       </div>
 
       <CityActivityFeed cityName={cityName} events={feed} />
-      {toast && <div className={`toast${error ? " error" : ""}`}>{toast}</div>}
+      {toast && (
+        <DismissibleBanner
+          message={toast}
+          isError={!!error}
+          fixed
+          onDismiss={clearToast}
+        />
+      )}
     </>
   );
 }
@@ -363,49 +393,45 @@ function JobsSection({
   onSideGig: () => void;
   onShift: () => void;
 }) {
+  const jobs = [
+    { job: sideGig, kind: "side" as const, onWork: onSideGig },
+    ...(shift ? [{ job: shift, kind: "shift" as const, onWork: onShift }] : []),
+  ];
+
   return (
-    <div className="city-jobs-list">
-      <div className="city-job-block">
-        <h3>{sideGig.title}</h3>
-        <p>{sideGig.description}</p>
-        <p className="city-job-pay">
-          {sideGig.payoutMin.toLocaleString("ru-RU")}–{sideGig.payoutMax.toLocaleString("ru-RU")} ₽
-        </p>
-        <button
-          className="btn btn-primary"
-          type="button"
-          disabled={!sideGig.cooldown.ready}
-          onClick={onSideGig}
-        >
-          {sideGig.cooldown.ready
-            ? "Подработать"
-            : `Ждать ${formatDuration(sideGig.cooldown.remainingMs)}`}
-        </button>
-      </div>
-      {shift && (
-        <div className="city-job-block">
-          <h3>{shift.title}</h3>
-          <p>{shift.description}</p>
-          <p className="city-job-pay">
-            {shift.payoutMin.toLocaleString("ru-RU")}–{shift.payoutMax.toLocaleString("ru-RU")} ₽
-            {shift.skill && shift.skillMin != null && (
-              <>
-                {" "}
-                · {SKILL_LABELS[shift.skill]} {shift.skillMin}+
-              </>
-            )}
-            {shift.requiresPhone && " · нужна симка"}
-          </p>
-          <button
-            className="btn btn-secondary"
-            type="button"
-            disabled={!shift.cooldown.ready}
-            onClick={onShift}
-          >
-            {shift.cooldown.ready ? "Выйти на смену" : `Ждать ${formatDuration(shift.cooldown.remainingMs)}`}
-          </button>
-        </div>
-      )}
-    </div>
+    <ul className="job-list">
+      {jobs.map(({ job, kind, onWork }) => (
+        <li key={job.title} className="job-list-item">
+          <div className="job-list-icon" aria-hidden>
+            {kind === "side" ? "⏱" : "💼"}
+          </div>
+          <div className="job-list-info">
+            <span className="job-list-name">{job.title}</span>
+            <span className="job-list-pay">
+              {job.payoutMin.toLocaleString("ru-RU")}–{job.payoutMax.toLocaleString("ru-RU")} ₽
+              {job.skill && job.skillMin != null && (
+                <> · {SKILL_LABELS[job.skill]} {job.skillMin}+</>
+              )}
+              {job.requiresPhone && " · нужна симка"}
+            </span>
+            <p className="job-list-desc">{job.description}</p>
+            <button
+              className={`btn ${kind === "side" ? "btn-primary" : "btn-secondary"}`}
+              type="button"
+              disabled={!job.cooldown.ready}
+              onClick={onWork}
+            >
+              {kind === "side"
+                ? job.cooldown.ready
+                  ? "Подработать"
+                  : `Ждать ${formatDuration(job.cooldown.remainingMs)}`
+                : job.cooldown.ready
+                  ? "Выйти на смену"
+                  : `Ждать ${formatDuration(job.cooldown.remainingMs)}`}
+            </button>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }

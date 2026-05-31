@@ -272,9 +272,28 @@ body {
   font-size: 0.9rem;
   z-index: 100;
   animation: fadeIn 0.2s ease;
+  touch-action: pan-y;
+  user-select: none;
 }
 
 .toast.error {
+  border-color: var(--danger);
+}
+
+.dismissible-banner {
+  margin: 0 0 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(180, 60, 60, 0.12);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.dismissible-banner.error {
   border-color: var(--danger);
 }
 
@@ -540,8 +559,32 @@ body {
   color: var(--danger) !important;
 }
 
+.city-header-card {
+  text-align: center;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.city-header-card h2,
+.city-header-title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.35;
+}
+
+.city-header-pop {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 .city-header-card p {
-  margin-bottom: 0;
+  margin: 10px 0 0;
 }
 
 .city-grid {
@@ -1036,6 +1079,71 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.job-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.job-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #2d3f56;
+  border-radius: 14px;
+  background: var(--bg-elevated);
+}
+
+.job-list-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  background: rgba(212, 168, 75, 0.15);
+  border: 1px solid rgba(212, 168, 75, 0.35);
+}
+
+.job-list-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.job-list-name {
+  font-weight: 800;
+  font-size: 0.92rem;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.job-list-pay {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.job-list-desc {
+  margin: 2px 0 6px;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.job-list-item .btn {
+  margin-top: 2px;
 }
 
 .city-job-block h3 {

@@ -198,6 +198,13 @@ export function deleteUserRefreshTokens(userId: number) {
   getDb().prepare("DELETE FROM refresh_tokens WHERE user_id = ?").run(userId);
 }
 
+export function countPlayersInCity(cityId: string): number {
+  const row = getDb()
+    .prepare("SELECT COUNT(*) AS c FROM players WHERE city_id = ? AND status = 'idle'")
+    .get(cityId) as { c: number };
+  return row.c;
+}
+
 export function listPlayersForAdmin(): Array<PlayerRow & { login: string }> {
   return getDb()
     .prepare(

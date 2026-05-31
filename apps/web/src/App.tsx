@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { CityNavProvider } from "./cityNav";
 import { Layout } from "./components/Layout";
 import { useApp } from "./context";
 import { AuthPage } from "./pages/AuthPage";
@@ -26,13 +27,15 @@ export function App() {
   }
 
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/map" element={<MapPage />} />
-        <Route path="/city" element={<CityPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="*" element={<Navigate to="/city" replace />} />
-      </Route>
-    </Routes>
+    <CityNavProvider>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/map" element={<MapPage />} />
+          <Route path="/city" element={<CityPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="*" element={<Navigate to="/city" replace />} />
+        </Route>
+      </Routes>
+    </CityNavProvider>
   );
 }

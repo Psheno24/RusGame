@@ -16,7 +16,7 @@ import {
   validateRefreshToken,
   verifyAccessToken,
 } from "./auth.js";
-import { getDb, getPlayer, getUserById, listPlayersForAdmin, updatePlayer } from "./db.js";
+import { countPlayersInCity, getDb, getPlayer, getUserById, listPlayersForAdmin, updatePlayer } from "./db.js";
 import { listCityFeed } from "./cityFeed.js";
 import { getCities, getCity, getCityJobs, getPhones, getTravel } from "./gameData.js";
 import {
@@ -146,7 +146,15 @@ export async function registerRoutes(app: FastifyInstance) {
     const shiftCd = formatCooldown(player.shift_ready_at, now);
 
     return {
-      city: city ? { id: city.id, name: city.name, tier: city.tier, playable: city.playable } : null,
+      city: city
+        ? {
+            id: city.id,
+            name: city.name,
+            tier: city.tier,
+            playable: city.playable,
+            population: countPlayersInCity(player.city_id),
+          }
+        : null,
       player: serializePlayer(player),
       jobs: jobs
         ? {

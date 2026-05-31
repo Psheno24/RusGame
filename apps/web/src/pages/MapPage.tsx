@@ -6,6 +6,7 @@ import {
   travelStart,
   type CityPin,
 } from "../api";
+import { DismissibleBanner } from "../components/DismissibleBanner";
 import { useApp } from "../context";
 import { MapLabel } from "../components/MapLabel";
 import { MapZoomViewport } from "../components/MapZoomViewport";
@@ -50,6 +51,7 @@ export function MapPage() {
   const [quote, setQuote] = useState<{ priceRub: number; durationMs: number; toName?: string } | null>(null);
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
+  const [routeNoticeDismissed, setRouteNoticeDismissed] = useState(false);
   const [view, setView] = useState<"list" | "map">("map");
 
   const load = useCallback(async () => {
@@ -85,6 +87,7 @@ export function MapPage() {
     setSelected(c);
     setQuote(null);
     setError("");
+    setRouteNoticeDismissed(false);
     if (c.id === currentId) return;
     try {
       const q = await travelQuote(c.id);
@@ -120,7 +123,14 @@ export function MapPage() {
       <div className="card map-intro">
         <h2>Карта России</h2>
         <p>Щипок — масштаб, палец — двигать. При открытии — ваш город.</p>
-        {error && <p className="map-error-text">{error}</p>}
+        {error && !selected && (
+          <DismissibleBanner
+            message={error}
+            isError
+            className="map-error-text"
+            onDismiss={() => setError("")}
+          />
+        )}
         {traveling && arrivesAt && (
           <p className="map-travel-hint">В пути… осталось {formatDuration(remaining)}</p>
         )}
@@ -233,13 +243,23 @@ export function MapPage() {
                 Купить билет
               </button>
             </>
-          ) : (
-            <p className="map-error-text">{error || "Маршрут пока только между Омском и Казанью"}</p>
-          )}
+          ) : !routeNoticeDismissed ? (
+            <DismissibleBanner
+              message={error || "Маршрут пока только между Омском и Казанью"}
+              isError
+              className="map-error-text"
+              onDismiss={() => {
+                setError("");
+                setRouteNoticeDismissed(true);
+              }}
+            />
+          ) : null}
         </div>
       )}
 
-      {toast && <div className="toast">{toast}</div>}
+      {toast && (
+        <DismissibleBanner message={toast} fixed onDismiss={() => setToast("")} />
+      )}
     </>
   );
 }

@@ -141,7 +141,7 @@ export type CityFeedEvent = {
 
 export async function fetchCity() {
   return api<{
-    city: { id: string; name: string; tier: number; playable: boolean } | null;
+    city: { id: string; name: string; tier: number; playable: boolean; population: number } | null;
     player: Player;
     jobs: {
       sideGig: JobView;
