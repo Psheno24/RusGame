@@ -17,6 +17,21 @@
       rel="stylesheet"
     />
     <title>Россия — жизнь</title>
+    <script>
+      (function () {
+        function syncAppHeight() {
+          document.documentElement.style.setProperty(
+            "--app-height",
+            document.documentElement.clientHeight + "px",
+          );
+        }
+        syncAppHeight();
+        window.addEventListener("resize", syncAppHeight);
+        window.addEventListener("orientationchange", syncAppHeight);
+        window.addEventListener("pageshow", syncAppHeight);
+        window.visualViewport?.addEventListener("resize", syncAppHeight);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

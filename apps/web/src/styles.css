@@ -16,32 +16,18 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: constant(safe-area-inset-right, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
-  --bottom-inset: var(--safe-bottom);
-  --bottom-nav-inner: 76px;
-  --bottom-nav-height: calc(var(--bottom-nav-inner) + var(--bottom-inset));
-}
-
-@media (display-mode: standalone) {
-  :root {
-    /* iOS PWA часто отдаёт safe-bottom = 0, хотя home indicator есть */
-    --bottom-inset: max(var(--safe-bottom), 34px);
-  }
+  --app-height: 100%;
+  --bottom-nav-height: calc(76px + var(--safe-bottom));
 }
 
 * {
   box-sizing: border-box;
 }
 
-html {
-  height: -webkit-fill-available;
-}
-
 html,
 body,
 #root {
-  height: 100%;
-  min-height: 100%;
-  min-height: 100dvh;
+  height: var(--app-height);
   margin: 0;
 }
 
@@ -54,12 +40,14 @@ body {
 }
 
 .app-shell {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 100%;
-  min-height: 100dvh;
-  min-height: -webkit-fill-available;
+  height: var(--app-height);
+  overflow: hidden;
   padding-top: var(--safe-top);
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
@@ -74,20 +62,17 @@ body {
 
 .app-main {
   flex: 1;
+  min-height: 0;
   overflow: auto;
-  padding: 12px 16px calc(16px + var(--bottom-nav-height));
+  padding: 12px 16px 16px;
   padding-left: max(16px, var(--safe-left));
   padding-right: max(16px, var(--safe-right));
   -webkit-overflow-scrolling: touch;
 }
 
 .bottom-nav {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 50;
-  padding: 10px max(12px, var(--safe-left)) calc(10px + var(--bottom-inset)) max(12px, var(--safe-right));
+  flex-shrink: 0;
+  padding: 10px max(12px, var(--safe-left)) calc(10px + var(--safe-bottom)) max(12px, var(--safe-right));
   background: linear-gradient(180deg, transparent 0%, rgba(20, 28, 40, 0.92) 24%, var(--bg-card) 100%);
   border-top: 1px solid #2d3f56;
 }
@@ -290,7 +275,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 100%;
+  height: var(--app-height);
   padding: 24px 20px;
   padding-top: calc(24px + var(--safe-top));
   padding-bottom: calc(24px + var(--safe-bottom));
