@@ -16,8 +16,8 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: constant(safe-area-inset-right, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
-  --app-height: 100%;
-  --bottom-nav-height: calc(76px + var(--safe-bottom));
+  /* Высота нижнего меню без safe-area (как в sport-app) */
+  --bottom-nav-height: 76px;
 }
 
 * {
@@ -27,7 +27,8 @@
 html,
 body,
 #root {
-  height: var(--app-height);
+  height: 100dvh;
+  max-height: 100dvh;
   margin: 0;
 }
 
@@ -36,17 +37,17 @@ body {
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;
+  overflow-x: clip;
+  overflow-y: hidden;
 }
 
 .app-shell {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
   display: flex;
   flex-direction: column;
-  height: var(--app-height);
+  height: 100dvh;
+  max-height: 100dvh;
+  width: 100%;
   overflow: hidden;
   padding-top: var(--safe-top);
   padding-left: var(--safe-left);
@@ -64,17 +65,35 @@ body {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 12px 16px 16px;
+  padding: 12px 16px calc(var(--bottom-nav-height) + 16px + env(safe-area-inset-bottom, 0px));
   padding-left: max(16px, var(--safe-left));
   padding-right: max(16px, var(--safe-right));
   -webkit-overflow-scrolling: touch;
 }
 
 .bottom-nav {
-  flex-shrink: 0;
-  padding: 10px max(12px, var(--safe-left)) calc(10px + var(--safe-bottom)) max(12px, var(--safe-right));
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  padding: 10px max(12px, var(--safe-left)) 0 max(12px, var(--safe-right));
   background: linear-gradient(180deg, transparent 0%, rgba(20, 28, 40, 0.92) 24%, var(--bg-card) 100%);
   border-top: 1px solid #2d3f56;
+}
+
+.bottom-nav-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (display-mode: standalone) {
+  .bottom-nav-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.875rem);
+  }
+
+  :root {
+    --bottom-nav-height: calc(76px + 0.875rem);
+  }
 }
 
 .bottom-nav-inner {
@@ -245,7 +264,7 @@ body {
   position: fixed;
   left: 16px;
   right: 16px;
-  bottom: calc(var(--bottom-nav-height) + 8px);
+  bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 8px);
   background: var(--bg-elevated);
   border: 1px solid var(--accent);
   color: var(--text);
@@ -275,7 +294,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  height: var(--app-height);
+  min-height: 100dvh;
   padding: 24px 20px;
   padding-top: calc(24px + var(--safe-top));
   padding-bottom: calc(24px + var(--safe-bottom));
@@ -1072,7 +1091,7 @@ body {
   align-items: flex-end;
   justify-content: center;
   padding: 16px;
-  padding-bottom: calc(16px + var(--bottom-nav-height));
+  padding-bottom: calc(16px + var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
   background: rgba(10, 14, 20, 0.72);
   backdrop-filter: blur(4px);
 }

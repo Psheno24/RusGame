@@ -69,7 +69,7 @@ export function Layout() {
       <main className="app-main">
         <Outlet />
       </main>
-      <nav className="bottom-nav" aria-label="Основное меню">
+      <nav className="bottom-nav bottom-nav-safe" aria-label="Основное меню">
         <div className="bottom-nav-inner">
           {NAV_ITEMS.map(({ to, label, icon }) => (
             <NavLink
