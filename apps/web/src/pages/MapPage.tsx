@@ -6,8 +6,10 @@ import {
   travelStart,
   type CityPin,
 } from "../api";
-import { DismissibleBanner } from "../components/DismissibleBanner";
+import { MapActionPanel } from "../components/MapActionPanel";
+import { DismissibleNotice } from "../components/DismissibleNotice";
 import { useApp } from "../context";
+import { useNotice } from "../noticeContext";
 import { MapLabel } from "../components/MapLabel";
 import { MapZoomViewport } from "../components/MapZoomViewport";
 import { viewBoxToString } from "../mapViewBox";
@@ -45,6 +47,7 @@ function CityListButton({
 
 export function MapPage() {
   const { setUser, user } = useApp();
+  const { showNotice } = useNotice();
   const [cities, setCities] = useState<CityPin[]>(staticMapCities);
   const [currentId, setCurrentId] = useState(() => user?.player?.cityId ?? "omsk");
   const [traveling, setTraveling] = useState(false);
@@ -52,7 +55,6 @@ export function MapPage() {
   const [selected, setSelected] = useState<CityPin | null>(null);
   const [quote, setQuote] = useState<{ priceRub: number; durationMs: number; toName?: string } | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
-  const [toast, setToast] = useState("");
   const [loadError, setLoadError] = useState("");
   const [view, setView] = useState<"list" | "map">("map");
 
@@ -114,11 +116,11 @@ export function MapPage() {
     try {
       const r = await travelStart(selected.id);
       setUser(r.user);
-      setToast(`Билет куплен. Прибытие через ${formatDuration(r.arrivesAt - Date.now())}`);
+      showNotice(`Билет куплен. Прибытие через ${formatDuration(r.arrivesAt - Date.now())}`, "success");
       dismissSelected();
       await load();
     } catch (e) {
-      setToast(e instanceof Error ? e.message : "Ошибка");
+      showNotice(e instanceof Error ? e.message : "Ошибка", "error");
     }
   };
 
@@ -136,10 +138,10 @@ export function MapPage() {
         <h2>Карта России</h2>
         <p>Щипок — масштаб, палец — двигать. При открытии — ваш город.</p>
         {loadError && !selected && (
-          <DismissibleBanner
+          <DismissibleNotice
+            variant="inline"
+            tone="error"
             message={loadError}
-            isError
-            className="map-error-text"
             onDismiss={() => setLoadError("")}
           />
         )}
@@ -240,48 +242,53 @@ export function MapPage() {
         </div>
       )}
 
-      {selected && quoteLoading && (
-        <div className="card map-action-card">
-          <h2>{selected.name}</h2>
-          <p className="map-action-hint">Проверяем маршрут…</p>
-        </div>
-      )}
+      <MapActionPanel
+        open={Boolean(selected && quoteLoading)}
+        onDismiss={dismissSelected}
+        resetKey={`loading-${selected?.id}`}
+      >
+        <h2>{selected?.name}</h2>
+        <p className="map-action-hint">Проверяем маршрут…</p>
+      </MapActionPanel>
 
-      {selected && !quoteLoading && selected.id === currentId && (
-        <div className="card map-action-card">
-          <h2>{selected.name}</h2>
-          <p>Вы уже здесь. Вкладка «Город» — работа и магазин.</p>
-        </div>
-      )}
+      <MapActionPanel
+        open={Boolean(selected && !quoteLoading && selected.id === currentId)}
+        onDismiss={dismissSelected}
+        resetKey={`here-${selected?.id}`}
+      >
+        <h2>{selected?.name}</h2>
+        <p>Вы уже здесь. Вкладка «Город» — работа и магазин.</p>
+      </MapActionPanel>
 
-      {selected && !quoteLoading && selected.id !== currentId && quote && (
-        <div className="card map-action-card">
-          <h2>{selected.name}</h2>
-          <p>
-            Поезд: <strong>{quote.priceRub.toLocaleString("ru-RU")} ₽</strong>, в пути{" "}
-            <strong>{formatDuration(quote.durationMs)}</strong>
-          </p>
-          <button className="btn btn-primary" type="button" onClick={goTravel} disabled={traveling}>
-            Купить билет
-          </button>
-        </div>
-      )}
+      <MapActionPanel
+        open={Boolean(selected && !quoteLoading && selected.id !== currentId && quote)}
+        onDismiss={dismissSelected}
+        persistent
+        resetKey={`quote-${selected?.id}`}
+      >
+        <h2>{selected?.name}</h2>
+        {quote && (
+          <>
+            <p>
+              Поезд: <strong>{quote.priceRub.toLocaleString("ru-RU")} ₽</strong>, в пути{" "}
+              <strong>{formatDuration(quote.durationMs)}</strong>
+            </p>
+            <button className="btn btn-primary" type="button" onClick={goTravel} disabled={traveling}>
+              Купить билет
+            </button>
+          </>
+        )}
+      </MapActionPanel>
 
-      {showRouteUnavailable && (
-        <DismissibleBanner
-          className="card map-action-card map-action-card--route-error"
-          isError
-          autoDismissMs={6000}
-          onDismiss={dismissSelected}
-        >
-          <h2>{selected!.name}</h2>
-          <p className="map-error-text">{ROUTE_UNAVAILABLE}</p>
-        </DismissibleBanner>
-      )}
-
-      {toast && (
-        <DismissibleBanner message={toast} fixed onDismiss={() => setToast("")} />
-      )}
+      <MapActionPanel
+        open={showRouteUnavailable}
+        onDismiss={dismissSelected}
+        tone="error"
+        resetKey={`route-${selected?.id}`}
+      >
+        <h2>{selected?.name}</h2>
+        <p className="map-error-text">{ROUTE_UNAVAILABLE}</p>
+      </MapActionPanel>
     </>
   );
 }

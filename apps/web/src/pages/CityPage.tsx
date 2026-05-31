@@ -17,10 +17,10 @@ import {
 } from "../api";
 import { CityActivityFeed } from "../components/CityActivityFeed";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { DismissibleBanner } from "../components/DismissibleBanner";
 import { PhoneShop } from "../components/PhoneShop";
 import { PlacesSection } from "../components/PlacesSection";
 import { useApp } from "../context";
+import { useNotice } from "../noticeContext";
 import { placeById, type PlaceId } from "../placesData";
 
 type CitySection = "shop" | "jobs" | "housing" | "places";
@@ -48,6 +48,7 @@ const SHOP_CATEGORIES: { id: ShopTab; title: string; hint: string }[] = [
 
 export function CityPage() {
   const { user, setUser } = useApp();
+  const { showNotice } = useNotice();
   const cityNav = useCityNav();
   const [cityName, setCityName] = useState("");
   const [population, setPopulation] = useState(0);
@@ -63,7 +64,6 @@ export function CityPage() {
   const [sideGig, setSideGig] = useState<JobView | null>(null);
   const [shift, setShift] = useState<JobView | null>(null);
   const [feed, setFeed] = useState<CityFeedEvent[]>([]);
-  const [toast, setToast] = useState("");
   const [error, setError] = useState("");
   const [, setTick] = useState(0);
 
@@ -110,13 +110,8 @@ export function CityPage() {
   }, [section]);
 
   const showToast = (msg: string, isErr = false) => {
-    setToast(msg);
+    showNotice(msg, isErr ? "error" : "info");
     if (isErr) setError(msg);
-  };
-
-  const clearToast = () => {
-    setToast("");
-    setError("");
   };
 
   const remaining = arrivesAt ? Math.max(0, arrivesAt - Date.now()) : 0;
@@ -208,15 +203,7 @@ export function CityPage() {
             <p>Раздел скоро появится. Пока загляните в другие кнопки или на карту.</p>
           )}
         </div>
-        {error && !toast && <p style={{ color: "var(--danger)" }}>{error}</p>}
-        {toast && (
-          <DismissibleBanner
-            message={toast}
-            isError={!!error}
-            fixed
-            onDismiss={clearToast}
-          />
-        )}
+        {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
       </>
     );
   }
@@ -248,14 +235,6 @@ export function CityPage() {
       </div>
 
       <CityActivityFeed cityName={cityName} events={feed} />
-      {toast && (
-        <DismissibleBanner
-          message={toast}
-          isError={!!error}
-          fixed
-          onDismiss={clearToast}
-        />
-      )}
     </>
   );
 }

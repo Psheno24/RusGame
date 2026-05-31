@@ -286,14 +286,88 @@ body {
   font-size: 0.9rem;
   z-index: 100;
   animation: fadeIn 0.2s ease;
-  touch-action: pan-y;
-  user-select: none;
 }
 
+.notice {
+  touch-action: pan-y;
+  user-select: none;
+  cursor: grab;
+}
+
+.notice:active {
+  cursor: grabbing;
+}
+
+.notice--inline {
+  margin: 0 0 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.notice--inline.notice--info {
+  background: rgba(212, 168, 75, 0.1);
+  border: 1px solid var(--accent-dim);
+  color: var(--text);
+}
+
+.notice--inline.notice--error {
+  background: rgba(180, 60, 60, 0.12);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+.notice--inline.notice--success {
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid var(--success);
+  color: var(--success);
+}
+
+.notice--panel {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid #2d3f56;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.notice--panel.notice--error {
+  border-color: var(--danger);
+}
+
+.notice--panel h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
+.notice--panel p {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.notice--panel p:last-child {
+  margin-bottom: 0;
+}
+
+.notice--panel .btn {
+  margin-top: 8px;
+}
+
+.notice--toast.notice--error,
 .toast.error {
   border-color: var(--danger);
 }
 
+.notice--toast.notice--success {
+  border-color: var(--success);
+}
+
+/** @deprecated — используйте .notice--inline */
 .dismissible-banner {
   margin: 0 0 10px;
   padding: 10px 14px;
@@ -341,6 +415,117 @@ body {
 .auth-screen .subtitle {
   color: var(--text-muted);
   margin-bottom: 28px;
+}
+
+.app-loading-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  width: 100%;
+  padding: 24px;
+  padding-top: calc(24px + var(--safe-top));
+  padding-bottom: calc(24px + var(--safe-bottom));
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 38%, rgba(232, 168, 73, 0.1) 0%, transparent 62%),
+    var(--bg);
+}
+
+.app-loading-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  animation: appLoadingEnter 0.45s ease-out both;
+}
+
+.app-loading-mark {
+  position: relative;
+  width: 56px;
+  height: 56px;
+}
+
+.app-loading-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid rgba(232, 168, 73, 0.18);
+  border-top-color: var(--accent);
+  border-right-color: rgba(232, 168, 73, 0.55);
+  animation: appLoadingSpin 0.9s linear infinite;
+  box-shadow: 0 0 28px rgba(232, 168, 73, 0.22);
+}
+
+.app-loading-core {
+  position: absolute;
+  inset: 14px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, rgba(232, 168, 73, 0.35) 0%, rgba(196, 136, 46, 0.12) 100%);
+  animation: appLoadingCorePulse 1.8s ease-in-out infinite;
+}
+
+.app-loading-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.app-loading-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+.app-loading-text {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  animation: appLoadingTextPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes appLoadingEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes appLoadingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes appLoadingCorePulse {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes appLoadingTextPulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .map-intro p {
@@ -566,31 +751,9 @@ body {
   z-index: 2;
 }
 
-.map-action-card--route-error {
-  touch-action: pan-y;
-  user-select: none;
-}
-
-.map-action-card--route-error h2 {
-  margin: 0 0 8px;
-}
-
-.map-action-card--route-error .map-error-text {
-  margin: 0;
-}
-
 .map-action-hint {
   margin: 0 !important;
   color: var(--text-muted) !important;
-}
-
-.dismissible-banner.card {
-  background: var(--bg-card);
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 12px;
-  border: 1px solid var(--danger);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
 .map-error-text {
