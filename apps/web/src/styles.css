@@ -8,20 +8,40 @@
   --accent-dim: #c4882e;
   --success: #6bc9a8;
   --danger: #e07a7a;
+  --safe-top: constant(safe-area-inset-top, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: constant(safe-area-inset-bottom, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: constant(safe-area-inset-left, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: constant(safe-area-inset-right, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
+  --bottom-inset: var(--safe-bottom);
+  --bottom-nav-inner: 76px;
+  --bottom-nav-height: calc(var(--bottom-nav-inner) + var(--bottom-inset));
+}
+
+@media (display-mode: standalone) {
+  :root {
+    /* iOS PWA часто отдаёт safe-bottom = 0, хотя home indicator есть */
+    --bottom-inset: max(var(--safe-bottom), 34px);
+  }
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  height: -webkit-fill-available;
+}
+
 html,
 body,
 #root {
   height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
   margin: 0;
 }
 
@@ -37,6 +57,9 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
   padding-top: var(--safe-top);
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
@@ -52,15 +75,19 @@ body {
 .app-main {
   flex: 1;
   overflow: auto;
-  padding: 12px 16px 16px;
+  padding: 12px 16px calc(16px + var(--bottom-nav-height));
   padding-left: max(16px, var(--safe-left));
   padding-right: max(16px, var(--safe-right));
   -webkit-overflow-scrolling: touch;
 }
 
 .bottom-nav {
-  flex-shrink: 0;
-  padding: 10px max(12px, var(--safe-left)) calc(10px + var(--safe-bottom)) max(12px, var(--safe-right));
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  padding: 10px max(12px, var(--safe-left)) calc(10px + var(--bottom-inset)) max(12px, var(--safe-right));
   background: linear-gradient(180deg, transparent 0%, rgba(20, 28, 40, 0.92) 24%, var(--bg-card) 100%);
   border-top: 1px solid #2d3f56;
 }
@@ -233,7 +260,7 @@ body {
   position: fixed;
   left: 16px;
   right: 16px;
-  bottom: calc(72px + var(--safe-bottom));
+  bottom: calc(var(--bottom-nav-height) + 8px);
   background: var(--bg-elevated);
   border: 1px solid var(--accent);
   color: var(--text);
@@ -1060,7 +1087,7 @@ body {
   align-items: flex-end;
   justify-content: center;
   padding: 16px;
-  padding-bottom: calc(16px + var(--safe-bottom));
+  padding-bottom: calc(16px + var(--bottom-nav-height));
   background: rgba(10, 14, 20, 0.72);
   backdrop-filter: blur(4px);
 }
