@@ -6,7 +6,7 @@ import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
-import { LOCAL_DEV, PORT, ROOT } from "./config.js";
+import { LOCAL_DEV, PORT, ROOT, TRUST_PROXY } from "./config.js";
 import { getDb } from "./db.js";
 import { registerRoutes } from "./routes.js";
 
@@ -15,7 +15,7 @@ const webDist = join(ROOT, "apps/web/dist");
 async function main() {
   getDb();
 
-  const app = Fastify({ logger: true });
+  const app = Fastify({ logger: true, trustProxy: TRUST_PROXY });
 
   await app.register(cors, {
     origin: true,
@@ -38,8 +38,9 @@ async function main() {
 
   await app.listen({ port: PORT, host: "0.0.0.0" });
   console.log(`API http://localhost:${PORT}`);
-  if (LOCAL_DEV) console.log("Режим: локальная разработка (cookie + долгий токен)");
-  if (existsSync(webDist)) console.log("Собранный фронт: apps/web/dist (для прода позже)");
+  if (LOCAL_DEV) console.log("Режим: LOCAL_DEV (длинная сессия, cookie без secure)");
+  else console.log("Режим: production (HTTPS cookies, trustProxy)");
+  if (existsSync(webDist)) console.log("Фронт: apps/web/dist");
 }
 
 main().catch((err) => {

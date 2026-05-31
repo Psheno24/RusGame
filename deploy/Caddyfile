@@ -1,0 +1,5 @@
+# Домен из .env → SITE_DOMAIN=game.ваш-домен.ru
+{$SITE_DOMAIN} {
+	encode gzip
+	reverse_proxy app:3001
+}

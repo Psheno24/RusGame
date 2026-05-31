@@ -1,55 +1,63 @@
 # Россия — жизнь
 
-PWA-игра для **локальной проверки** на ПК и телефоне в одной Wi‑Fi. Деплой на VPS — позже.
+PWA-игра по городам России: регистрация, карта, работа, магазин, лента города.
+
+- Репозиторий: [github.com/Psheno24/RusGame](https://github.com/Psheno24/RusGame)
+- **Инструкция для чайника (от А до Я):** [deploy/INSTRUKCIYA.md](deploy/INSTRUKCIYA.md)
+- **Краткий тех. деплой:** [deploy/DEPLOY.md](deploy/DEPLOY.md)
 
 ## Что есть
 
-- Регистрация и вход, сессия на 90 дней
+- Регистрация и вход, сессия (refresh cookie)
 - Карта 16 городов (играют **Омск** и **Казань**)
-- Подработка и смена, переезд Омск ↔ Казань
-- Симка и авто (магазин)
+- Подработка и смена, переезд, симка, авто
+- Разные места (шиномонтаж, полиция и др.)
+- Лента активности города
 
-## Запуск (Windows)
+## Локально (Windows)
 
-Нужен [Node.js 20+](https://nodejs.org/).
+[Node.js 20+](https://nodejs.org/).
 
 ```powershell
 cd C:\Users\pshen\Desktop\Devel\RussiaGame
 npm install
 ```
 
-**Терминал 1:**
+**Терминал 1:** `npm run dev:api`  
+**Терминал 2:** `npm run dev:web`
+
+Откройте **http://localhost:5173**
+
+На телефоне в той же Wi‑Fi: `http://ВАШ_IP:5173` (`ipconfig` → IPv4). PWA: «Добавить на главный экран».
+
+### Проверка production-сборки локально
 
 ```powershell
-npm run dev:api
+npm run build
+$env:LOCAL_DEV="true"; npm run start
 ```
 
-**Терминал 2:**
+Откройте **http://localhost:3001** (API + собранный фронт).
 
-```powershell
-npm run dev:web
-```
+## База данных
 
-Откройте **http://localhost:5173** — API проксируется на порт 3001.
+SQLite: `data/game.db` (создаётся при первом запуске API).  
+На сервере файл лежит в `data/` и **сохраняется** при `git pull` / деплое.
 
-На телефоне в той же сети: `http://ВАШ_IP:5173` (`ipconfig` → IPv4).
+Удалить `data/game.db` — начать игру с нуля.
 
-### PWA на телефоне
+## На сайт (кратко)
 
-Chrome/Safari → «Добавить на главный экран».
+1. VPS + домен → A-запись на IP.
+2. На сервере: `git clone` + `.env` → `docker compose up -d --build`.
+3. В GitHub Secrets: `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`, `DEPLOY_PATH`.
+4. `git push origin main` — сайт обновится сам.
 
-## Если что-то не работает
-
-1. Оба терминала (`dev:api` и `dev:web`) должны быть запущены.
-2. Выйдите и войдите снова — сбросит сессию.
-3. База: `data/game.db` (удалите файл, чтобы начать с нуля).
+Подробно: **[deploy/INSTRUKCIYA.md](deploy/INSTRUKCIYA.md)** (пошагово) или [deploy/DEPLOY.md](deploy/DEPLOY.md) (кратко)
 
 ## Структура
 
-- `apps/api` — сервер, SQLite
-- `apps/web` — интерфейс (React + PWA)
-- `data/*.json` — города, работы, маршруты
-
-## Позже (сервер)
-
-`npm run build` и `npm run start` — один процесс на :3001. Перед VPS: сменить `JWT_SECRET`, при HTTPS — `LOCAL_DEV=false` и `COOKIE_SECURE=true` в `.env`.
+- `apps/api` — Fastify, SQLite, API
+- `apps/web` — React, PWA
+- `data/*.json` — города, работы, телефоны
+- `docker-compose.yml` — app + Caddy (HTTPS)
