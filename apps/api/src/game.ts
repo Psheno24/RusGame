@@ -62,6 +62,47 @@ export type WorkResult =
   | { ok: true; payout: number; message: string; skillGain?: { key: SkillKey; amount: number } }
   | { ok: false; error: string; readyAt?: number };
 
+export function applyJob(userId: number, jobId: string, now = Date.now()): { ok: true; message: string } | { ok: false; error: string } {
+  let player = getPlayer(userId);
+  if (!player) return { ok: false, error: "Игрок не найден" };
+  player = resolveTravel(player, now);
+  if (player.status === "traveling") return { ok: false, error: "Вы в пути" };
+
+  const jobs = getCityJobs(player.city_id);
+  if (!jobs) return { ok: false, error: "В этом городе пока нет вакансий" };
+
+  const job =
+    jobs.sideGig.id === jobId ? jobs.sideGig : jobs.shift.id === jobId ? jobs.shift : null;
+  if (!job) return { ok: false, error: "Вакансия не найдена" };
+
+  if (player.job_id === jobId) return { ok: false, error: "Вы уже устроены на эту работу" };
+
+  const reqErr = checkJobRequirements(player, job);
+  if (reqErr) return { ok: false, error: reqErr };
+
+  updatePlayer(userId, { job_id: jobId });
+  return { ok: true, message: `Вы устроились: ${job.title}` };
+}
+
+export function quitJob(userId: number, jobId: string, now = Date.now()): { ok: true; message: string } | { ok: false; error: string } {
+  let player = getPlayer(userId);
+  if (!player) return { ok: false, error: "Игрок не найден" };
+  player = resolveTravel(player, now);
+  if (player.status === "traveling") return { ok: false, error: "Вы в пути" };
+
+  const jobs = getCityJobs(player.city_id);
+  if (!jobs) return { ok: false, error: "В этом городе пока нет вакансий" };
+
+  const job =
+    jobs.sideGig.id === jobId ? jobs.sideGig : jobs.shift.id === jobId ? jobs.shift : null;
+  if (!job) return { ok: false, error: "Вакансия не найдена" };
+
+  if (player.job_id !== jobId) return { ok: false, error: "Вы не устроены на эту работу" };
+
+  updatePlayer(userId, { job_id: null });
+  return { ok: true, message: `Вы уволились: ${job.title}` };
+}
+
 export function doSideGig(userId: number, now = Date.now()): WorkResult {
   let player = getPlayer(userId);
   if (!player) return { ok: false, error: "Игрок не найден" };
@@ -71,10 +112,14 @@ export function doSideGig(userId: number, now = Date.now()): WorkResult {
   const jobs = getCityJobs(player.city_id);
   if (!jobs) return { ok: false, error: "В этом городе пока нет подработок" };
 
+  const job = jobs.sideGig;
+  if (player.job_id !== job.id) {
+    return { ok: false, error: "Сначала устройтесь на эту подработку" };
+  }
+
   const cd = formatCooldown(player.side_gig_ready_at, now);
   if (!cd.ready) return { ok: false, error: "Подработка ещё не готова", readyAt: player.side_gig_ready_at };
 
-  const job = jobs.sideGig;
   const payout = randInt(job.payoutMin, job.payoutMax);
   updatePlayer(userId, {
     rubles: player.rubles + payout,
@@ -100,6 +145,10 @@ export function doShift(userId: number, now = Date.now()): WorkResult {
   if (!jobs) return { ok: false, error: "В этом городе пока нет смен" };
 
   const job = jobs.shift;
+  if (player.job_id !== job.id) {
+    return { ok: false, error: "Сначала устройтесь на эту смену" };
+  }
+
   const reqErr = checkJobRequirements(player, job);
   if (reqErr) return { ok: false, error: reqErr };
 
@@ -110,7 +159,6 @@ export function doShift(userId: number, now = Date.now()): WorkResult {
   const patch: Partial<PlayerRow> = {
     rubles: player.rubles + payout,
     shift_ready_at: now + job.cooldownMs,
-    job_id: job.id,
   };
   let skillGain: { key: SkillKey; amount: number } | undefined;
   if (job.skill && job.skillGain) {

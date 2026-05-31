@@ -162,9 +162,24 @@ export type JobView = {
   payoutMax: number;
   skill: string | null;
   skillMin?: number;
+  skillGain?: number;
   requiresPhone?: boolean;
   cooldown: { ready: boolean; remainingMs: number };
 };
+
+export async function applyJob(jobId: string) {
+  return api<{ message: string; user: User }>("/api/work/apply", {
+    method: "POST",
+    body: JSON.stringify({ jobId }),
+  });
+}
+
+export async function quitJob(jobId: string) {
+  return api<{ message: string; user: User }>("/api/work/quit", {
+    method: "POST",
+    body: JSON.stringify({ jobId }),
+  });
+}
 
 export async function workSideGig() {
   return api<{ message: string; payout: number; user: User }>("/api/work/side-gig", { method: "POST" });

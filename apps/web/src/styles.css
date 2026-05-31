@@ -221,6 +221,20 @@ body {
   box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
 }
 
+.btn-success {
+  background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+  color: #052e16;
+  border: 1px solid #047857;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
+}
+
+.btn-danger {
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  color: #fff;
+  border: 1px solid #b91c1c;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+}
+
 .btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -494,9 +508,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 50vh;
-  overflow-y: auto;
-  padding-bottom: 4px;
 }
 
 .city-list-btn {
@@ -1090,6 +1101,28 @@ body {
   gap: 8px;
 }
 
+.job-list-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #2d3f56;
+  border-radius: 14px;
+  background: var(--bg-elevated);
+}
+
+.job-list-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.job-list-select {
+  margin-top: 0;
+}
+
 .job-list-item {
   display: flex;
   align-items: flex-start;
@@ -1140,6 +1173,37 @@ body {
   font-size: 0.84rem;
   line-height: 1.4;
   color: var(--text-muted);
+}
+
+.job-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.job-detail-lead {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.job-specs {
+  margin: 0;
+}
+
+.job-detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.job-detail-actions .btn {
+  margin-top: 8px;
+}
+
+.job-detail-actions .btn:first-child {
+  margin-top: 0;
 }
 
 .job-list-item .btn {

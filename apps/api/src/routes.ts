@@ -20,10 +20,12 @@ import { countPlayersInCity, getDb, getPlayer, getUserById, listPlayersForAdmin,
 import { listCityFeed } from "./cityFeed.js";
 import { getCities, getCity, getCityJobs, getPhones, getTravel } from "./gameData.js";
 import {
+  applyJob,
   buyCar,
   buyPhoneDevice,
   doShift,
   doSideGig,
+  quitJob,
   formatCooldown,
   resolveTravel,
   SHOP_PRICES,
@@ -166,6 +168,30 @@ export async function registerRoutes(app: FastifyInstance) {
       travelArrivesAt: player.travel_arrives_at,
       feed: listCityFeed(player.city_id),
     };
+  });
+
+  app.post("/api/work/quit", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const body = req.body as { jobId?: string };
+    const jobId = body.jobId ?? "";
+    if (!jobId) return reply.code(400).send({ error: "Укажите вакансию" });
+    const result = quitJob(userId, jobId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
+  });
+
+  app.post("/api/work/apply", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const body = req.body as { jobId?: string };
+    const jobId = body.jobId ?? "";
+    if (!jobId) return reply.code(400).send({ error: "Укажите вакансию" });
+    const result = applyJob(userId, jobId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
   });
 
   app.post("/api/work/side-gig", async (req, reply) => {
