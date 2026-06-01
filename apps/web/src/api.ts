@@ -14,8 +14,6 @@ export type Player = {
   travelArrivesAt: number | null;
   jobId: string | null;
   skills: Skills;
-  sideGigReadyAt: number;
-  shiftReadyAt: number;
   phoneNumber: string | null;
   hasSim: boolean;
   simBalanceRub: number;
@@ -163,15 +161,47 @@ export type JobView = {
   skill: string | null;
   skillMin?: number;
   skillGain?: number;
-  requiresPhone?: boolean;
+  requiresSim?: boolean;
   cooldown: { ready: boolean; remainingMs: number };
 };
 
-export async function applyJob(jobId: string) {
-  return api<{ message: string; user: User }>("/api/work/apply", {
+export type ApplyJobResponse =
+  | { ok: true; message: string; user: User }
+  | {
+      ok: false;
+      kind: "confirm_switch";
+      jobId: string;
+      currentTitle: string;
+      newTitle: string;
+    };
+
+export async function applyJob(jobId: string, opts?: { forceSwitch?: boolean }): Promise<ApplyJobResponse> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
+  const res = await fetch("/api/work/apply", {
     method: "POST",
-    body: JSON.stringify({ jobId }),
+    headers,
+    credentials: "include",
+    body: JSON.stringify({ jobId, forceSwitch: opts?.forceSwitch === true }),
   });
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+
+  if (res.status === 409 && data.code === "confirm_switch") {
+    return {
+      ok: false,
+      kind: "confirm_switch",
+      jobId: String(data.jobId ?? jobId),
+      currentTitle: String(data.currentTitle ?? ""),
+      newTitle: String(data.newTitle ?? ""),
+    };
+  }
+
+  if (!res.ok) {
+    throw new Error((data.error as string | undefined) ?? "Ошибка сервера");
+  }
+
+  return { ok: true, message: String(data.message ?? ""), user: data.user as User };
 }
 
 export async function quitJob(jobId: string) {
@@ -280,6 +310,12 @@ export function formatDuration(ms: number): string {
   const m = Math.floor((ms % 3600000) / 60000);
   if (h > 0) return `${h} ч ${m} мин`;
   return `${m} мин`;
+}
+
+/** Минуты до конца перерыва (для подписи на кнопках). */
+export function formatCooldownMinutes(ms: number): string {
+  if (ms <= 0) return "0 мин";
+  return `${Math.ceil(ms / 60000)} мин`;
 }
 
 export const SKILL_LABELS: Record<string, string> = {

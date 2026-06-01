@@ -16,6 +16,7 @@ export type PlayerRow = {
   wit: number;
   side_gig_ready_at: number;
   shift_ready_at: number;
+  last_work_at_by_job: string | null;
   phone_number: string | null;
   sim_operator: string | null;
   sim_mid: string | null;
@@ -108,6 +109,10 @@ function migrate(database: Database.Database) {
     database.exec("ALTER TABLE players ADD COLUMN sim_last TEXT");
     database.exec("ALTER TABLE players ADD COLUMN sim_balance_rub REAL NOT NULL DEFAULT 0");
   }
+  const cols2 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!cols2.some((c) => c.name === "last_work_at_by_job")) {
+    database.exec("ALTER TABLE players ADD COLUMN last_work_at_by_job TEXT");
+  }
 }
 
 export function getUserByLogin(login: string): UserRow | undefined {
@@ -147,7 +152,7 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
         display_name = ?, rubles = ?, city_id = ?, status = ?,
         travel_to_city_id = ?, travel_arrives_at = ?, job_id = ?,
         agility = ?, stamina = ?, charisma = ?, wit = ?,
-        side_gig_ready_at = ?, shift_ready_at = ?,
+        side_gig_ready_at = ?, shift_ready_at = ?, last_work_at_by_job = ?,
         phone_number = ?, sim_operator = ?, sim_mid = ?, sim_last = ?, sim_balance_rub = ?,
         phone_device_id = ?, car_owned = ?, plate_text = ?
       WHERE user_id = ?`,
@@ -166,6 +171,7 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
       next.wit,
       next.side_gig_ready_at,
       next.shift_ready_at,
+      next.last_work_at_by_job ?? null,
       next.phone_number,
       next.sim_operator,
       next.sim_mid,

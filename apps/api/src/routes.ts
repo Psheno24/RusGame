@@ -26,12 +26,12 @@ import {
   doShift,
   doSideGig,
   quitJob,
-  formatCooldown,
   resolveTravel,
   SHOP_PRICES,
   startTravel,
 } from "./game.js";
 import { changeSimPart, registerSim, SIM_SHOP_PRICES, topupSim } from "./simShop.js";
+import { jobCooldownState } from "./workCooldown.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 
 function getBearer(req: FastifyRequest): string | null {
@@ -144,8 +144,8 @@ export async function registerRoutes(app: FastifyInstance) {
     const jobs = getCityJobs(player.city_id);
     const now = Date.now();
 
-    const sideCd = formatCooldown(player.side_gig_ready_at, now);
-    const shiftCd = formatCooldown(player.shift_ready_at, now);
+    const sideCd = jobs ? jobCooldownState(player, jobs.sideGig, now) : { ready: true, remainingMs: 0 };
+    const shiftCd = jobs ? jobCooldownState(player, jobs.shift, now) : { ready: true, remainingMs: 0 };
 
     return {
       city: city
@@ -177,7 +177,9 @@ export async function registerRoutes(app: FastifyInstance) {
     const jobId = body.jobId ?? "";
     if (!jobId) return reply.code(400).send({ error: "Укажите вакансию" });
     const result = quitJob(userId, jobId);
-    if (!result.ok) return reply.code(400).send({ error: result.error });
+    if (!result.ok) {
+      return reply.code(400).send({ error: result.error, remainingMs: result.remainingMs });
+    }
     const user = await getPublicUser(userId);
     return { message: result.message, user };
   });
@@ -185,11 +187,24 @@ export async function registerRoutes(app: FastifyInstance) {
   app.post("/api/work/apply", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    const body = req.body as { jobId?: string };
+    const body = req.body as { jobId?: string; forceSwitch?: boolean };
     const jobId = body.jobId ?? "";
     if (!jobId) return reply.code(400).send({ error: "Укажите вакансию" });
-    const result = applyJob(userId, jobId);
-    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const result = applyJob(userId, jobId, { forceSwitch: body.forceSwitch === true });
+    if (!result.ok) {
+      if ("kind" in result) {
+        return reply.code(409).send({
+          code: "confirm_switch",
+          jobId: result.jobId,
+          currentTitle: result.currentTitle,
+          newTitle: result.newTitle,
+        });
+      }
+      return reply.code(400).send({
+        error: result.error,
+        remainingMs: result.remainingMs,
+      });
+    }
     const user = await getPublicUser(userId);
     return { message: result.message, user };
   });

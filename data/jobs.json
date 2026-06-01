@@ -34,14 +34,14 @@
     "shift": {
       "id": "kazan_courier",
       "title": "Смена: курьер",
-      "description": "Нужна симка в профиле.",
+      "description": "Доставка по городу. Для связи с клиентами нужна сим-карта.",
       "cooldownMs": 10800000,
       "payoutMin": 2800,
       "payoutMax": 5500,
       "skill": "agility",
       "skillMin": 1,
       "skillGain": 1,
-      "requiresPhone": true
+      "requiresSim": true
     }
   }
 }

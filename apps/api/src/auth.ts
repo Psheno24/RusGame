@@ -151,8 +151,6 @@ export function serializePlayer(p: import("./db.js").PlayerRow) {
       charisma: p.charisma,
       wit: p.wit,
     },
-    sideGigReadyAt: p.side_gig_ready_at,
-    shiftReadyAt: p.shift_ready_at,
     phoneNumber: formatSimFromPlayer(p),
     hasSim: playerHasSim(p),
     simBalanceRub: Math.floor(p.sim_balance_rub ?? 0),

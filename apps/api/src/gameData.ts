@@ -21,8 +21,15 @@ export type JobDef = {
   skill: "agility" | "stamina" | "charisma" | "wit" | null;
   skillMin?: number;
   skillGain?: number;
+  /** Оформленная сим-карта (не привязана к конкретной профессии). */
+  requiresSim?: boolean;
+  /** @deprecated используйте requiresSim */
   requiresPhone?: boolean;
 };
+
+export function jobRequiresSim(job: JobDef): boolean {
+  return job.requiresSim === true || job.requiresPhone === true;
+}
 
 export type CityJobs = { sideGig: JobDef; shift: JobDef };
 

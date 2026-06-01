@@ -2,8 +2,17 @@ import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { getSkill, type SkillKey } from "./auth.js";
 import { appendCityFeed, feedActorName } from "./cityFeed.js";
-import { getCity, getCityJobs, getPhone, getTravel, type JobDef } from "./gameData.js";
+import { getCity, getCityJobs, getPhone, getTravel, jobRequiresSim, type JobDef } from "./gameData.js";
 import { playerHasSim } from "./simNumber.js";
+import {
+  canWorkJobNow,
+  jobCooldownState,
+  lastWorkAtForJob,
+  serializeLastWorkAtByJob,
+  withLastWorkAt,
+} from "./workCooldown.js";
+
+export { canWorkJobNow, formatCooldown } from "./workCooldown.js";
 
 const CYR = "АВЕКМНОРСТУХ";
 
@@ -34,14 +43,13 @@ export function resolveTravel(player: PlayerRow, now = Date.now()): PlayerRow {
   return { ...player, ...next } as PlayerRow;
 }
 
-export function formatCooldown(readyAt: number, now = Date.now()): { ready: boolean; remainingMs: number } {
-  const remainingMs = Math.max(0, readyAt - now);
-  return { ready: remainingMs === 0, remainingMs };
+function cooldownBlockedMessage(remainingMs: number): string {
+  return `Дождитесь окончания перерыва (${Math.ceil(remainingMs / 60000)} мин)`;
 }
 
 function checkJobRequirements(player: PlayerRow, job: JobDef): string | null {
-  if (job.requiresPhone && !playerHasSim(player)) {
-    return "Нужна симка — оформите в магазине (телефон → сим-карта)";
+  if (jobRequiresSim(job) && !playerHasSim(player)) {
+    return "Нужна сим-карта — оформите в магазине (телефон → сим-карта)";
   }
   if (job.skill && job.skillMin != null) {
     const v = getSkill(player, job.skill as SkillKey);
@@ -62,7 +70,17 @@ export type WorkResult =
   | { ok: true; payout: number; message: string; skillGain?: { key: SkillKey; amount: number } }
   | { ok: false; error: string; readyAt?: number };
 
-export function applyJob(userId: number, jobId: string, now = Date.now()): { ok: true; message: string } | { ok: false; error: string } {
+export type ApplyJobResult =
+  | { ok: true; message: string }
+  | { ok: false; error: string; remainingMs?: number }
+  | { ok: false; kind: "confirm_switch"; jobId: string; currentTitle: string; newTitle: string };
+
+export function applyJob(
+  userId: number,
+  jobId: string,
+  opts?: { forceSwitch?: boolean },
+  now = Date.now(),
+): ApplyJobResult {
   let player = getPlayer(userId);
   if (!player) return { ok: false, error: "Игрок не найден" };
   player = resolveTravel(player, now);
@@ -80,11 +98,41 @@ export function applyJob(userId: number, jobId: string, now = Date.now()): { ok:
   const reqErr = checkJobRequirements(player, job);
   if (reqErr) return { ok: false, error: reqErr };
 
+  if (player.job_id) {
+    const curJob =
+      jobs.sideGig.id === player.job_id
+        ? jobs.sideGig
+        : jobs.shift.id === player.job_id
+          ? jobs.shift
+          : null;
+    const st = canWorkJobNow(player, player.job_id, now);
+    if (!st.ok) {
+      return {
+        ok: false,
+        error: cooldownBlockedMessage(st.remainingMs),
+        remainingMs: st.remainingMs,
+      };
+    }
+    if (!opts?.forceSwitch) {
+      return {
+        ok: false,
+        kind: "confirm_switch",
+        jobId,
+        currentTitle: curJob?.title ?? "текущая работа",
+        newTitle: job.title,
+      };
+    }
+  }
+
   updatePlayer(userId, { job_id: jobId });
   return { ok: true, message: `Вы устроились: ${job.title}` };
 }
 
-export function quitJob(userId: number, jobId: string, now = Date.now()): { ok: true; message: string } | { ok: false; error: string } {
+export function quitJob(
+  userId: number,
+  jobId: string,
+  now = Date.now(),
+): { ok: true; message: string } | { ok: false; error: string; remainingMs?: number } {
   let player = getPlayer(userId);
   if (!player) return { ok: false, error: "Игрок не найден" };
   player = resolveTravel(player, now);
@@ -98,6 +146,15 @@ export function quitJob(userId: number, jobId: string, now = Date.now()): { ok: 
   if (!job) return { ok: false, error: "Вакансия не найдена" };
 
   if (player.job_id !== jobId) return { ok: false, error: "Вы не устроены на эту работу" };
+
+  const st = canWorkJobNow(player, jobId, now);
+  if (!st.ok) {
+    return {
+      ok: false,
+      error: cooldownBlockedMessage(st.remainingMs),
+      remainingMs: st.remainingMs,
+    };
+  }
 
   updatePlayer(userId, { job_id: null });
   return { ok: true, message: `Вы уволились: ${job.title}` };
@@ -117,13 +174,19 @@ export function doSideGig(userId: number, now = Date.now()): WorkResult {
     return { ok: false, error: "Сначала устройтесь на эту подработку" };
   }
 
-  const cd = formatCooldown(player.side_gig_ready_at, now);
-  if (!cd.ready) return { ok: false, error: "Подработка ещё не готова", readyAt: player.side_gig_ready_at };
+  const cd = jobCooldownState(player, job, now);
+  if (!cd.ready) {
+    return {
+      ok: false,
+      error: "Подработка ещё не готова",
+      readyAt: lastWorkAtForJob(player, job.id) + job.cooldownMs,
+    };
+  }
 
   const payout = randInt(job.payoutMin, job.payoutMax);
   updatePlayer(userId, {
     rubles: player.rubles + payout,
-    side_gig_ready_at: now + job.cooldownMs,
+    last_work_at_by_job: serializeLastWorkAtByJob(withLastWorkAt(player, job.id, now)),
   });
   const name = feedActorName(userId);
   appendCityFeed(
@@ -152,13 +215,16 @@ export function doShift(userId: number, now = Date.now()): WorkResult {
   const reqErr = checkJobRequirements(player, job);
   if (reqErr) return { ok: false, error: reqErr };
 
-  const cd = formatCooldown(player.shift_ready_at, now);
-  if (!cd.ready) return { ok: false, error: "Смена ещё не готова", readyAt: player.shift_ready_at };
+  const cd = jobCooldownState(player, job, now);
+  if (!cd.ready) {
+    const last = lastWorkAtForJob(player, job.id);
+    return { ok: false, error: "Смена ещё не готова", readyAt: last + job.cooldownMs };
+  }
 
   const payout = randInt(job.payoutMin, job.payoutMax);
   const patch: Partial<PlayerRow> = {
     rubles: player.rubles + payout,
-    shift_ready_at: now + job.cooldownMs,
+    last_work_at_by_job: serializeLastWorkAtByJob(withLastWorkAt(player, job.id, now)),
   };
   let skillGain: { key: SkillKey; amount: number } | undefined;
   if (job.skill && job.skillGain) {

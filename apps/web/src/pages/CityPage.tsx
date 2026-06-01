@@ -6,6 +6,7 @@ import {
   buyCar,
   fetchCity,
   fetchShopPrices,
+  formatCooldownMinutes,
   formatDuration,
   quitJob as quitJobApi,
   workShift,
@@ -30,8 +31,22 @@ type JobCard = JobView & { kind: "side" | "shift" };
 
 type JobPendingAction =
   | { type: "apply"; job: JobCard }
+  | { type: "switch"; job: JobCard; currentTitle: string }
   | { type: "quit"; job: JobCard }
   | { type: "work"; job: JobCard };
+
+function JobActionButtonLabel({ base, remainingMs }: { base: string; remainingMs?: number }) {
+  if (remainingMs == null || remainingMs <= 0) {
+    return <span className="job-btn-text">{base}</span>;
+  }
+  const mins = formatCooldownMinutes(remainingMs).replace(" ", "\u00A0");
+  return (
+    <span className="job-btn-label">
+      <span className="job-btn-text">{base}</span>{" "}
+      <span className="job-btn-cooldown">(⏱&nbsp;{mins})</span>
+    </span>
+  );
+}
 
 const SECTIONS: { id: CitySection; title: string; hint: string }[] = [
   { id: "shop", title: "Магазин", hint: "Продукты, телефон, авто" },
@@ -42,7 +57,7 @@ const SECTIONS: { id: CitySection; title: string; hint: string }[] = [
 
 const SHOP_CATEGORIES: { id: ShopTab; title: string; hint: string }[] = [
   { id: "products", title: "Продукты", hint: "Еда и бытовое" },
-  { id: "phone", title: "Телефон", hint: "Устройства и симка" },
+  { id: "phone", title: "Телефон", hint: "Устройства и сим-карта" },
   { id: "car", title: "Авто", hint: "Машина и номер" },
 ];
 
@@ -366,6 +381,9 @@ function JobsSection({
   ];
   const selected = selectedId ? jobs.find((j) => j.id === selectedId) : null;
   const employedId = user.player.jobId;
+  const employedJob = employedId ? jobs.find((j) => j.id === employedId) : null;
+  const employedCooldown = employedJob?.cooldown ?? { ready: true, remainingMs: 0 };
+  const employmentBlocked = employedId != null && !employedCooldown.ready;
 
   useEffect(() => {
     onNavChange({
@@ -386,10 +404,17 @@ function JobsSection({
     return () => registerBack(null);
   }, [selectedId, registerBack]);
 
-  const onApply = async (job: JobCard) => {
+  const onApply = async (job: JobCard, forceSwitch = false) => {
     setBusy(true);
     try {
-      const r = await applyJobApi(job.id);
+      const r = await applyJobApi(job.id, { forceSwitch });
+      if (!r.ok) {
+        if (r.kind === "confirm_switch") {
+          setPending({ type: "switch", job, currentTitle: r.currentTitle });
+          return;
+        }
+        return;
+      }
       setUser(r.user);
       onToast(r.message);
       await onJobsReload();
@@ -437,8 +462,39 @@ function JobsSection({
     const action = pending;
     setPending(null);
     if (action.type === "apply") await onApply(action.job);
+    else if (action.type === "switch") await onApply(action.job, true);
     else if (action.type === "quit") await onQuit(action.job);
     else await onWork(action.job);
+  };
+
+  const requestApply = (job: JobCard) => {
+    if (employmentBlocked) {
+      onToast(
+        `Смена работы недоступна. Подождите ${formatDuration(employedCooldown.remainingMs)}`,
+        true,
+      );
+      return;
+    }
+    if (employedId && employedId !== job.id) {
+      setPending({
+        type: "switch",
+        job,
+        currentTitle: employedJob?.title ?? "текущая работа",
+      });
+      return;
+    }
+    setPending({ type: "apply", job });
+  };
+
+  const requestQuit = (job: JobCard) => {
+    if (employmentBlocked) {
+      onToast(
+        `Увольнение недоступно до конца перерыва (${formatDuration(employedCooldown.remainingMs)})`,
+        true,
+      );
+      return;
+    }
+    setPending({ type: "quit", job });
   };
 
   const pendingCopy = (() => {
@@ -447,8 +503,16 @@ function JobsSection({
     if (pending.type === "apply") {
       return {
         title: "Устроиться на работу?",
-        text: `Вы устроитесь на «${job.title}». Текущая работа будет заменена, если уже есть другая.`,
+        text: `Вы устроитесь на «${job.title}».`,
         confirmLabel: "Устроиться",
+        confirmClassName: "btn-success",
+      };
+    }
+    if (pending.type === "switch") {
+      return {
+        title: "Смена работы",
+        text: `Уволиться с «${pending.currentTitle}» и устроиться на «${job.title}»? Перерыв после последней смены должен закончиться.`,
+        confirmLabel: "Да, устроиться сюда",
         confirmClassName: "btn-success",
       };
     }
@@ -471,6 +535,35 @@ function JobsSection({
 
   if (selected) {
     const employed = employedId === selected.id;
+    const canHire =
+      !employed && !busy && (!employedId || (!employmentBlocked && employedId !== selected.id));
+    const canWork = employed && !busy && selected.cooldown.ready;
+    const canQuit = employed && !busy && !employmentBlocked;
+
+    const leftBase = employed
+      ? selected.kind === "side"
+        ? "Подработать"
+        : "Выйти на смену"
+      : "Устроиться";
+
+    const leftRemainingMs =
+      employed && !selected.cooldown.ready
+        ? selected.cooldown.remainingMs
+        : !employed && employedId && employedId !== selected.id && employmentBlocked
+          ? employedCooldown.remainingMs
+          : undefined;
+
+    const quitRemainingMs = employmentBlocked && employed ? employedCooldown.remainingMs : undefined;
+
+    const onLeftClick = () => {
+      if (employed) {
+        if (!selected.cooldown.ready) return;
+        setPending({ type: "work", job: selected });
+        return;
+      }
+      requestApply(selected);
+    };
+
     return (
       <>
         <div className="job-detail">
@@ -493,9 +586,16 @@ function JobsSection({
                   ? selected.cooldown.ready
                     ? "Можно выходить"
                     : `Ждать ${formatDuration(selected.cooldown.remainingMs)}`
-                  : "—"}
+                  : employedId && employedId !== selected.id && employmentBlocked
+                    ? `Смена работы через ${formatDuration(employedCooldown.remainingMs)}`
+                    : "—"}
               </dd>
             </div>
+            {employmentBlocked && employedId && employedId !== selected.id && (
+              <p className="job-cooldown-hint" style={{ color: "var(--text-muted)" }}>
+                Пока идёт перерыв на «{employedJob?.title}», нельзя устроиться на другую вакансию.
+              </p>
+            )}
             {selected.skill && selected.skillMin != null && (
               <div>
                 <dt>Требование</dt>
@@ -504,10 +604,10 @@ function JobsSection({
                 </dd>
               </div>
             )}
-            {selected.requiresPhone && (
+            {selected.requiresSim && (
               <div>
                 <dt>Связь</dt>
-                <dd>Нужна симка</dd>
+                <dd>Нужна сим-карта</dd>
               </div>
             )}
             {selected.skillGain != null && selected.skill && (
@@ -521,36 +621,22 @@ function JobsSection({
           </dl>
           <div className="job-detail-actions">
             <button
-              className="btn btn-success"
+              className={`btn ${employed ? "btn-primary" : "btn-success"}`}
               type="button"
-              disabled={busy || employed}
-              onClick={() => setPending({ type: "apply", job: selected })}
+              disabled={employed ? !canWork : !canHire}
+              onClick={onLeftClick}
             >
-              Устроиться
+              <JobActionButtonLabel base={leftBase} remainingMs={leftRemainingMs} />
             </button>
             <button
               className="btn btn-danger"
               type="button"
-              disabled={busy || !employed}
-              onClick={() => setPending({ type: "quit", job: selected })}
+              disabled={!canQuit}
+              onClick={() => requestQuit(selected)}
             >
-              Уволиться
+              <JobActionButtonLabel base="Уволиться" remainingMs={quitRemainingMs} />
             </button>
           </div>
-          {employed && (
-            <button
-              className="btn btn-primary"
-              type="button"
-              disabled={busy || !selected.cooldown.ready}
-              onClick={() => setPending({ type: "work", job: selected })}
-            >
-              {selected.cooldown.ready
-                ? selected.kind === "side"
-                  ? "Подработать"
-                  : "Выйти на смену"
-                : `Ждать ${formatDuration(selected.cooldown.remainingMs)}`}
-            </button>
-          )}
         </div>
         {pendingCopy && (
           <ConfirmDialog
