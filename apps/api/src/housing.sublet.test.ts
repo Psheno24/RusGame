@@ -21,6 +21,8 @@ describe("housing sublet", () => {
       sublet_from: now,
       sublet_until: now + 24 * 60 * 60 * 1000,
       sublet_income_rub: 600,
+      sublet_retry_at: null,
+      sublet_retry_chance: null,
     };
     assert.equal(subletRepayAmount(row, now + 12 * 60 * 60 * 1000), 300);
     assert.equal(subletRepayAmount(row, now + 24 * 60 * 60 * 1000), 0);

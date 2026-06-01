@@ -441,6 +441,6 @@ export function getLiveHerePreviewForProperty(
   now = Date.now(),
 ) {
   const parsed = parsePropertyId(propertyId);
-  if (parsed.kind !== "housing-owned") return null;
+  if ("error" in parsed || parsed.kind !== "housing-owned") return null;
   return quoteLiveHere(player, parsed.ownedId, now);
 }
