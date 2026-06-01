@@ -241,7 +241,6 @@ export function CityPage() {
         {isJobsSection ? (
           <JobsSection
             jobs={cityJobs}
-            cityLocalTime={liveLocalTime}
             user={user}
             setUser={setUser}
             onToast={showToast}
@@ -401,7 +400,6 @@ function ShopSection({
 
 function JobsSection({
   jobs,
-  cityLocalTime,
   user,
   setUser,
   onToast,
@@ -410,7 +408,6 @@ function JobsSection({
   onJobsReload,
 }: {
   jobs: JobView[];
-  cityLocalTime: CityLocalTimeView | null;
   user: User;
   setUser: (u: User) => void;
   onToast: (msg: string, isErr?: boolean) => void;
@@ -613,6 +610,24 @@ function JobsSection({
     const maxH = selected.shiftHoursMax ?? 12;
     const leftBase = employed ? "Выйти на смену" : "Устроиться";
 
+    const player = user.player;
+    const licenseCategories = new Set(player.driverLicenseCategories ?? []);
+    const hasLicenseB = licenseCategories.has("B");
+    const jobRequirements: Array<{ label: string; ok: boolean }> = [];
+    if (selected.requiresSim) {
+      jobRequirements.push({ label: "Телефон", ok: player.hasSim });
+    }
+    if (selected.requiresDriversLicense) {
+      jobRequirements.push({ label: "В/у категории B", ok: hasLicenseB });
+    }
+    if (selected.skill && selected.skillMin != null) {
+      const skillVal = player.skills[selected.skill as keyof typeof player.skills] ?? 0;
+      jobRequirements.push({
+        label: `${SKILL_LABELS[selected.skill] ?? selected.skill} ${selected.skillMin}+`,
+        ok: skillVal >= selected.skillMin,
+      });
+    }
+
     const leftRemainingMs =
       employed && !selected.cooldown.ready
         ? selected.cooldown.remainingMs
@@ -644,60 +659,42 @@ function JobsSection({
         <div className="card">
           <h2>{selected.title}</h2>
           <div className="job-detail">
-          <p className="job-detail-lead">{selected.description}</p>
           <dl className="phone-specs job-specs">
             <div>
-              <dt>Заработок</dt>
+              <dt>Зарплата</dt>
               <dd>
                 {selected.kind === "duration" && selected.payoutPerHourMin != null
-                  ? `${selected.payoutPerHourMin.toLocaleString("ru-RU")}–${(selected.payoutPerHourMax ?? selected.payoutPerHourMin).toLocaleString("ru-RU")} ₽/ч (смена ${selected.shiftHoursMin}–${selected.shiftHoursMax} ч)`
+                  ? `${selected.payoutPerHourMin.toLocaleString("ru-RU")}–${(selected.payoutPerHourMax ?? selected.payoutPerHourMin).toLocaleString("ru-RU")} ₽/ч`
                   : `${selected.payoutMin.toLocaleString("ru-RU")}–${selected.payoutMax.toLocaleString("ru-RU")} ₽`}
               </dd>
             </div>
-            <div>
-              <dt>Перерыв между сменами</dt>
-              <dd>
-                {selected.kind === "duration"
-                  ? "равен длительности смены (4–12 ч)"
-                  : formatDuration(selected.cooldownMs)}
-              </dd>
-            </div>
-            <div>
-              <dt>Готовность</dt>
-              <dd>
-                {employed
-                  ? selected.cooldown.ready
-                    ? "Можно выходить"
-                    : `Ждать ${formatDuration(selected.cooldown.remainingMs)}`
-                  : employedId && employedId !== selected.id && employmentBlocked
-                    ? `Смена работы через ${formatDuration(employedCooldown.remainingMs)}`
-                    : "—"}
-              </dd>
-            </div>
-            {selected.skill && selected.skillMin != null && (
+            {selected.kind === "duration" && (
               <div>
-                <dt>Требование</dt>
+                <dt>Смена</dt>
                 <dd>
-                  {SKILL_LABELS[selected.skill]} {selected.skillMin}+
+                  {selected.shiftHoursMin}–{selected.shiftHoursMax ?? selected.shiftHoursMin} ч
                 </dd>
               </div>
             )}
-            {selected.requiresSim && (
-              <div>
-                <dt>Связь</dt>
-                <dd>Нужна сим-карта</dd>
-              </div>
-            )}
-            {selected.requiresDriversLicense && (
-              <div>
-                <dt>Права</dt>
-                <dd>
-                  {user.player.driverLicenseCategories?.length
-                    ? user.player.driverLicenseCategories.join(", ")
-                    : "Нет — оформите в полиции"}
-                </dd>
-              </div>
-            )}
+            <div className="job-requirements">
+              <dt>Требования</dt>
+              <dd>
+                {jobRequirements.length > 0 ? (
+                  <ul className="job-requirements-list">
+                    {jobRequirements.map((req) => (
+                      <li key={req.label}>
+                        {req.label}{" "}
+                        <span className={req.ok ? "license-ok" : "license-miss"}>
+                          {req.ok ? "есть" : "нет"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  "—"
+                )}
+              </dd>
+            </div>
             {employed && selected.kind === "duration" && (
               <div className="job-shift-hours">
                 <dt>Длительность смены</dt>
@@ -722,14 +719,6 @@ function JobsSection({
                 <dt>Опыт</dt>
                 <dd>
                   +{selected.skillGain} {SKILL_LABELS[selected.skill]}
-                </dd>
-              </div>
-            )}
-            {cityLocalTime && (
-              <div>
-                <dt>Время в городе</dt>
-                <dd>
-                  {cityLocalTime.label} · {cityLocalTime.periodLabel}
                 </dd>
               </div>
             )}

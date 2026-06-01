@@ -222,10 +222,10 @@ body {
 }
 
 .btn-success {
-  background: linear-gradient(180deg, #34d399 0%, #059669 100%);
-  color: #052e16;
-  border: 1px solid #047857;
-  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
+  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+  color: #fff;
+  border: 1px solid #15803d;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35);
 }
 
 .btn-danger {
@@ -1713,6 +1713,19 @@ body {
 
 .job-specs {
   margin: 0;
+}
+
+.job-requirements-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.job-requirements-list li {
+  line-height: 1.35;
 }
 
 .job-detail-actions {
