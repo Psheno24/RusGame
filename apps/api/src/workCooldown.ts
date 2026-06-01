@@ -156,3 +156,13 @@ export function canWorkJobNow(
   const st = jobCooldownState(player, job, now);
   return { ok: st.ready, remainingMs: st.remainingMs };
 }
+
+/** Игрок на смене (КД после работы) — нельзя уволиться, сменить работу, уехать. */
+export function activeJobShiftBlock(
+  player: PlayerRow,
+  now = Date.now(),
+): { blocked: boolean; remainingMs: number } {
+  if (!player.job_id) return { blocked: false, remainingMs: 0 };
+  const st = canWorkJobNow(player, player.job_id, now);
+  return { blocked: !st.ok, remainingMs: st.remainingMs };
+}

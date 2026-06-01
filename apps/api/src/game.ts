@@ -50,6 +50,7 @@ import { applyCarCooldownReduction, hasDriverLicense } from "./playerCars.js";
 import { playerHasSim } from "./simNumber.js";
 import { playerMeetsSimTariff, syncPlayerSimTariffBilling, type SimTariffId } from "./simTariff.js";
 import {
+  activeJobShiftBlock,
   canWorkJobNow,
   jobCooldownState,
   lastWorkRecordForJob,
@@ -489,7 +490,7 @@ export function doShift(userId: number, now = Date.now()): WorkResult {
 
 export type TravelResult =
   | { ok: true; arrivesAt: number; priceRub: number }
-  | { ok: false; error: string };
+  | { ok: false; error: string; remainingMs?: number };
 
 export function startTravel(
   userId: number,
@@ -502,6 +503,15 @@ export function startTravel(
   player = resolveTravel(player, now);
   if (player.status === "traveling") return { ok: false, error: "Уже в пути" };
   if (player.city_id === toCityId) return { ok: false, error: "Вы уже в этом городе" };
+
+  const shiftBlock = activeJobShiftBlock(player, now);
+  if (shiftBlock.blocked) {
+    return {
+      ok: false,
+      error: cooldownBlockedMessage(shiftBlock.remainingMs),
+      remainingMs: shiftBlock.remainingMs,
+    };
+  }
 
   const dest = getCity(toCityId);
   if (!dest) return { ok: false, error: "Город не найден" };

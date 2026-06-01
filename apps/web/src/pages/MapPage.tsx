@@ -63,6 +63,8 @@ export function MapPage() {
   const [travelMode, setTravelMode] = useState<TravelMode>("train");
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [view, setView] = useState<"list" | "map">("map");
+  const [jobShiftBlocked, setJobShiftBlocked] = useState(false);
+  const [jobShiftRemainingMs, setJobShiftRemainingMs] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -71,6 +73,8 @@ export function MapPage() {
       if (data.currentCityId) setCurrentId(data.currentCityId);
       setTraveling(data.status === "traveling");
       setArrivesAt(data.travelArrivesAt);
+      setJobShiftBlocked(Boolean(data.jobShiftBlocked));
+      setJobShiftRemainingMs(data.jobShiftRemainingMs ?? 0);
     } catch (e) {
       showNotice(e instanceof Error ? e.message : "Ошибка", "error");
     }
@@ -91,6 +95,12 @@ export function MapPage() {
     }, 5000);
     return () => clearInterval(t);
   }, [traveling, arrivesAt, load]);
+
+  useEffect(() => {
+    if (!jobShiftBlocked || jobShiftRemainingMs <= 0) return;
+    const t = setInterval(() => load(), 30_000);
+    return () => clearInterval(t);
+  }, [jobShiftBlocked, jobShiftRemainingMs, load]);
 
   const dismissSelected = useCallback(() => {
     setSelected(null);
@@ -118,7 +128,7 @@ export function MapPage() {
   };
 
   const goTravel = async () => {
-    if (!selected) return;
+    if (!selected || jobShiftBlocked) return;
     try {
       const r = await travelStart(selected.id, travelMode);
       setUser(r.user);
@@ -148,6 +158,11 @@ export function MapPage() {
         <p>Щипок — масштаб, палец — двигать. При открытии — ваш город.</p>
         {traveling && arrivesAt && (
           <p className="map-travel-hint">В пути… осталось {formatDuration(remaining)}</p>
+        )}
+        {jobShiftBlocked && jobShiftRemainingMs > 0 && (
+          <p className="map-travel-hint" role="status">
+            На смене — поездка недоступна ещё {formatDuration(jobShiftRemainingMs)}
+          </p>
         )}
         <div className="tabs-inline map-tabs">
           <button type="button" className={view === "map" ? "active" : ""} onClick={() => setView("map")}>
@@ -289,9 +304,17 @@ export function MapPage() {
               <strong>{selectedQuote.priceRub.toLocaleString("ru-RU")} ₽</strong>, в пути{" "}
               <strong>{formatDuration(selectedQuote.durationMs)}</strong>
             </p>
-            <button className="btn btn-primary" type="button" onClick={goTravel} disabled={traveling}>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={goTravel}
+              disabled={traveling || jobShiftBlocked}
+            >
               Купить билет
             </button>
+            {jobShiftBlocked && jobShiftRemainingMs > 0 && (
+              <p className="map-action-hint">Дождитесь окончания смены</p>
+            )}
           </>
         )}
       </MapActionPanel>

@@ -341,6 +341,8 @@ export async function fetchMap() {
     status: string;
     travelToCityId: string | null;
     travelArrivesAt: number | null;
+    jobShiftBlocked?: boolean;
+    jobShiftRemainingMs?: number;
   }>("/api/map/cities");
 }
 

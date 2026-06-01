@@ -107,7 +107,7 @@ import {
   getPropertySellQuote,
   sellPropertyById,
 } from "./propertyDetail.js";
-import { jobCooldownState, lastWorkRecordForJob } from "./workCooldown.js";
+import { activeJobShiftBlock, jobCooldownState, lastWorkRecordForJob } from "./workCooldown.js";
 import { ensureTestAccount, scaleCooldownMs, scaleTravelMs } from "./testAccount.js";
 import { listCityFeed } from "./cityFeed.js";
 import { listPlayerFeed } from "./playerFeed.js";
@@ -195,6 +195,7 @@ export async function registerRoutes(app: FastifyInstance) {
     if (player) player = resolveTravel(player);
 
     const now = Date.now();
+    const shiftBlock = player ? activeJobShiftBlock(player, now) : { blocked: false, remainingMs: 0 };
     const cities = getCities().map((c) => {
       const timezone = getCityTimezone(c);
       const localTime = getCityLocalTime(timezone, now);
@@ -216,6 +217,8 @@ export async function registerRoutes(app: FastifyInstance) {
       status: player?.status,
       travelToCityId: player?.travel_to_city_id,
       travelArrivesAt: player?.travel_arrives_at,
+      jobShiftBlocked: shiftBlock.blocked,
+      jobShiftRemainingMs: shiftBlock.remainingMs,
     };
   });
 
