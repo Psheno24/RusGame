@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   computeNightGuardShiftMinutes,
+  getJobCooldownLabel,
   getShiftDurationLabel,
   jobNominalCooldownMs,
   nightGuardStaminaEligible,
@@ -30,6 +31,17 @@ describe("jobShift", () => {
     );
   });
 
+  it("night guard cooldown is time until 8:00", () => {
+    assert.equal(
+      jobNominalCooldownMs({ kind: "cooldown", shiftEndsAtHour: 8 }, { hour: 0, minute: 28 }),
+      (7 * 60 + 32) * 60_000,
+    );
+    assert.equal(
+      jobNominalCooldownMs({ kind: "cooldown", shiftEndsAtHour: 8 }, { hour: 22, minute: 0 }),
+      10 * 3_600_000,
+    );
+  });
+
   it("shift duration labels", () => {
     assert.equal(
       getShiftDurationLabel({ kind: "duration", shiftHoursMin: 4, shiftHoursMax: 12 }),
@@ -39,6 +51,27 @@ describe("jobShift", () => {
     assert.equal(
       getShiftDurationLabel({ kind: "cooldown", shiftEndsAtHour: 8 }, { hour: 0, minute: 28 }),
       "до 08:00 (7 ч 32 мин)",
+    );
+  });
+
+  it("shift cooldown labels match button timers", () => {
+    assert.equal(
+      getJobCooldownLabel({ kind: "duration", shiftHoursMin: 4, shiftHoursMax: 12 }),
+      "4–12 ч",
+    );
+    assert.equal(getJobCooldownLabel({ kind: "duration", shiftHoursMin: 4, shiftHoursMax: 12 }, { selectedShiftHours: 8 }), "8 ч");
+    assert.equal(getJobCooldownLabel({ kind: "duration", shiftHoursMin: 4, shiftHoursMax: 12 }, { lastShiftHours: 6 }), "6 ч");
+    assert.equal(getJobCooldownLabel({ kind: "cooldown", shiftHours: 8 }), "8 ч");
+    assert.equal(
+      getJobCooldownLabel({ kind: "cooldown", shiftEndsAtHour: 8 }, { local: { hour: 0, minute: 28 } }),
+      "до 08:00 (7 ч 32 мин)",
+    );
+    assert.equal(
+      getJobCooldownLabel(
+        { kind: "cooldown", shiftEndsAtHour: 8 },
+        { remainingMs: (4 * 60 + 12) * 60_000 },
+      ),
+      "4 ч 12 мин",
     );
   });
 });

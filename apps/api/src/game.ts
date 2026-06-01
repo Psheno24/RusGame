@@ -21,6 +21,7 @@ import {
   formatShiftMinutesRu,
   isNightGuardJob,
   jobNominalCooldownMs,
+  NIGHT_GUARD_MAX_SHIFT_HOURS,
   nightGuardStaminaEligible,
 } from "./jobShift.js";
 import {
@@ -161,6 +162,20 @@ function calculateCooldownJobPayout(
   const vitalMult = workPayoutMultiplier(player);
   const multiplier = timeMult * vitalMult;
   return { payout: Math.floor(base * multiplier), multiplier };
+}
+
+function calculateNightGuardPayout(
+  player: PlayerRow,
+  job: JobDef,
+  localTime: CityLocalTime,
+  shiftHours: number,
+): { payout: number; multiplier: number } {
+  const base = randInt(job.payoutMin ?? 0, job.payoutMax ?? 0);
+  const proportion = Math.min(1, shiftHours / NIGHT_GUARD_MAX_SHIFT_HOURS);
+  const timeMult = getPayoutMultiplier(localTime.hour, job.payoutPeriods);
+  const vitalMult = workPayoutMultiplier(player);
+  const multiplier = timeMult * vitalMult;
+  return { payout: Math.floor(base * proportion * multiplier), multiplier };
 }
 
 function calculateDurationJobPayout(
@@ -375,7 +390,7 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
     }
     shiftHours = shiftMinutes / 60;
     workCosts = scaleWorkCostsByHours(job.workCosts, shiftHours, 10);
-    cooldownMs = applyCarCooldownReduction(userId, jobNominalCooldownMs(job));
+    cooldownMs = applyCarCooldownReduction(userId, shiftMinutes * 60_000);
   } else {
     if (hours != null) {
       return { ok: false, error: "Для этой работы длительность смены не выбирается" };
@@ -403,7 +418,9 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
   const payoutResult =
     job.kind === "duration"
       ? calculateDurationJobPayout(player, job, schedule.localTime, shiftHours)
-      : calculateCooldownJobPayout(player, job, schedule.localTime);
+      : isNightGuardJob(job)
+        ? calculateNightGuardPayout(player, job, schedule.localTime, shiftHours)
+        : calculateCooldownJobPayout(player, job, schedule.localTime);
 
   const statPatch = applyWorkStatCosts(player, scaledCosts);
   const patch: Partial<PlayerRow> = {
