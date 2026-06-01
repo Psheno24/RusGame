@@ -1276,10 +1276,21 @@ body {
   margin-top: 0;
 }
 
-.city-jobs-list {
+.city-jobs-stack {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+}
+
+.city-jobs-stack .card > h2 {
+  margin-bottom: 12px;
+}
+
+.job-block-empty {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--text-muted);
 }
 
 .job-list {
@@ -1300,6 +1311,23 @@ body {
   border: 1px solid #2d3f56;
   border-radius: 14px;
   background: var(--bg-elevated);
+}
+
+.job-list-card--current {
+  border-color: rgba(212, 168, 75, 0.7);
+  background: linear-gradient(145deg, rgba(212, 168, 75, 0.14) 0%, var(--bg-elevated) 52%);
+  box-shadow:
+    0 0 0 1px rgba(212, 168, 75, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.job-list-card--current .job-list-icon {
+  background: rgba(212, 168, 75, 0.28);
+  border-color: rgba(212, 168, 75, 0.55);
+}
+
+.job-list-card--current .job-list-name {
+  color: var(--accent);
 }
 
 .job-list-head {

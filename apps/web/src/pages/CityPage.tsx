@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useCityNav } from "../cityNav";
 import { useNavBackSlot } from "../navBack";
 import {
@@ -35,6 +35,35 @@ type JobPendingAction =
   | { type: "quit"; job: JobCard }
   | { type: "work"; job: JobCard };
 
+function JobListCard({
+  job,
+  highlighted,
+  onSelect,
+}: {
+  job: JobCard;
+  highlighted?: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <li className={`job-list-card${highlighted ? " job-list-card--current" : ""}`}>
+      <div className="job-list-head">
+        <span className="job-list-icon" aria-hidden>
+          {job.kind === "side" ? "⏱" : "💼"}
+        </span>
+        <div className="job-list-info">
+          <span className="job-list-name">{job.title}</span>
+          <span className="job-list-pay">
+            {job.payoutMin.toLocaleString("ru-RU")}–{job.payoutMax.toLocaleString("ru-RU")} ₽
+          </span>
+        </div>
+      </div>
+      <button type="button" className="btn btn-primary job-list-select" onClick={onSelect}>
+        Выбрать
+      </button>
+    </li>
+  );
+}
+
 function JobActionButtonLabel({ base, remainingMs }: { base: string; remainingMs?: number }) {
   if (remainingMs == null || remainingMs <= 0) {
     return <span className="job-btn-text">{base}</span>;
@@ -48,7 +77,7 @@ function JobActionButtonLabel({ base, remainingMs }: { base: string; remainingMs
   );
 }
 
-const SECTIONS: { id: CitySection; title: string; hint: string }[] = [
+const CITY_SECTIONS: { id: CitySection; title: string; hint: string }[] = [
   { id: "shop", title: "Магазин", hint: "Продукты, телефон, авто" },
   { id: "jobs", title: "Вакансии", hint: "Работа и подработки" },
   { id: "housing", title: "Недвижимость", hint: "Аренда и покупка" },
@@ -121,7 +150,9 @@ export function CityPage() {
   }, [section]);
 
   useEffect(() => {
-    if (section !== "jobs") setJobsNav({ inSub: false, title: "Вакансии" });
+    if (section !== "jobs") {
+      setJobsNav({ inSub: false, title: "Вакансии" });
+    }
   }, [section]);
 
   const showToast = (msg: string, isErr = false) => {
@@ -163,8 +194,11 @@ export function CityPage() {
     );
   }
 
-  if (section) {
-    const meta = SECTIONS.find((s) => s.id === section)!;
+  const sectionMeta = CITY_SECTIONS.find((s) => s.id === section);
+
+  if (section && sectionMeta) {
+    const isJobsSection = section === "jobs" && playable && sideGig && user;
+
     return (
       <>
         <div className="city-nav-bar">
@@ -175,49 +209,49 @@ export function CityPage() {
             В город
           </button>
         </div>
-        <div className="card">
-          <h2>
-            {section === "shop" && shopTab === "phone" && phoneNav.inSub
-              ? phoneNav.title
-              : section === "shop" && shopTab
-                ? SHOP_CATEGORIES.find((c) => c.id === shopTab)!.title
-                : section === "places" && placeId
-                  ? placeById(placeId).title
-                  : section === "jobs" && jobsNav.inSub
-                    ? jobsNav.title
-                    : meta.title}
-          </h2>
-          {section === "jobs" && playable && sideGig && user ? (
-            <JobsSection
-              sideGig={sideGig}
-              shift={shift}
-              user={user}
-              setUser={setUser}
-              onToast={showToast}
-              onNavChange={setJobsNav}
-              registerBack={registerSectionBack}
-              onJobsReload={load}
-            />
-          ) : section === "shop" && user ? (
-            <ShopSection
-              tab={shopTab}
-              onTab={setShopTab}
-              user={user}
-              setUser={setUser}
-              onToast={(msg, isErr) => showToast(msg, isErr)}
-              registerSectionBack={registerSectionBack}
-              onPhoneNavChange={setPhoneNav}
-            />
-          ) : section === "places" ? (
-            <PlacesSection
-              placeId={placeId}
-              onPlace={setPlaceId}
-              registerBack={registerSectionBack}
-            />
-          ) : (
-            <p>Раздел скоро появится. Пока загляните в другие кнопки или на карту.</p>
-          )}
-        </div>
+        {isJobsSection ? (
+          <JobsSection
+            sideGig={sideGig}
+            shift={shift}
+            user={user}
+            setUser={setUser}
+            onToast={showToast}
+            onNavChange={setJobsNav}
+            registerBack={registerSectionBack}
+            onJobsReload={load}
+          />
+        ) : (
+          <div className="card">
+            <h2>
+              {section === "shop" && shopTab === "phone" && phoneNav.inSub
+                ? phoneNav.title
+                : section === "shop" && shopTab
+                  ? SHOP_CATEGORIES.find((c) => c.id === shopTab)!.title
+                  : section === "places" && placeId
+                    ? placeById(placeId).title
+                    : sectionMeta.title}
+            </h2>
+            {section === "shop" && user ? (
+              <ShopSection
+                tab={shopTab}
+                onTab={setShopTab}
+                user={user}
+                setUser={setUser}
+                onToast={(msg, isErr) => showToast(msg, isErr)}
+                registerSectionBack={registerSectionBack}
+                onPhoneNavChange={setPhoneNav}
+              />
+            ) : section === "places" ? (
+              <PlacesSection
+                placeId={placeId}
+                onPlace={setPlaceId}
+                registerBack={registerSectionBack}
+              />
+            ) : (
+              <p>Раздел скоро появится. Пока загляните в другие кнопки или на карту.</p>
+            )}
+          </div>
+        )}
         {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
       </>
     );
@@ -236,7 +270,7 @@ export function CityPage() {
       </div>
 
       <div className="city-grid">
-        {SECTIONS.map((s) => (
+        {CITY_SECTIONS.map((s) => (
           <button
             key={s.id}
             type="button"
@@ -375,13 +409,20 @@ function JobsSection({
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<JobPendingAction | null>(null);
 
-  const jobs: JobCard[] = [
-    { ...sideGig, kind: "side" },
-    ...(shift ? [{ ...shift, kind: "shift" as const }] : []),
-  ];
-  const selected = selectedId ? jobs.find((j) => j.id === selectedId) : null;
   const employedId = user.player.jobId;
-  const employedJob = employedId ? jobs.find((j) => j.id === employedId) : null;
+
+  const allJobs = useMemo(
+    (): JobCard[] => [
+      { ...sideGig, kind: "side" },
+      ...(shift ? [{ ...shift, kind: "shift" as const }] : []),
+    ],
+    [sideGig, shift],
+  );
+
+  const employedJob = employedId ? (allJobs.find((j) => j.id === employedId) ?? null) : null;
+  const vacancyJobs = employedId ? allJobs.filter((j) => j.id !== employedId) : allJobs;
+
+  const selected = selectedId ? allJobs.find((j) => j.id === selectedId) : null;
   const employedCooldown = employedJob?.cooldown ?? { ready: true, remainingMs: 0 };
   const employmentBlocked = employedId != null && !employedCooldown.ready;
 
@@ -566,7 +607,9 @@ function JobsSection({
 
     return (
       <>
-        <div className="job-detail">
+        <div className="card">
+          <h2>{selected.title}</h2>
+          <div className="job-detail">
           <p className="job-detail-lead">{selected.description}</p>
           <dl className="phone-specs job-specs">
             <div>
@@ -637,6 +680,7 @@ function JobsSection({
               <JobActionButtonLabel base="Уволиться" remainingMs={quitRemainingMs} />
             </button>
           </div>
+          </div>
         </div>
         {pendingCopy && (
           <ConfirmDialog
@@ -653,26 +697,31 @@ function JobsSection({
   }
 
   return (
-    <ul className="job-list">
-      {jobs.map((job) => (
-        <li key={job.id} className="job-list-card">
-          <div className="job-list-head">
-            <span className="job-list-icon" aria-hidden>
-              {job.kind === "side" ? "⏱" : "💼"}
-            </span>
-            <div className="job-list-info">
-              <span className="job-list-name">{job.title}</span>
-              <span className="job-list-pay">
-                {job.payoutMin.toLocaleString("ru-RU")}–{job.payoutMax.toLocaleString("ru-RU")} ₽
-              </span>
-            </div>
-            {employedId === job.id && <span className="phone-list-badge">ваша</span>}
-          </div>
-          <button type="button" className="btn btn-primary job-list-select" onClick={() => setSelectedId(job.id)}>
-            Выбрать
-          </button>
-        </li>
-      ))}
-    </ul>
+    <div className="city-jobs-stack">
+      {employedJob && (
+        <div className="card">
+          <h2>Ваша работа</h2>
+          <ul className="job-list">
+            <JobListCard
+              job={employedJob}
+              highlighted
+              onSelect={() => setSelectedId(employedJob.id)}
+            />
+          </ul>
+        </div>
+      )}
+      <div className="card">
+        <h2>Вакансии</h2>
+        {vacancyJobs.length === 0 ? (
+          <p className="job-block-empty">Других вакансий в этом городе пока нет.</p>
+        ) : (
+          <ul className="job-list">
+            {vacancyJobs.map((job) => (
+              <JobListCard key={job.id} job={job} onSelect={() => setSelectedId(job.id)} />
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }
