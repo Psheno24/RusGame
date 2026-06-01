@@ -3,6 +3,7 @@ import {
   ADMIN_LOGIN,
   ADMIN_PASSWORD,
   LOCAL_DEV,
+  ENABLE_TEST_ACCOUNT,
   TEST_COOLDOWN_SEC,
   TEST_LOGIN,
   TEST_PASSWORD,
@@ -1020,7 +1021,7 @@ export async function registerRoutes(app: FastifyInstance) {
     return { user };
   });
 
-  if (LOCAL_DEV) {
+  if (LOCAL_DEV || ENABLE_TEST_ACCOUNT) {
     app.post("/api/dev/seed-test", async () => {
       const { created, login } = ensureTestAccount();
       return {

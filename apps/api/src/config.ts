@@ -22,7 +22,8 @@ export const TRUST_PROXY = process.env.TRUST_PROXY !== "false";
 export const ADMIN_LOGIN = process.env.ADMIN_LOGIN ?? "admin";
 export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "admin123";
 
-/** Скрытый тестовый аккаунт (LOCAL_DEV): много денег, КД ×60 быстрее, не в населении и ленте. */
+/** Создавать тест-аккаунт на VPS без полного LOCAL_DEV (см. ENABLE_TEST_ACCOUNT). */
+export const ENABLE_TEST_ACCOUNT = process.env.ENABLE_TEST_ACCOUNT === "true";
 export const TEST_LOGIN = process.env.TEST_LOGIN ?? "tester";
 export const TEST_PASSWORD = process.env.TEST_PASSWORD ?? "test123456";
 export const TEST_START_RUBLES = Number(process.env.TEST_START_RUBLES ?? 99_000_000);
