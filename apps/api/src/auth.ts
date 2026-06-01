@@ -99,9 +99,14 @@ export function registerUser(login: string, password: string, isAdmin = false): 
   const trimmed = login.trim();
   if (trimmed.length < 3) return { ok: false, error: "Логин минимум 3 символа" };
   if (password.length < 6) return { ok: false, error: "Пароль минимум 6 символов" };
-  if (getUserByLogin(trimmed)) return { ok: false, error: "Такой логин уже занят" };
+  if (getUserByLogin(trimmed)) {
+    if (trimmed.toLowerCase() === TEST_LOGIN.toLowerCase()) {
+      return { ok: false, error: "Этот аккаунт уже создан — войдите через «Вход»" };
+    }
+    return { ok: false, error: "Такой логин уже занят" };
+  }
   if (trimmed.toLowerCase() === TEST_LOGIN.toLowerCase()) {
-    return { ok: false, error: "Этот логин зарезервирован" };
+    return { ok: false, error: "Логин тест-аккаунта — войдите через «Вход», не регистрацию" };
   }
 
   const userId = createUser(trimmed, hashPassword(password), { isAdmin });

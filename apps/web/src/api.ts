@@ -261,7 +261,12 @@ async function api<T>(path: string, init?: RequestInit, retried = false): Promis
   if (init?.body != null) headers["Content-Type"] = "application/json";
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-  const res = await fetch(path, { ...init, headers, credentials: "include" });
+  let res: Response;
+  try {
+    res = await fetch(path, { ...init, headers, credentials: "include" });
+  } catch {
+    throw new Error("Нет связи с сервером");
+  }
   const data = await res.json().catch(() => ({}));
 
   if (res.status === 401 && !retried && !AUTH_PATHS.has(path)) {
