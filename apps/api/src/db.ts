@@ -113,6 +113,16 @@ function migrate(database: Database.Database) {
 
     CREATE INDEX IF NOT EXISTS idx_city_feed_city_ts ON city_feed(city_id, ts DESC);
 
+    CREATE TABLE IF NOT EXISTS player_feed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      ts INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      text TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_player_feed_user_ts ON player_feed(user_id, ts DESC);
+
     CREATE TABLE IF NOT EXISTS players (
       user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       display_name TEXT NOT NULL,
@@ -333,6 +343,17 @@ function migrate(database: Database.Database) {
   if (!colsPending.some((c) => c.name === "housing_pending_owned_id")) {
     database.exec("ALTER TABLE players ADD COLUMN housing_pending_owned_id INTEGER");
   }
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS player_feed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      ts INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      text TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_player_feed_user_ts ON player_feed(user_id, ts DESC);
+  `);
 }
 
 export function getUserByLogin(login: string): UserRow | undefined {

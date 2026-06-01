@@ -48,3 +48,20 @@ export function resaleRateLabel(
   })();
   return `${pct}%`;
 }
+
+/** Подсказка к зачёту квартиры: одна ставка в зависимости от срока владения. */
+export function housingTradeInRateHint(acquiredAt: number, now: number): string {
+  if (now - acquiredAt >= MS_30_DAYS) {
+    return "(120% от стоимости — владели больше 30 дней)";
+  }
+  return "(90% от стоимости — владели меньше 30 дней)";
+}
+
+/** Строка для блока «Потеряете» при продаже (доля рынка, не выплата). */
+export function formatMarketLossLossLine(catalogPriceRub: number, payoutRub: number): string {
+  const lossRub = Math.max(0, catalogPriceRub - payoutRub);
+  const lossPct =
+    catalogPriceRub > 0 ? Math.round((lossRub / catalogPriceRub) * 100) : 0;
+  return `${lossPct}% от текущей стоимости на рынке (${lossRub.toLocaleString("ru-RU")} ₽)`;
+}
+

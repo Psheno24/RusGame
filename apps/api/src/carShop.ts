@@ -1,7 +1,7 @@
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { computeResaleValue } from "./assetTrade.js";
-import { appendCityFeed, feedActorName } from "./cityFeed.js";
+import { appendPlayerFeed } from "./playerFeed.js";
 import {
   getCar,
   getCarCategories,
@@ -225,9 +225,8 @@ export function buyCar(
   const now = Date.now();
   updatePlayer(userId, { rubles: player.rubles - listPriceRub });
   insertPlayerCar(userId, carId, now);
-  const name = feedActorName(userId);
   const carName = `${car.brand} ${car.model}`;
-  appendCityFeed(player.city_id, "shop:car", `${name} купил ${carName}`, userId);
+  appendPlayerFeed(userId, "shop:car", `Купили ${carName}`, now);
   return { ok: true, carName };
 }
 
@@ -259,14 +258,8 @@ export function tradeInForCar(
     rubles: player.rubles - quote.netPriceRub + quote.excessRub,
   });
   insertPlayerCar(userId, carId, now);
-  const name = feedActorName(userId);
   const carName = `${car.brand} ${car.model}`;
-  appendCityFeed(
-    player.city_id,
-    "shop:car",
-    `${name} обменял авто на ${carName}`,
-    userId,
-  );
+  appendPlayerFeed(userId, "shop:car", `Обменяли авто на ${carName}`, now);
   return { ok: true, carName, excessRub: quote.excessRub };
 }
 
@@ -302,12 +295,11 @@ export function sellCar(
   if ("error" in sell) return { ok: false, error: sell.error };
   deletePlayerCars(userId, [playerCarId]);
   updatePlayer(userId, { rubles: player.rubles + sell.amountRub });
-  const name = feedActorName(userId);
-  appendCityFeed(
-    player.city_id,
-    "shop:car",
-    `${name} продал авто (+${sell.amountRub.toLocaleString("ru-RU")} ₽)`,
+  appendPlayerFeed(
     userId,
+    "shop:car",
+    `Продали авто (+${sell.amountRub.toLocaleString("ru-RU")} ₽)`,
+    Date.now(),
   );
   return { ok: true, amountRub: sell.amountRub };
 }

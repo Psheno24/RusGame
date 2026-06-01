@@ -107,6 +107,7 @@ export type HousingInfo = {
     cityName: string;
     title: string;
     tradeInRub: number;
+    tradeInRateHint: string;
     isSublet: boolean;
   }>;
 };
@@ -346,18 +347,22 @@ export async function fetchMap() {
 export type CityFeedEvent = {
   id: number;
   ts: number;
-  type:
-    | "work:side"
-    | "work:shift"
-    | "travel:depart"
-    | "travel:arrive"
-    | "shop:car"
-    | "shop:phone"
-    | "shop:sim";
+  type: "city:random";
   actorUserId: number | null;
   actorName: string;
   text: string;
 };
+
+export type PlayerFeedEvent = {
+  id: number;
+  ts: number;
+  type: string;
+  text: string;
+};
+
+export async function fetchPlayerFeed() {
+  return api<{ events: PlayerFeedEvent[] }>("/api/player/feed");
+}
 
 export async function fetchCity() {
   return api<{
@@ -697,6 +702,53 @@ export async function plateRollRegion(playerCarId: number) {
 
 export async function fetchPropertyCards() {
   return api<{ cards: PropertyCard[] }>("/api/player/property");
+}
+
+export type PropertySpecRow = { label: string; value: string };
+export type PropertyStatusRow = { label: string; value: string; hint?: string };
+
+export type PropertyDetail = {
+  id: string;
+  kind: "phone" | "car" | "rental" | "housing";
+  title: string;
+  subtitle: string | null;
+  accent: string;
+  specs: PropertySpecRow[];
+  features: PropertySpecRow[];
+  status: PropertyStatusRow[];
+  plate: VehiclePlateParts | null;
+  plateText: string | null;
+  canSell: boolean;
+  sellBlockReason: string | null;
+  canLiveHere: boolean;
+  housingOwnedId: number | null;
+  playerCarId: number | null;
+};
+
+export type PropertySellQuote = {
+  amountRub: number;
+  catalogPriceRub: number;
+  resaleRatePct: number;
+  deductionsRub: number;
+  receiveRub: number;
+  losses: string[];
+};
+
+export async function fetchPropertyDetail(propertyId: string) {
+  return api<PropertyDetail>(`/api/player/property/${encodeURIComponent(propertyId)}`);
+}
+
+export async function fetchPropertySellQuote(propertyId: string) {
+  return api<PropertySellQuote>(
+    `/api/player/property/${encodeURIComponent(propertyId)}/sell-quote`,
+  );
+}
+
+export async function sellProperty(propertyId: string) {
+  return api<{ message: string; receiveRub: number; user: User }>(
+    `/api/player/property/${encodeURIComponent(propertyId)}/sell`,
+    { method: "POST" },
+  );
 }
 
 export async function fetchSimShop() {

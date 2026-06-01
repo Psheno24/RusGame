@@ -102,9 +102,15 @@ import {
 } from "./plateShop.js";
 import { rentVehicle } from "./vehicleRent.js";
 import { buildPropertyCards } from "./playerProperty.js";
+import {
+  getPropertyDetail,
+  getPropertySellQuote,
+  sellPropertyById,
+} from "./propertyDetail.js";
 import { jobCooldownState, lastWorkRecordForJob } from "./workCooldown.js";
 import { ensureTestAccount, scaleCooldownMs, scaleTravelMs } from "./testAccount.js";
 import { listCityFeed } from "./cityFeed.js";
+import { listPlayerFeed } from "./playerFeed.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 import { refreshPlayerState } from "./playerSync.js";
 
@@ -616,11 +622,54 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get("/api/player/property", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    let player = getPlayer(userId);
+    let player = refreshPlayerState(userId);
     if (!player) return reply.code(404).send({ error: "Игрок не найден" });
-    player = resolveTravel(player);
     return { cards: buildPropertyCards(player) };
   });
+
+  app.get("/api/player/feed", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    return { events: listPlayerFeed(userId) };
+  });
+
+  app.get<{ Params: { propertyId?: string } }>("/api/player/property/:propertyId", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = refreshPlayerState(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const propertyId = decodeURIComponent(req.params.propertyId ?? "");
+    const detail = getPropertyDetail(player, propertyId);
+    if ("error" in detail) return reply.code(404).send({ error: detail.error });
+    return detail;
+  });
+
+  app.get<{ Params: { propertyId?: string } }>(
+    "/api/player/property/:propertyId/sell-quote",
+    async (req, reply) => {
+      const userId = await resolveUserId(req);
+      if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+      const player = refreshPlayerState(userId);
+      if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+      const propertyId = decodeURIComponent(req.params.propertyId ?? "");
+      const quote = getPropertySellQuote(player, propertyId);
+      if ("error" in quote) return reply.code(400).send({ error: quote.error });
+      return quote;
+    },
+  );
+
+  app.post<{ Params: { propertyId?: string } }>(
+    "/api/player/property/:propertyId/sell",
+    async (req, reply) => {
+      const userId = await resolveUserId(req);
+      if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+      const propertyId = decodeURIComponent(req.params.propertyId ?? "");
+      const result = sellPropertyById(userId, propertyId);
+      if (!result.ok) return reply.code(400).send({ error: result.error });
+      const user = await getPublicUser(userId);
+      return { message: result.message, receiveRub: result.receiveRub, user };
+    },
+  );
 
   app.get("/api/shop/car-categories", async () => ({
     categories: listCarCategoriesWithCounts(),

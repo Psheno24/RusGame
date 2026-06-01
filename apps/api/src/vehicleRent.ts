@@ -1,5 +1,5 @@
 import { getPlayer, updatePlayer } from "./db.js";
-import { appendCityFeed, feedActorName } from "./cityFeed.js";
+import { appendPlayerFeed } from "./playerFeed.js";
 import { getVehicleRental } from "./gameData.js";
 import { hasDriverLicense } from "./playerCars.js";
 
@@ -26,12 +26,11 @@ export function rentVehicle(
     vehicle_rental_id: rentalId,
     vehicle_rental_expires_at: expiresAt,
   });
-  const name = feedActorName(userId);
-  appendCityFeed(
-    player.city_id,
-    "shop:rent",
-    `${name} арендовал ${rental.label} на ${rental.hours} ч`,
+  appendPlayerFeed(
     userId,
+    "shop:rent",
+    `Арендовали ${rental.label} на ${rental.hours} ч`,
+    now,
   );
   return { ok: true, label: rental.label, expiresAt };
 }

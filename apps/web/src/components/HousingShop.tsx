@@ -446,7 +446,13 @@ export function HousingShop({
       {nav === "exchange" && selected && (
         <div className="phone-detail card">
           <h3>Зачёт квартир</h3>
-          <p className="shop-owned">Продажа своих квартир в зачёт покупки «{selected.title}».</p>
+          <p className="shop-owned housing-exchange-intro">
+            В зачёт покупки:
+            <span className="housing-exchange-target">
+              {selected.title} ({selected.district})
+              <span className="housing-exchange-target-city">{info.cityName}</span>
+            </span>
+          </p>
           <ul className="phone-list">
             {info.ownedForExchange.map((u) => (
               <li key={u.id}>
@@ -461,11 +467,12 @@ export function HousingShop({
                     }}
                   />
                   <span className="phone-list-info">
-                    <span className="phone-list-name">
-                      {u.title}
-                      <span className="phone-list-price"> · {u.cityName}</span>
+                    <span className="phone-list-name">{u.title}</span>
+                    <span className="phone-list-city">{u.cityName}</span>
+                    <span className="phone-list-trade-line">
+                      <span className="phone-list-price">{rub(u.tradeInRub)}</span>
+                      <span className="housing-trade-in-rate-hint">{u.tradeInRateHint}</span>
                     </span>
-                    <span className="phone-list-price">зачёт {rub(u.tradeInRub)}</span>
                   </span>
                 </label>
               </li>

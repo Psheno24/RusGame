@@ -1,6 +1,6 @@
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
-import { computeResaleValue } from "./assetTrade.js";
+import { computeResaleValue, housingTradeInRateHint } from "./assetTrade.js";
 import { getHousingProperty, housingPropertyLabel } from "./housingCatalog.js";
 import { getCity } from "./gameData.js";
 import {
@@ -11,6 +11,7 @@ import {
   subletOtherOwnedMonthly,
   syncPlayerHousing,
 } from "./housing.js";
+import { appendPlayerFeed } from "./playerFeed.js";
 import { pushCurrentResidenceToStack } from "./housingStack.js";
 import {
   deleteOwnedHousing,
@@ -54,6 +55,7 @@ export function listOwnedForExchange(player: PlayerRow, now = Date.now()) {
       propertyId: row.property_id,
       title: prop ? housingPropertyLabel(prop) : row.property_id,
       tradeInRub: tradeInValueForOwned(row, now),
+      tradeInRateHint: housingTradeInRateHint(row.acquired_at, now),
       isSublet: isSubletActive(row, now),
     };
   });
@@ -180,6 +182,12 @@ function completeHousingPurchase(
       income > 0
         ? `${prop?.title ?? "Квартира"} куплена. Вы переехали. Остальные сданы (+${income.toLocaleString("ru-RU")} ₽).`
         : `${prop?.title ?? "Квартира"} куплена. Вы переехали.`;
+    appendPlayerFeed(
+      p.user_id,
+      "housing:buy",
+      `Купили «${prop?.title ?? "квартиру"}»${sellOwnedIds.length ? " (с зачётом)" : ""}`,
+      now,
+    );
     return { ok: true, message: msg, needsPostChoice: false, ownedId };
   }
 
@@ -188,6 +196,12 @@ function completeHousingPurchase(
     housing_pending_owned_id: ownedId,
   });
   const prop = getHousingProperty(p.city_id, propertyId);
+  appendPlayerFeed(
+    p.user_id,
+    "housing:buy",
+    `Купили «${prop?.title ?? "квартиру"}»${sellOwnedIds.length ? " (с зачётом)" : ""}`,
+    now,
+  );
   return {
     ok: true,
     message: `${prop?.title ?? "Квартира"} куплена. Выберите: переехать или сдавать.`,
@@ -225,8 +239,7 @@ export function afterBuyHousingChoice(
   });
   updatePlayer(p.user_id, { rubles: p.rubles + income });
   const prop = getHousingProperty(row.city_id, row.property_id);
-  return {
-    ok: true,
-    message: `${prop?.title ?? "Квартира"} сдаётся 30 дн. (+${income.toLocaleString("ru-RU")} ₽).`,
-  };
+  const subletMsg = `${prop?.title ?? "Квартира"} сдаётся 30 дн. (+${income.toLocaleString("ru-RU")} ₽).`;
+  appendPlayerFeed(p.user_id, "housing:live", `Сдача: ${prop?.title ?? "квартира"}`, now);
+  return { ok: true, message: subletMsg };
 }

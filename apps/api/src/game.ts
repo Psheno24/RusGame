@@ -4,7 +4,7 @@ import { computeResaleValue } from "./assetTrade.js";
 import type { AssetQuote } from "./carShop.js";
 import { getPhoneShopPriceRub } from "./shopCatalog.js";
 import { getSkill, type SkillKey } from "./auth.js";
-import { appendCityFeed, feedActorName } from "./cityFeed.js";
+import { appendPlayerFeed } from "./playerFeed.js";
 import {
   enrichJobWorkState,
   getCityLocalTime,
@@ -72,12 +72,10 @@ export function resolveTravel(player: PlayerRow, now = Date.now()): PlayerRow {
   const arrivedAt = player.travel_arrives_at;
   const to = player.travel_to_city_id ?? player.city_id;
   const dest = getCity(to);
-  const name = feedActorName(player.user_id);
-  appendCityFeed(
-    to,
-    "travel:arrive",
-    `${name} прибыл в город ${dest?.name ?? to}`,
+  appendPlayerFeed(
     player.user_id,
+    "travel:arrive",
+    `Прибытие в ${dest?.name ?? to}`,
     arrivedAt,
   );
   const next: Partial<PlayerRow> = {
@@ -268,6 +266,7 @@ export function applyJob(
   }
 
   updatePlayer(userId, { job_id: jobId });
+  appendPlayerFeed(userId, "job:apply", `Устроились: ${job.title}`, now);
   return { ok: true, message: `Вы устроились: ${job.title}` };
 }
 
@@ -298,6 +297,7 @@ export function quitJob(
   }
 
   updatePlayer(userId, { job_id: null });
+  appendPlayerFeed(userId, "job:quit", `Уволились: ${job.title}`, now);
   return { ok: true, message: `Вы уволились: ${job.title}` };
 }
 
@@ -450,6 +450,13 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
     message += ` (×${multLabel})`;
   }
 
+  const feedType = job.kind === "duration" ? "work:shift" : "work:side";
+  const feedText =
+    job.kind === "duration"
+      ? `Смена «${job.title}» (${shiftHours} ч): +${payout.toLocaleString("ru-RU")} ₽`
+      : `Работа «${job.title}»: +${payout.toLocaleString("ru-RU")} ₽`;
+  appendPlayerFeed(userId, feedType, feedText, now);
+
   return { ok: true, payout, message, skillGain };
 }
 
@@ -494,12 +501,11 @@ export function startTravel(
   }
 
   const arrivesAt = now + scaleTravelMs(route.durationMs, userId);
-  const name = feedActorName(userId);
-  appendCityFeed(
-    player.city_id,
-    "travel:depart",
-    `${name} ${route.mode === "plane" ? "улетел" : "уехал"} в ${dest.name} (−${route.priceRub.toLocaleString("ru-RU")} ₽)`,
+  appendPlayerFeed(
     userId,
+    "travel:depart",
+    `${route.mode === "plane" ? "Перелёт" : "Поездка"} в ${dest.name} (−${route.priceRub.toLocaleString("ru-RU")} ₽)`,
+    now,
   );
   updatePlayer(userId, {
     rubles: player.rubles - route.priceRub,
@@ -653,14 +659,8 @@ export function buyPhoneDevice(
     phone_device_id: deviceId,
     phone_acquired_at: now,
   });
-  const name = feedActorName(userId);
   const deviceName = `${device.brand} ${device.model}`;
-  appendCityFeed(
-    player.city_id,
-    "shop:phone",
-    `${name} купил телефон ${deviceName}`,
-    userId,
-  );
+  appendPlayerFeed(userId, "shop:phone", `Купили телефон ${deviceName}`, now);
   return { ok: true, deviceName, tradeInRub: quote.tradeInRub };
 }
 
@@ -694,12 +694,11 @@ export function sellPhoneDevice(
     phone_device_id: null,
     phone_acquired_at: null,
   });
-  const name = feedActorName(userId);
-  appendCityFeed(
-    player.city_id,
-    "shop:phone",
-    `${name} продал телефон ${current.brand} ${current.model} (+${amountRub.toLocaleString("ru-RU")} ₽)`,
+  appendPlayerFeed(
     userId,
+    "shop:phone",
+    `Продали телефон ${current.brand} ${current.model} (+${amountRub.toLocaleString("ru-RU")} ₽)`,
+    now,
   );
   return { ok: true, amountRub };
 }

@@ -1,7 +1,7 @@
 import type { PlayerRow } from "./db.js";
 import { getDb, getPlayer, updatePlayer } from "./db.js";
 import { getCar } from "./gameData.js";
-import { appendCityFeed, feedActorName } from "./cityFeed.js";
+import { appendPlayerFeed } from "./playerFeed.js";
 import {
   PLATE_PRICES,
   formatVehiclePlate,
@@ -124,14 +124,13 @@ export function registerVehiclePlate(
   const parts = rollUniqueVehiclePlateParts(taken);
   const result = patchPlateForCar(userId, playerCarId, parts, -PLATE_PRICES.register);
   if (!result.ok) return result;
-  const name = feedActorName(userId);
   const car = getCar(row.car_model_id);
   const carName = car ? `${car.brand} ${car.model}` : "авто";
-  appendCityFeed(
-    player.city_id,
-    "shop:plate",
-    `${name} оформил госномер ${result.plateText} на ${carName}`,
+  appendPlayerFeed(
     userId,
+    "shop:plate",
+    `Оформили госномер ${result.plateText} на ${carName}`,
+    Date.now(),
   );
   return result;
 }

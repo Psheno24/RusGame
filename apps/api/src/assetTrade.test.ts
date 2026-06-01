@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { computeResaleValue } from "./assetTrade.js";
+import {
+  computeResaleValue,
+  formatMarketLossLossLine,
+  housingTradeInRateHint,
+} from "./assetTrade.js";
 
 const MS_30_DAYS = 30 * 24 * 60 * 60 * 1000;
 
@@ -44,6 +48,21 @@ describe("assetTrade", () => {
     assert.equal(
       computeResaleValue(1000000, "housing", now - MS_30_DAYS, now, "trade_in"),
       1200000,
+    );
+  });
+
+  it("housingTradeInRateHint by ownership duration", () => {
+    assert.match(housingTradeInRateHint(now, now), /90%.*владели меньше 30/);
+    assert.match(
+      housingTradeInRateHint(now - MS_30_DAYS, now),
+      /120%.*владели больше 30/,
+    );
+  });
+
+  it("formatMarketLossLossLine for 60% sell", () => {
+    assert.equal(
+      formatMarketLossLossLine(12_000_000, 7_200_000),
+      "40% от текущей стоимости на рынке (4 800 000 ₽)",
     );
   });
 });

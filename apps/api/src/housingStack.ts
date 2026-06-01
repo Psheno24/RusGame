@@ -1,6 +1,7 @@
 import type { HousingType, PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { getCity } from "./gameData.js";
+import { getHousingProperty } from "./housingCatalog.js";
 import { getOwnedHousing } from "./playerOwnedHousing.js";
 import { clearSublet, listOwnedHousing } from "./playerOwnedHousing.js";
 
@@ -80,27 +81,50 @@ function applyOwnedResidencePatch(
   };
 }
 
-/** Первое доступное жильё из цепочки (без повторений). */
-export function restoreFromHousingStack(
+function ownedResidenceLabel(row: { city_id: string; property_id: string }): string {
+  const prop = getHousingProperty(row.city_id, row.property_id);
+  const city = getCity(row.city_id);
+  const name = prop?.title ?? row.property_id;
+  return `${name} (${city?.name ?? row.city_id})`;
+}
+
+function stackEntryResidenceLabel(entry: HousingStackEntry): string {
+  const city = getCity(entry.cityId);
+  const cityName = city?.name ?? entry.cityId;
+  if (entry.type === "owned") {
+    if (entry.propertyId) {
+      const prop = getHousingProperty(entry.cityId, entry.propertyId);
+      return `${prop?.title ?? entry.propertyId} (${cityName})`;
+    }
+    return cityName;
+  }
+  const kind = entry.type === "rent" ? "Аренда" : "Общежитие";
+  return `${kind} (${cityName})`;
+}
+
+export type NextResidence = { patch: Partial<PlayerRow>; label: string };
+
+/** Следующее жильё после продажи текущего (предпросмотр и восстановление). */
+export function findNextResidence(
   player: PlayerRow,
   now = Date.now(),
-): { patch: Partial<PlayerRow>; label: string } | null {
+  opts?: { skipOwnedIds?: number[] },
+): NextResidence | null {
+  const skip = new Set(opts?.skipOwnedIds ?? []);
   const stack = parseHousingStack(player.housing_stack);
 
   for (const entry of stack) {
     if (entry.type === "owned" && entry.ownedId != null) {
+      if (skip.has(entry.ownedId)) continue;
       const row = getOwnedHousing(entry.ownedId, player.user_id);
       if (!row) continue;
-      clearSublet(row.id);
-      const city = getCity(row.city_id);
       return {
         patch: applyOwnedResidencePatch(player, row),
-        label: city?.name ?? row.city_id,
+        label: ownedResidenceLabel(row),
       };
     }
     if (entry.type === "dorm" || entry.type === "rent") {
       if (entry.expiresAt != null && entry.expiresAt > now) {
-        const city = getCity(entry.cityId);
         return {
           patch: {
             housing_type: entry.type,
@@ -110,24 +134,35 @@ export function restoreFromHousingStack(
             housing_property_id: null,
             housing_owned_at: null,
           },
-          label: city?.name ?? entry.cityId,
+          label: stackEntryResidenceLabel(entry),
         };
       }
     }
   }
 
   for (const row of listOwnedHousing(player.user_id)) {
-    const inStack = stack.some((e) => e.type === "owned" && e.ownedId === row.id);
-    if (inStack) continue;
-    clearSublet(row.id);
-    const city = getCity(row.city_id);
+    if (skip.has(row.id)) continue;
+    if (stack.some((e) => e.type === "owned" && e.ownedId === row.id)) continue;
     return {
       patch: applyOwnedResidencePatch(player, row),
-      label: city?.name ?? row.city_id,
+      label: ownedResidenceLabel(row),
     };
   }
 
   return null;
+}
+
+/** Первое доступное жильё из цепочки (без повторений). */
+export function restoreFromHousingStack(
+  player: PlayerRow,
+  now = Date.now(),
+): { patch: Partial<PlayerRow>; label: string } | null {
+  const next = findNextResidence(player, now);
+  if (!next) return null;
+  if (next.patch.housing_owned_id != null) {
+    clearSublet(next.patch.housing_owned_id);
+  }
+  return next;
 }
 
 export function clearHousingStack(userId: number) {

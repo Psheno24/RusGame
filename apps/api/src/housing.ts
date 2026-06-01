@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { HousingType, PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
-import { computeResaleValue } from "./assetTrade.js";
+import { computeResaleValue, housingTradeInRateHint } from "./assetTrade.js";
+import { appendPlayerFeed } from "./playerFeed.js";
 import { DATA_DIR } from "./config.js";
 import { getCity } from "./gameData.js";
 import {
@@ -454,6 +455,7 @@ export function getHousingInfo(player: PlayerRow, now = Date.now()) {
         cityName: other?.name ?? row.city_id,
         title: prop ? housingPropertyLabel(prop) : row.property_id,
         tradeInRub: computeResaleValue(catalog, "housing", row.acquired_at, now, "trade_in"),
+        tradeInRateHint: housingTradeInRateHint(row.acquired_at, now),
         isSublet: isSubletActive(row, now),
       };
     }),
@@ -557,7 +559,9 @@ export function payLiveHere(player: PlayerRow, ownedId: number, now = Date.now()
   if (income > 0) {
     parts.push(`остальные квартиры сданы (+${income.toLocaleString("ru-RU")} ₽)`);
   }
-  return { ok: true, message: parts.join(". ") + "." };
+  const msg = parts.join(". ") + ".";
+  appendPlayerFeed(p.user_id, "housing:live", `Переезд: ${quote.title} (${quote.cityName})`, now);
+  return { ok: true, message: msg };
 }
 
 function payDorm(player: PlayerRow, now: number): HousingPayResult {
@@ -601,6 +605,7 @@ function payDorm(player: PlayerRow, now: number): HousingPayResult {
     income > 0
       ? `Общежитие на ${config.dormHours} ч (−${prices.dormRub.toLocaleString("ru-RU")} ₽). Квартиры сданы/продлены (+${income.toLocaleString("ru-RU")} ₽).`
       : `Общежитие оплачено на ${config.dormHours} ч (−${prices.dormRub.toLocaleString("ru-RU")} ₽)`;
+  appendPlayerFeed(player.user_id, "housing:dorm", msg, now);
   return { ok: true, message: msg };
 }
 
@@ -643,6 +648,7 @@ function payRent(player: PlayerRow, now: number): HousingPayResult {
     income > 0
       ? `Аренда на ${config.rentDays} дн. (−${prices.rentRub.toLocaleString("ru-RU")} ₽). Квартиры сданы/продлены (+${income.toLocaleString("ru-RU")} ₽).`
       : `Аренда на ${config.rentDays} дн. (−${prices.rentRub.toLocaleString("ru-RU")} ₽)`;
+  appendPlayerFeed(player.user_id, "housing:rent", msg, now);
   return { ok: true, message: msg };
 }
 
@@ -761,7 +767,7 @@ export function sellOwnedHousing(
   if (p.rubles < tenantPenalty) {
     return {
       ok: false,
-      error: `Не хватает на компенсацию жильцам (${tenantPenalty.toLocaleString("ru-RU")} ₽)`,
+      error: `Не хватает на возврат жильцам за неиспользованные дни (${tenantPenalty.toLocaleString("ru-RU")} ₽)`,
     };
   }
 
@@ -784,12 +790,16 @@ export function sellOwnedHousing(
   const prop = getHousingProperty(row.city_id, row.property_id);
   const penaltyNote =
     tenantPenalty > 0 ? `, жильцам −${tenantPenalty.toLocaleString("ru-RU")} ₽` : "";
-  return {
-    ok: true,
-    message: `${prop?.title ?? "Квартира"} продана (+${sellQuote.amountRub.toLocaleString("ru-RU")} ₽${penaltyNote})${
-      wasHome ? ". Восстановлено прежнее жильё." : ""
-    }`,
-  };
+  const message = `${prop?.title ?? "Квартира"} продана (+${sellQuote.amountRub.toLocaleString("ru-RU")} ₽${penaltyNote})${
+    wasHome ? ". Восстановлено прежнее жильё." : ""
+  }`;
+  appendPlayerFeed(
+    p.user_id,
+    "housing:sell",
+    `Продали «${prop?.title ?? "квартиру"}» (+${sellQuote.amountRub.toLocaleString("ru-RU")} ₽)`,
+    now,
+  );
+  return { ok: true, message };
 }
 
 export function payHousingDorm(player: PlayerRow, now = Date.now()): HousingPayResult {

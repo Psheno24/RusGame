@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useCityNav } from "../cityNav";
 import { useApp } from "../context";
+import { PlayerActivityPanel } from "./PlayerActivityPanel";
 
 const NAV_ITEMS = [
   {
@@ -58,6 +60,7 @@ export function Layout() {
   const p = user?.player;
   const location = useLocation();
   const cityNav = useCityNav();
+  const [activityOpen, setActivityOpen] = useState(false);
 
   const onCityNavClick = (e: React.MouseEvent) => {
     if (location.pathname === "/city") {
@@ -71,9 +74,19 @@ export function Layout() {
       {p && (
         <header className="app-header">
           <div className="money-bar">
-            <span>{p.displayName}</span>
-            <span>{p.rubles.toLocaleString("ru-RU")} ₽</span>
+            <div className="money-bar-left">
+              <span className="money-bar-name">{p.displayName}</span>
+              <button
+                type="button"
+                className="player-activity-btn"
+                onClick={() => setActivityOpen(true)}
+              >
+                Моя активность
+              </button>
+            </div>
+            <span className="money-bar-rubles">{p.rubles.toLocaleString("ru-RU")} ₽</span>
           </div>
+          <PlayerActivityPanel open={activityOpen} onClose={() => setActivityOpen(false)} />
         </header>
       )}
       <main className="app-main">

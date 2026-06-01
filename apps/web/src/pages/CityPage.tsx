@@ -201,7 +201,6 @@ export function CityPage() {
   >["activeEmployment"]>(null);
   const [tick, setTick] = useState(0);
   const [cityFeed, setCityFeed] = useState<CityFeedEvent[]>([]);
-
   const load = useCallback(async () => {
     const data = await fetchCity();
     setCityName(data.city?.name ?? "—");

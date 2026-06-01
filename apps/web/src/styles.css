@@ -269,8 +269,200 @@ body {
   font-weight: 800;
 }
 
-.money-bar span:last-child {
+.money-bar-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.money-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.money-bar-rubles {
   color: var(--accent);
+}
+
+.player-activity-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #3d5270;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.player-activity-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.phone-list-city {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.25;
+}
+
+.housing-exchange-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 1.35;
+}
+
+.housing-exchange-target {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.housing-exchange-target-city {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.player-feed-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(8, 12, 20, 0.72);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: calc(56px + env(safe-area-inset-top, 0px)) 12px 24px;
+}
+
+.player-feed-panel {
+  width: min(100%, 420px);
+  max-height: min(70vh, 520px);
+  overflow: auto;
+  background: var(--bg-card);
+  border: 1px solid #2d3f56;
+  border-radius: 16px;
+  padding: 12px 14px 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.player-feed-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.player-feed-panel-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.player-feed-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.player-feed-close:hover {
+  color: var(--text);
+  background: var(--bg-elevated);
+}
+
+.player-feed-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.player-feed-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 4px 8px;
+  align-items: start;
+}
+
+.player-feed-tag {
+  grid-row: 1 / 3;
+  align-self: start;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.player-feed-tag--work {
+  background: rgba(76, 175, 120, 0.18);
+  color: #7dcea0;
+}
+
+.player-feed-tag--travel {
+  background: rgba(100, 149, 237, 0.18);
+  color: #9eb8f0;
+}
+
+.player-feed-tag--shop {
+  background: rgba(212, 168, 75, 0.18);
+  color: var(--accent);
+}
+
+.player-feed-tag--housing {
+  background: rgba(180, 130, 220, 0.18);
+  color: #c9a8e8;
+}
+
+.player-feed-text {
+  font-size: 0.88rem;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.player-feed-time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.player-feed-empty {
+  margin: 8px 0;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.city-feed-tag--city {
+  background: rgba(120, 144, 170, 0.2);
+  color: #a8b8cc;
 }
 
 .toast {
@@ -1342,6 +1534,20 @@ body {
   color: var(--accent);
 }
 
+.phone-list-trade-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.5rem;
+}
+
+.housing-trade-in-rate-hint {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
 .phone-list-badge {
   font-size: 0.68rem;
   font-weight: 800;
@@ -2159,9 +2365,105 @@ body {
   border-left: 4px solid var(--accent);
 }
 
+button.property-card--clickable {
+  width: 100%;
+  border: none;
+  border-left: 4px solid var(--accent);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.property-card--clickable:hover {
+  background: var(--bg-elevated);
+}
+
+.property-detail-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.property-detail-back {
+  align-self: flex-start;
+  width: auto;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+}
+
+.property-detail {
+  border-left: 4px solid var(--accent);
+  padding: 14px 16px;
+}
+
+.property-detail-header {
+  margin-bottom: 12px;
+}
+
+.property-detail-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.property-detail-sub {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.property-detail-plate {
+  display: flex;
+  justify-content: center;
+  margin: 8px 0 16px;
+}
+
+.property-detail-section {
+  margin-bottom: 14px;
+}
+
+.property-detail-section-title {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.property-detail-status dd {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.property-detail-hint {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.property-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.property-detail-actions .btn {
+  width: auto;
+  flex: 1;
+  min-width: 120px;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+}
+
 .property-card--housing {
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .property-card-main {
@@ -2195,6 +2497,24 @@ body {
 .property-badge--here {
   background: rgba(45, 143, 92, 0.2);
   color: #2d8f5c;
+}
+
+button.property-badge--live {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-dim) 100%);
+  color: #1a1208;
+}
+
+button.property-badge--live:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.property-badge--live:not(:disabled):active {
+  transform: scale(0.98);
 }
 
 .property-card-title {
