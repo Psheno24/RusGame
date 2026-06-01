@@ -88,15 +88,34 @@ export function jobCooldownMs(job: JobDef, record: JobWorkRecord | null): number
   return job.cooldownMs ?? 0;
 }
 
+export type JobCooldownState = {
+  ready: boolean;
+  remainingMs: number;
+  effectiveReadyAt: number | null;
+  displayReadyAt: number | null;
+};
+
 export function jobCooldownState(
   player: PlayerRow,
   job: JobDef,
   now = Date.now(),
-): { ready: boolean; remainingMs: number } {
+): JobCooldownState {
   const record = lastWorkRecordForJob(player, job.id);
-  if (!record) return { ready: true, remainingMs: 0 };
-  const cd = scaleCooldownMs(jobCooldownMs(job, record), player.user_id);
-  return formatCooldown(record.at + cd, now);
+  if (!record) {
+    return { ready: true, remainingMs: 0, effectiveReadyAt: null, displayReadyAt: null };
+  }
+  const nominalMs = jobCooldownMs(job, record);
+  const effectiveMs = scaleCooldownMs(nominalMs, player.user_id);
+  const effectiveEnd = record.at + effectiveMs;
+  const displayEnd = record.at + nominalMs;
+  const effective = formatCooldown(effectiveEnd, now);
+  const display = formatCooldown(displayEnd, now);
+  return {
+    ready: effective.ready,
+    remainingMs: effective.ready ? 0 : display.remainingMs,
+    effectiveReadyAt: effectiveEnd,
+    displayReadyAt: displayEnd,
+  };
 }
 
 export function canWorkJobNow(

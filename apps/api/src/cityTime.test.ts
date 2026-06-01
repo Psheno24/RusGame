@@ -65,4 +65,15 @@ describe("cityTime", () => {
     assert.equal(msk.hour, 15);
     assert.equal(omsk.hour, 18);
   });
+
+  it("night guard at 00:28 Omsk is allowed but blocked in Moscow", () => {
+    const schedule = { mode: "night" as const, nightStartHour: 22, dayStartHour: 6 };
+    const now = Date.parse("2026-05-31T18:28:00.000Z");
+    const omsk = getCityLocalTime("Asia/Omsk", now);
+    const msk = getCityLocalTime("Europe/Moscow", now);
+    assert.equal(omsk.label, "00:28");
+    assert.equal(msk.label, "21:28");
+    assert.equal(isWorkScheduleAllowed(omsk, schedule), true);
+    assert.equal(isWorkScheduleAllowed(msk, schedule), false);
+  });
 });

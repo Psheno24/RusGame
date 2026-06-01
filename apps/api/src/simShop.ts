@@ -74,6 +74,9 @@ export function registerSim(userId: number): { ok: true; number: string } | { ok
   applySimParts(userId, player, parts, {
     rubles: player.rubles - SHOP_SIM_REGISTER_BASE_RUB,
     sim_balance_rub: SHOP_SIM_START_BALANCE_RUB,
+    sim_tariff_id: "incoming_only",
+    sim_tariff_paid_until: null,
+    sim_tariff_pending_id: null,
   });
   const number = formatSimNumber(parts);
   const name = feedActorName(userId);

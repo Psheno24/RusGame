@@ -1,0 +1,40 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { formatDuration } from "./formatDuration.js";
+
+describe("formatDuration", () => {
+  it("zero and negative", () => {
+    assert.equal(formatDuration(0), "готово");
+    assert.equal(formatDuration(-1), "готово");
+  });
+
+  it("under one minute in seconds", () => {
+    assert.equal(formatDuration(1000), "1 сек");
+    assert.equal(formatDuration(45_000), "45 сек");
+    assert.equal(formatDuration(59_999), "60 сек");
+  });
+
+  it("one to 59 minutes", () => {
+    assert.equal(formatDuration(60_000), "1 мин");
+    assert.equal(formatDuration(90_000), "2 мин");
+    assert.equal(formatDuration(59 * 60_000), "59 мин");
+  });
+
+  it("hours and minutes", () => {
+    assert.equal(formatDuration(3_600_000), "1 ч");
+    assert.equal(formatDuration(3_660_000), "1 ч 1 мин");
+    assert.equal(formatDuration(7 * 3_600_000 + 32 * 60_000), "7 ч 32 мин");
+  });
+
+  it("days and hours under 7 days", () => {
+    assert.equal(formatDuration(86_400_000), "1 дн");
+    assert.equal(formatDuration(86_400_000 + 5 * 3_600_000), "1 дн 5 ч");
+    assert.equal(formatDuration(6 * 86_400_000 + 12 * 3_600_000), "6 дн 12 ч");
+  });
+
+  it("seven days and more in days only", () => {
+    assert.equal(formatDuration(7 * 86_400_000), "7 дн");
+    assert.equal(formatDuration(8 * 86_400_000), "8 дн");
+    assert.equal(formatDuration(7 * 86_400_000 + 12 * 3_600_000), "8 дн");
+  });
+});

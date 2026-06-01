@@ -3,14 +3,22 @@ import type { NavBackHandler } from "../navBack";
 import {
   changeSimPart,
   fetchSimShop,
+  fetchSimTariffQuote,
   registerSim,
+  selectSimTariff,
   topupSim,
   type SimShopInfo,
+  type SimTariffQuote,
   type User,
 } from "../api";
+import { ConfirmDialog } from "./ConfirmDialog";
 
-type SimView = "main" | "change";
+type SimView = "main" | "change" | "tariffs";
 type SimChangePart = "operator" | "mid" | "last";
+
+type SimPending =
+  | { type: "topup"; amount: number }
+  | { type: "tariff"; quote: SimTariffQuote };
 
 type Props = {
   user: User;
@@ -26,6 +34,7 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
   const [info, setInfo] = useState<SimShopInfo | null>(null);
   const [topupAmount, setTopupAmount] = useState("500");
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<SimPending | null>(null);
   const p = user.player;
 
   const reload = () =>
@@ -35,17 +44,18 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
 
   useEffect(() => {
     reload();
-  }, [p.phoneNumber, p.hasSim, p.simBalanceRub, p.phoneDeviceId]);
+  }, [p.phoneNumber, p.hasSim, p.simBalanceRub, p.simTariffId, p.simTariffPaidUntil, p.phoneDeviceId]);
 
   useEffect(() => {
-    const title = view === "change" ? "Изменить номер" : "Сим-карта";
-    const backLabel = view === "change" ? "Сим-карта" : "Телефон";
+    const title =
+      view === "change" ? "Изменить номер" : view === "tariffs" ? "Тарифы" : "Сим-карта";
+    const backLabel = view === "main" ? "Телефон" : "Сим-карта";
     onNavChange({ inSub: true, title, backLabel });
   }, [view, onNavChange]);
 
   useEffect(() => {
     const handler: NavBackHandler = () => {
-      if (view === "change") {
+      if (view === "change" || view === "tariffs") {
         setView("main");
         return true;
       }
@@ -63,6 +73,7 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
       setUser(r.user);
       if (r.number) onToast(`Номер: ${r.number}`);
       else if (r.simBalanceRub != null) onToast(`Баланс сим: ${r.simBalanceRub.toLocaleString("ru-RU")} ₽`);
+      else onToast("Готово");
       await reload();
     } catch (e) {
       onToast(e instanceof Error ? e.message : "Ошибка", true);
@@ -70,6 +81,101 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
       setBusy(false);
     }
   };
+
+  const requestTopup = () => {
+    const amount = Math.floor(Number(topupAmount));
+    if (!Number.isFinite(amount) || amount < 1) {
+      onToast("Введите сумму от 1 ₽", true);
+      return;
+    }
+    setPending({ type: "topup", amount });
+  };
+
+  const requestTariff = async (planId: string) => {
+    setBusy(true);
+    try {
+      const quote = await fetchSimTariffQuote(planId);
+      setPending({ type: "tariff", quote });
+    } catch (e) {
+      onToast(e instanceof Error ? e.message : "Ошибка", true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runPending = async () => {
+    if (!pending) return;
+    const action = pending;
+    setPending(null);
+    if (action.type === "topup") {
+      await run(() => topupSim(action.amount));
+      return;
+    }
+    setBusy(true);
+    try {
+      const r = await selectSimTariff(action.quote.planId);
+      setUser(r.user);
+      if (action.quote.kind === "downgrade") {
+        onToast(`С ${action.quote.effectiveAtLabel ?? "следующего списания"} подключится «${action.quote.title}»`);
+      } else if (action.quote.kind === "upgrade") {
+        onToast(`Тариф «${action.quote.title}» активен. Доплата ${action.quote.chargeRub.toLocaleString("ru-RU")} ₽`);
+      } else {
+        onToast(`Тариф «${action.quote.title}» подключён`);
+      }
+      await reload();
+    } catch (e) {
+      onToast(e instanceof Error ? e.message : "Ошибка", true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const pendingCopy = (() => {
+    if (!pending) return null;
+    if (pending.type === "topup") {
+      return {
+        title: "Пополнить сим?",
+        text: `С основного счёта спишется ${pending.amount.toLocaleString("ru-RU")} ₽ и зачислится на баланс сим-карты.`,
+        confirmLabel: "Пополнить",
+        confirmClassName: "btn-primary",
+      };
+    }
+    const q = pending.quote;
+    if (q.kind === "downgrade") {
+      return {
+        title: `Перейти на «${q.title}»?`,
+        text: `Сейчас действует «${q.currentTitle}». Тариф «${q.title}» применится при следующем списании — ${q.effectiveAtLabel ?? "—"}. До этой даты условия текущего тарифа не меняются.`,
+        confirmLabel: "Подтвердить",
+        confirmClassName: "btn-primary",
+      };
+    }
+    if (q.kind === "upgrade") {
+      const prorate =
+        q.prorateDaysUsed != null && q.prorateDaysRemaining != null
+          ? ` За ${q.prorateDaysUsed} из 7 дн. текущего тарифа уже учтено ${q.currentWeeklyRub.toLocaleString("ru-RU")} ₽/нед.`
+          : "";
+      return {
+        title: `Повысить до «${q.title}»?`,
+        text: `С баланса сим спишется доплата ${q.chargeRub.toLocaleString("ru-RU")} ₽.${prorate} Оплачено до ${q.paidUntilLabel} — срок не меняется. Следующее списание ${q.weeklyRub.toLocaleString("ru-RU")} ₽ — ${q.nextChargeLabel}.`,
+        confirmLabel: "Подтвердить",
+        confirmClassName: "btn-primary",
+      };
+    }
+    if (q.chargeRub <= 0) {
+      return {
+        title: `Тариф «${q.title}»?`,
+        text: "Платных списаний нет. Можно принимать только входящие звонки.",
+        confirmLabel: "Подтвердить",
+        confirmClassName: "btn-primary",
+      };
+    }
+    return {
+      title: `Тариф «${q.title}»?`,
+      text: `С баланса сим спишется ${q.chargeRub.toLocaleString("ru-RU")} ₽ (${q.cityName}). Оплачено до ${q.paidUntilLabel}. Следующее списание ${q.weeklyRub.toLocaleString("ru-RU")} ₽ — ${q.nextChargeLabel}.`,
+      confirmLabel: "Подтвердить",
+      confirmClassName: "btn-primary",
+    };
+  })();
 
   if (!info) {
     return <p className="shop-stub">Загрузка…</p>;
@@ -117,33 +223,85 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
             </button>
           ))}
         </div>
-        <p className="shop-balance">На счёте: {p.rubles.toLocaleString("ru-RU")} ₽</p>
+      </div>
+    );
+  }
+
+  if (view === "tariffs" && info.hasSim) {
+    return (
+      <div className="sim-shop">
+        <p className="sim-shop-hint">
+          Цены указаны для {info.cityName}. При переезде тариф сохраняется; следующее списание — по тарифам
+          нового города.
+        </p>
+        <ul className="sim-tariff-list">
+          {info.tariffs.map((plan) => {
+            const isCurrent = plan.id === info.tariff.id;
+            return (
+              <li key={plan.id}>
+                <button
+                  type="button"
+                  className={`sim-tariff-row${isCurrent ? " sim-tariff-row--current" : ""}`}
+                  disabled={busy || isCurrent}
+                  onClick={() => void requestTariff(plan.id)}
+                >
+                  <span className="sim-tariff-row-body">
+                    <span className="sim-tariff-row-title">{plan.title}</span>
+                    {isCurrent && <span className="sim-tariff-row-badge">текущий</span>}
+                  </span>
+                  <span className="sim-tariff-row-price">{plan.priceLabel}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        {pendingCopy && (
+          <ConfirmDialog
+            title={pendingCopy.title}
+            text={pendingCopy.text}
+            confirmLabel={pendingCopy.confirmLabel}
+            confirmClassName={pendingCopy.confirmClassName}
+            onCancel={() => setPending(null)}
+            onConfirm={() => void runPending()}
+          />
+        )}
       </div>
     );
   }
 
   return (
     <div className="sim-shop">
-      <div className="sim-card-visual" aria-hidden>
-        <span className="sim-card-chip" />
-        <span className="sim-card-label">SIM</span>
+      <div
+        className="sim-card-visual"
+        aria-label={
+          info.hasSim
+            ? `Сим-карта ${info.number}, тариф ${info.tariff.title}, баланс ${info.simBalanceRub.toLocaleString("ru-RU")} рублей`
+            : "Сим-карта"
+        }
+      >
+        <span className="sim-card-chip" aria-hidden />
+        {info.hasSim && (
+          <span className="sim-card-balance">{info.simBalanceRub.toLocaleString("ru-RU")} ₽</span>
+        )}
+        {info.hasSim && (
+          <>
+            <span className="sim-card-tariff">
+              тариф: {info.tariff.title}
+              {info.tariff.pendingTitle && (
+                <> → {info.tariff.pendingTitle}</>
+              )}
+            </span>
+            <span className="sim-card-paid-until">оплачен до: {info.tariff.paidUntilLabel}</span>
+          </>
+        )}
+        <span className="sim-card-label" aria-hidden>
+          SIM
+        </span>
         <span className="sim-card-number">{info.number ?? "+7 ???-???-??-??"}</span>
       </div>
 
-      <p className="sim-shop-hint">
-        Номер в формате <strong>+7 9XX-XXX-XX-XX</strong>. Каждый полный номер в игре встречается один раз.
-      </p>
-
       {info.hasSim ? (
         <>
-          <p className="shop-owned">
-            Ваш номер: <strong>{info.number}</strong>
-          </p>
-          <p className="shop-balance">
-            Баланс сим: <strong>{info.simBalanceRub.toLocaleString("ru-RU")} ₽</strong>
-          </p>
-          <p className="sim-shop-note">Пополнение — с основного счёта. Тарифы связи — позже.</p>
-
           <label className="sim-topup-label">
             Пополнить сим (₽)
             <input
@@ -155,13 +313,17 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
               onChange={(e) => setTopupAmount(e.target.value)}
             />
           </label>
-          <button
-            className="btn btn-primary"
-            type="button"
-            disabled={busy}
-            onClick={() => run(() => topupSim(Number(topupAmount)))}
-          >
+          <button className="btn btn-primary" type="button" disabled={busy} onClick={requestTopup}>
             Пополнить
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={busy}
+            onClick={() => setView("tariffs")}
+          >
+            Выбрать тариф
           </button>
 
           <button
@@ -179,9 +341,8 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
             Первая симка: <strong>{info.prices.register.toLocaleString("ru-RU")} ₽</strong>
           </p>
           <p className="sim-shop-note">
-            Случайный свободный номер, на баланс сим +{info.prices.startBalance} ₽.
+            Случайный свободный номер, на баланс сим +{info.prices.startBalance} ₽. Тариф «Только входящие».
           </p>
-          <p className="shop-balance">На счёте: {p.rubles.toLocaleString("ru-RU")} ₽</p>
           <button
             className="btn btn-primary"
             type="button"
@@ -191,6 +352,17 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
             Оформить симку
           </button>
         </>
+      )}
+
+      {pendingCopy && (
+        <ConfirmDialog
+          title={pendingCopy.title}
+          text={pendingCopy.text}
+          confirmLabel={pendingCopy.confirmLabel}
+          confirmClassName={pendingCopy.confirmClassName}
+          onCancel={() => setPending(null)}
+          onConfirm={() => void runPending()}
+        />
       )}
     </div>
   );

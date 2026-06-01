@@ -71,7 +71,6 @@ export function PlacesSection({
         <div className="place-detail">
           <p className="place-detail-lead">{place.hint}</p>
           <p>Билет в кино: 500 ₽ · +22 настроение</p>
-          <p className="shop-balance">На счёте: {rubles.toLocaleString("ru-RU")} ₽</p>
           <button
             type="button"
             className="btn btn-primary"

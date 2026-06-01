@@ -25,6 +25,7 @@ import {
 } from "./auth.js";
 import { countPlayersInCity, getDb, getPlayer, getUserById, listPlayersForAdmin, updatePlayer } from "./db.js";
 import { getCityLocalTime, getCityTimezone } from "./cityTime.js";
+import { getShiftDurationLabel } from "./jobShift.js";
 import {
   findCityJob,
   getCars,
@@ -62,6 +63,13 @@ import {
   startTravel,
 } from "./game.js";
 import { changeSimPart, registerSim, SIM_SHOP_PRICES, topupSim } from "./simShop.js";
+import {
+  getSimTariffStatus,
+  listTariffsForCity,
+  quoteSimTariff,
+  selectSimTariff,
+  syncPlayerSimTariffBilling,
+} from "./simTariff.js";
 import { listActionPreviews, performAction } from "./actions.js";
 import { buyProduct, listProductPreviews, listProducts } from "./products.js";
 import {
@@ -218,7 +226,6 @@ export async function registerRoutes(app: FastifyInstance) {
         job.kind === "duration"
           ? record?.cooldownMs ?? (job.shiftHoursMin ?? 4) * 3600000
           : (job.cooldownMs ?? 0);
-      const cooldownMs = scaleCooldownMs(baseCooldownMs, userId);
       const payoutMin =
         job.kind === "duration"
           ? (job.payoutPerHourMin ?? 0) * (job.shiftHoursMin ?? 4)
@@ -235,15 +242,19 @@ export async function registerRoutes(app: FastifyInstance) {
         kind: job.kind,
         shiftHoursMin: job.shiftHoursMin ?? null,
         shiftHoursMax: job.shiftHoursMax ?? null,
+        shiftHours: job.shiftHours ?? null,
+        shiftEndsAtHour: job.shiftEndsAtHour ?? null,
+        shiftDurationLabel: getShiftDurationLabel(job, work.localTime),
         payoutPerHourMin: job.payoutPerHourMin ?? null,
         payoutPerHourMax: job.payoutPerHourMax ?? null,
         payoutMin,
         payoutMax,
-        cooldownMs,
+        cooldownMs: baseCooldownMs,
         skill: job.skill,
         skillMin: job.skillMin,
         skillGain: job.skillGain,
         requiresSim: job.requiresSim ?? false,
+        requiresSimTariff: job.requiresSimTariff ?? null,
         requiresDriversLicense: job.requiresDriversLicense ?? false,
         schedule: job.schedule,
         payoutPeriods: job.payoutPeriods,
@@ -553,15 +564,50 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get("/api/shop/sim", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    const player = getPlayer(userId);
+    const player = syncPlayerSimTariffBilling(userId);
     if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const tariff = getSimTariffStatus(player);
     return {
       prices: SIM_SHOP_PRICES,
       hasPhoneDevice: Boolean(player.phone_device_id),
       hasSim: playerHasSim(player),
       number: formatSimFromPlayer(player),
       simBalanceRub: Math.floor(player.sim_balance_rub ?? 0),
+      tariff: {
+        id: tariff.tariffId,
+        title: tariff.tariffTitle,
+        pendingId: tariff.pendingId,
+        pendingTitle: tariff.pendingTitle,
+        paidUntil: tariff.paidUntil,
+        paidUntilLabel: tariff.paidUntilLabel,
+        pendingEffectiveLabel: tariff.pendingEffectiveLabel,
+      },
+      tariffs: listTariffsForCity(player.city_id),
+      cityName: getCity(player.city_id)?.name ?? player.city_id,
     };
+  });
+
+  app.get<{ Querystring: { planId?: string } }>("/api/shop/sim/tariff/quote", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = syncPlayerSimTariffBilling(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const planId = req.query.planId ?? "";
+    if (!planId) return reply.code(400).send({ error: "Укажите planId" });
+    const quote = quoteSimTariff(player, planId);
+    if ("error" in quote) return reply.code(400).send({ error: quote.error });
+    return quote;
+  });
+
+  app.post<{ Body: { planId?: string } }>("/api/shop/sim/tariff", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const planId = req.body?.planId ?? "";
+    if (!planId) return reply.code(400).send({ error: "Укажите planId" });
+    const result = selectSimTariff(userId, planId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { planId: result.planId, paidUntil: result.paidUntil, user };
   });
 
   app.get("/api/shop/phones", async (req, reply) => {

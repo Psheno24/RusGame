@@ -84,7 +84,7 @@ export function scheduleBlockedMessage(localTime: CityLocalTime, schedule: JobSc
   const nightStart = schedule.nightStartHour ?? 22;
   const dayStart = schedule.dayStartHour ?? 6;
   if (schedule.mode === "night") {
-    return `Смена только ночью (с ${nightStart}:00). Сейчас в городе ${localTime.label}`;
+    return `Смена с ${nightStart}:00 до ${dayStart}:00. Сейчас в городе ${localTime.label}`;
   }
   return `Работа только днём (${dayStart}:00–${nightStart}:00). Сейчас в городе ${localTime.label}`;
 }

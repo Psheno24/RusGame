@@ -260,7 +260,6 @@ export function HousingShop({
                 В магазине {rub(selected.listPriceRub)}, зачёт {rub(selected.tradeInRub!)}
               </p>
             )}
-            <p className="shop-balance">На счёте: {rub(user.player.rubles)}</p>
             {selected.isOwned ? (
               info.sellAmountRub != null && info.sellCatalogPriceRub != null ? (
                 <button

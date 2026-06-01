@@ -98,7 +98,6 @@ export function PoliceLicenseShop({ user, setUser, onToast, registerBack, onExit
           <p className="place-detail-lead">
             Оформление прав для покупки и управления транспортом нужной категории.
           </p>
-          <p className="shop-balance">На счёте: {rub(user.player.rubles)}</p>
           <ul className="phone-list police-license-list">
             {licenses.map((lic) => {
               const has = owned.has(lic.category);

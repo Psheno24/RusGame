@@ -313,7 +313,6 @@ export function PhoneShop({ user, setUser, onToast, onNavChange, registerBack }:
                 от текущей цены вашего телефона)
               </p>
             )}
-            <p className="shop-balance">На счёте: {rub(p.rubles)}</p>
             {ownedDevice ? (
               sellQuote ? (
                 <button

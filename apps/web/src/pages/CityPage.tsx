@@ -4,17 +4,18 @@ import { useNavBackSlot } from "../navBack";
 import {
   applyJob as applyJobApi,
   fetchCity,
-  formatCooldownMinutes,
   formatDuration,
   quitJob as quitJobApi,
   type HousingInfo,
   workJob,
   SKILL_LABELS,
+  SIM_TARIFF_LABELS,
   type CityLocalTimeView,
   type JobView,
   type User,
 } from "../api";
-import { getCityLocalTime } from "../cityTime";
+import { applyLiveJobSchedule, getCityLocalTime } from "../cityTime";
+import { getShiftDurationLabel, nightGuardStaminaHint } from "../jobShift";
 import { CityActivityFeed } from "../components/CityActivityFeed";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { CarShop } from "../components/CarShop";
@@ -41,6 +42,42 @@ function phoneRequirementStatus(player: User["player"]): { ok: boolean; status: 
   if (player.hasSim) return { ok: true, status: "есть" };
   if (player.phoneDeviceId) return { ok: false, status: "нет сим-карты (купите в магазине)" };
   return { ok: false, status: "нет" };
+}
+
+const TARIFF_RANK: Record<string, number> = {
+  incoming_only: 0,
+  minimal: 1,
+  connected: 2,
+  unlimited: 3,
+};
+
+function simTariffRequirementStatus(
+  player: User["player"],
+  required: string,
+): { ok: boolean; status: string } {
+  if (!player.hasSim) return { ok: false, status: "нет" };
+  const need = TARIFF_RANK[required] ?? 0;
+  const have = TARIFF_RANK[player.simTariffId] ?? 0;
+  if (have >= need) return { ok: true, status: "есть" };
+  return { ok: false, status: "нет" };
+}
+
+function resolveJobCooldown(
+  cooldown: JobView["cooldown"],
+  isTest: boolean,
+  now = Date.now(),
+): { ready: boolean; remainingMs: number } {
+  const effectivelyReady =
+    cooldown.ready ||
+    (isTest && cooldown.effectiveReadyAt != null && now >= cooldown.effectiveReadyAt);
+  const displayRemaining =
+    cooldown.displayReadyAt != null
+      ? Math.max(0, cooldown.displayReadyAt - now)
+      : cooldown.remainingMs;
+  return {
+    ready: effectivelyReady,
+    remainingMs: effectivelyReady ? 0 : displayRemaining,
+  };
 }
 
 type JobPendingAction =
@@ -85,17 +122,42 @@ function JobListCard({
   );
 }
 
-function JobActionButtonLabel({ base, remainingMs }: { base: string; remainingMs?: number }) {
-  if (remainingMs == null || remainingMs <= 0) {
+function JobActionButtonLabel({
+  base,
+  remainingMs,
+  disabledReason,
+}: {
+  base: string;
+  remainingMs?: number;
+  disabledReason?: string;
+}) {
+  const mins =
+    remainingMs != null && remainingMs > 0
+      ? formatDuration(remainingMs).replace(/ /g, "\u00A0")
+      : null;
+
+  if (!disabledReason && !mins) {
     return <span className="job-btn-text">{base}</span>;
   }
-  const mins = formatCooldownMinutes(remainingMs).replace(" ", "\u00A0");
+
   return (
-    <span className="job-btn-label">
-      <span className="job-btn-text">{base}</span>{" "}
-      <span className="job-btn-cooldown">(⏱&nbsp;{mins})</span>
+    <span className="job-btn-label job-btn-label--stack">
+      <span className="job-btn-text">{base}</span>
+      {disabledReason ? <span className="job-btn-reason">{disabledReason}</span> : null}
+      {mins ? <span className="job-btn-cooldown">(⏱&nbsp;{mins})</span> : null}
     </span>
   );
+}
+
+function hireDisabledReason(opts: {
+  busy: boolean;
+  requirementsMet: boolean;
+  shiftCooldownMs?: number;
+}): string | undefined {
+  if (opts.busy) return "подождите";
+  if (opts.shiftCooldownMs != null && opts.shiftCooldownMs > 0) return "дождитесь смены";
+  if (!opts.requirementsMet) return "не выполнены требования";
+  return undefined;
 }
 
 const CITY_SECTIONS: { id: CitySection; title: string; hint: string }[] = [
@@ -253,6 +315,8 @@ export function CityPage() {
         {isJobsSection ? (
           <JobsSection
             jobs={cityJobs}
+            cityTimezone={cityTimezone}
+            scheduleTick={tick}
             user={user}
             setUser={setUser}
             onToast={showToast}
@@ -318,15 +382,16 @@ export function CityPage() {
     <>
       <div className="card city-header-card">
         <h2 className="city-header-title">
-          {cityName.toLocaleUpperCase("ru-RU")}
-          {liveLocalTime && (
-            <>
-              <span className="city-header-sep">·</span>
-              <span className="city-header-time">{liveLocalTime.label}</span>
-            </>
-          )}
-          <span className="city-header-pop">(нас. {population.toLocaleString("ru-RU")})</span>
+          {cityName.toLocaleUpperCase("ru-RU")}{" "}
+          <span className="city-header-pop">
+            (население — {population.toLocaleString("ru-RU")})
+          </span>
         </h2>
+        {liveLocalTime && (
+          <p className="city-header-time-line">
+            Местное время — <strong>{liveLocalTime.label}</strong>
+          </p>
+        )}
         {!playable && (
           <p>Контент города скоро. Сейчас полностью доступны <strong>Омск</strong> и <strong>Казань</strong>.</p>
         )}
@@ -412,6 +477,8 @@ function ShopSection({
 
 function JobsSection({
   jobs,
+  cityTimezone,
+  scheduleTick,
   user,
   setUser,
   onToast,
@@ -420,6 +487,8 @@ function JobsSection({
   onJobsReload,
 }: {
   jobs: JobView[];
+  cityTimezone: string;
+  scheduleTick: number;
   user: User;
   setUser: (u: User) => void;
   onToast: (msg: string, isErr?: boolean) => void;
@@ -435,13 +504,28 @@ function JobsSection({
   const employedId = user.player.jobId;
   const isResident = user.player.isResident;
 
-  const allJobs = useMemo((): JobCard[] => jobs, [jobs]);
+  const allJobs = useMemo((): JobCard[] => {
+    const local = getCityLocalTime(cityTimezone);
+    return jobs.map((job) => ({
+      ...applyLiveJobSchedule(cityTimezone, job),
+      shiftDurationLabel: getShiftDurationLabel(job, local),
+    }));
+  }, [jobs, cityTimezone, scheduleTick]);
 
   const employedJob = employedId ? (allJobs.find((j) => j.id === employedId) ?? null) : null;
   const vacancyJobs = employedId ? allJobs.filter((j) => j.id !== employedId) : allJobs;
 
   const selected = selectedId ? allJobs.find((j) => j.id === selectedId) : null;
-  const employedCooldown = employedJob?.cooldown ?? { ready: true, remainingMs: 0 };
+  const employedCooldownRaw = employedJob?.cooldown ?? {
+    ready: true,
+    remainingMs: 0,
+    effectiveReadyAt: null,
+    displayReadyAt: null,
+  };
+  const employedCooldown = useMemo(
+    () => resolveJobCooldown(employedCooldownRaw, user.isTest),
+    [employedCooldownRaw, user.isTest, scheduleTick],
+  );
   const employmentBlocked = employedId != null && !employedCooldown.ready;
 
   useEffect(() => {
@@ -529,7 +613,7 @@ function JobsSection({
   const requestApply = (job: JobCard) => {
     if (employmentBlocked) {
       onToast(
-        `Смена работы недоступна. Подождите ${formatDuration(employedCooldown.remainingMs)}`,
+        `Смена работы недоступна. Дождитесь окончания смены (${formatDuration(employedCooldown.remainingMs)})`,
         true,
       );
       return;
@@ -548,7 +632,7 @@ function JobsSection({
   const requestQuit = (job: JobCard) => {
     if (employmentBlocked) {
       onToast(
-        `Увольнение недоступно до конца перерыва (${formatDuration(employedCooldown.remainingMs)})`,
+        `Увольнение недоступно до конца смены (${formatDuration(employedCooldown.remainingMs)})`,
         true,
       );
       return;
@@ -570,7 +654,7 @@ function JobsSection({
     if (pending.type === "switch") {
       return {
         title: "Смена работы",
-        text: `Уволиться с «${pending.currentTitle}» и устроиться на «${job.title}»? Перерыв после последней смены должен закончиться.`,
+        text: `Уволиться с «${pending.currentTitle}» и устроиться на «${job.title}»? Сначала должна закончиться текущая смена.`,
         confirmLabel: "Да, устроиться сюда",
         confirmClassName: "btn-success",
       };
@@ -592,30 +676,32 @@ function JobsSection({
       const earn = `около ${(job.payoutPerHourMin * hours).toLocaleString("ru-RU")}–${((job.payoutPerHourMax ?? job.payoutPerHourMin) * hours).toLocaleString("ru-RU")} ₽`;
       return {
         title: "Выйти на смену?",
-        text: `«${job.title}», ${hours} ч. Ожидаемый заработок: ${earn}${mult}. Перерыв после смены — ${hours} ч.`,
+        text: `«${job.title}», смена ${hours} ч.\nЗаработок: ${earn}${mult}`,
         confirmLabel: "Выйти на смену",
         confirmClassName: "btn-primary",
       };
     }
+    const shiftLabel = job.shiftDurationLabel || getShiftDurationLabel(job);
+    const staminaNote =
+      job.templateKey === "night_guard" && job.skill
+        ? `\nОпыт: +${job.skillGain ?? 1} ${SKILL_LABELS[job.skill] ?? job.skill} (${nightGuardStaminaHint()})`
+        : "";
+    const earn = `${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽${mult}`;
     return {
       title: "Выйти на смену?",
-      text: `«${job.title}»? Заработок: ${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽${mult}. Перерыв: ${formatDuration(job.cooldownMs)}.`,
+      text: `«${job.title}», смена ${shiftLabel}.\nЗаработок: ${earn}${staminaNote}`,
       confirmLabel: "Выйти на смену",
       confirmClassName: "btn-primary",
     };
   })();
 
   if (selected) {
+    const selectedCooldown = resolveJobCooldown(selected.cooldown, user.isTest);
     const employed = employedId === selected.id;
     const scheduleBlocked = employed && !selected.scheduleAllowed;
     const guestBlocked = !isResident;
-    const canHire =
-      !guestBlocked &&
-      !employed &&
-      !busy &&
-      (!employedId || (!employmentBlocked && employedId !== selected.id));
     const canWork =
-      employed && !busy && selected.cooldown.ready && selected.scheduleAllowed && !guestBlocked;
+      employed && !busy && selectedCooldown.ready && selected.scheduleAllowed && !guestBlocked;
     const canQuit = employed && !busy && !employmentBlocked;
 
     const minH = selected.shiftHoursMin ?? 4;
@@ -625,10 +711,24 @@ function JobsSection({
     const player = user.player;
     const licenseCategories = new Set(player.driverLicenseCategories ?? []);
     const hasLicenseB = licenseCategories.has("B");
-    const jobRequirements: JobRequirement[] = [];
+    const jobRequirements: JobRequirement[] = [
+      {
+        label: "Жильё в этом городе",
+        ok: isResident,
+        status: isResident ? "да" : "нет",
+      },
+    ];
     if (selected.requiresSim) {
       const phone = phoneRequirementStatus(player);
-      jobRequirements.push({ label: "Телефон", ok: phone.ok, status: phone.status });
+      jobRequirements.push({ label: "Сим-карта", ok: phone.ok, status: phone.status });
+    }
+    if (selected.requiresSimTariff) {
+      const tariff = simTariffRequirementStatus(player, selected.requiresSimTariff);
+      jobRequirements.push({
+        label: `Тариф «${SIM_TARIFF_LABELS[selected.requiresSimTariff] ?? selected.requiresSimTariff}»`,
+        ok: tariff.ok,
+        status: tariff.status,
+      });
     }
     if (selected.requiresDriversLicense) {
       jobRequirements.push({ label: "В/у категории B", ok: hasLicenseB });
@@ -641,18 +741,35 @@ function JobsSection({
       });
     }
 
+    const requirementsMet = jobRequirements.every((r) => r.ok);
+
+    const canHire =
+      requirementsMet &&
+      !employed &&
+      !busy &&
+      (!employedId || (!employmentBlocked && employedId !== selected.id));
+
     const leftRemainingMs =
-      employed && !selected.cooldown.ready
-        ? selected.cooldown.remainingMs
+      employed && !selectedCooldown.ready
+        ? selectedCooldown.remainingMs
         : !employed && employedId && employedId !== selected.id && employmentBlocked
           ? employedCooldown.remainingMs
           : undefined;
+
+    const hireReason =
+      !employed && !canHire
+        ? hireDisabledReason({
+            busy,
+            requirementsMet,
+            shiftCooldownMs: leftRemainingMs,
+          })
+        : undefined;
 
     const quitRemainingMs = employmentBlocked && employed ? employedCooldown.remainingMs : undefined;
 
     const onLeftClick = () => {
       if (employed) {
-        if (!selected.cooldown.ready || scheduleBlocked) return;
+        if (!selectedCooldown.ready || scheduleBlocked) return;
         if (selected.kind === "duration") {
           if (shiftHours < minH || shiftHours > maxH) {
             onToast(`Выберите смену от ${minH} до ${maxH} ч`, true);
@@ -681,31 +798,23 @@ function JobsSection({
                   : `${selected.payoutMin.toLocaleString("ru-RU")}–${selected.payoutMax.toLocaleString("ru-RU")} ₽`}
               </dd>
             </div>
-            {selected.kind === "duration" && (
-              <div>
-                <dt>Смена</dt>
-                <dd>
-                  {selected.shiftHoursMin}–{selected.shiftHoursMax ?? selected.shiftHoursMin} ч
-                </dd>
-              </div>
-            )}
+            <div>
+              <dt>Длительность смены</dt>
+              <dd>{selected.shiftDurationLabel}</dd>
+            </div>
             <div className="job-requirements">
               <dt>Требования</dt>
               <dd>
-                {jobRequirements.length > 0 ? (
-                  <ul className="job-requirements-list">
-                    {jobRequirements.map((req) => (
-                      <li key={req.label}>
-                        {req.label}{" "}
-                        <span className={req.ok ? "license-ok" : "license-miss"}>
-                          {req.status ?? (req.ok ? "есть" : "нет")}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  "—"
-                )}
+                <ul className="job-requirements-list">
+                  {jobRequirements.map((req) => (
+                    <li key={req.label}>
+                      {req.label}{" "}
+                      <span className={req.ok ? "license-ok" : "license-miss"}>
+                        {req.status ?? (req.ok ? "есть" : "нет")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </dd>
             </div>
             {employed && selected.kind === "duration" && (
@@ -732,6 +841,9 @@ function JobsSection({
                 <dt>Опыт</dt>
                 <dd>
                   +{selected.skillGain} {SKILL_LABELS[selected.skill]}
+                  {selected.templateKey === "night_guard" && (
+                    <span className="job-skill-hint"> ({nightGuardStaminaHint()})</span>
+                  )}
                 </dd>
               </div>
             )}
@@ -740,7 +852,7 @@ function JobsSection({
                 <dt>Расписание</dt>
                 <dd>
                   {selected.schedule.mode === "night"
-                    ? `Только ночью (с ${selected.schedule.nightStartHour ?? 22}:00)`
+                    ? `Выход с ${selected.schedule.nightStartHour ?? 22}:00, смена до ${String(selected.schedule.dayStartHour ?? 8).padStart(2, "0")}:00`
                     : `Только днём (${selected.schedule.dayStartHour ?? 6}:00–${selected.schedule.nightStartHour ?? 22}:00)`}
                 </dd>
               </div>
@@ -753,7 +865,11 @@ function JobsSection({
               disabled={employed ? !canWork : !canHire}
               onClick={onLeftClick}
             >
-              <JobActionButtonLabel base={leftBase} remainingMs={leftRemainingMs} />
+              <JobActionButtonLabel
+                base={leftBase}
+                remainingMs={leftRemainingMs}
+                disabledReason={!employed ? hireReason : undefined}
+              />
             </button>
             <button
               className="btn btn-danger"

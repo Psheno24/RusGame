@@ -32,6 +32,10 @@ export type JobTemplate = {
   kind: JobKind;
   shiftHoursMin?: number;
   shiftHoursMax?: number;
+  /** Fixed shift length for cooldown jobs (e.g. cashier). */
+  shiftHours?: number;
+  /** Shift ends at this local hour (night guard — until 8:00). */
+  shiftEndsAtHour?: number;
   payoutPerHourMin?: number;
   payoutPerHourMax?: number;
   cooldownMs?: number;
@@ -43,6 +47,7 @@ export type JobTemplate = {
   requiresSim?: boolean;
   requiresPhone?: boolean;
   requiresDriversLicense?: boolean;
+  requiresSimTariff?: "incoming_only" | "minimal" | "connected" | "unlimited";
   schedule?: JobSchedule;
   payoutPeriods?: PayoutPeriod[];
   workCosts?: {

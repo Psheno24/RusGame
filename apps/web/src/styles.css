@@ -996,8 +996,26 @@ body {
   letter-spacing: normal;
 }
 
+.city-header-time-line {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.city-header-time-line strong {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
 .city-header-card p {
   margin: 10px 0 0;
+}
+
+.job-skill-hint {
+  color: var(--text-muted);
+  font-weight: 400;
 }
 
 .city-grid {
@@ -1465,13 +1483,14 @@ body {
 }
 
 .sim-card-visual {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
   min-height: 100px;
-  padding: 16px;
+  padding: 16px 14px;
   border-radius: 16px;
   background: linear-gradient(135deg, #2a5a3d 0%, #1a3d52 55%, #1e2a3d 100%);
   border: 1px solid #3d5168;
@@ -1479,11 +1498,143 @@ body {
 }
 
 .sim-card-chip {
+  position: absolute;
+  top: 12px;
+  left: 14px;
   width: 28px;
   height: 20px;
   border-radius: 4px;
   background: linear-gradient(145deg, #e8a849, #c4882e);
-  align-self: flex-start;
+}
+
+.sim-card-balance {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  max-width: calc(100% - 56px);
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: #f5f0e6;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
+
+.sim-card-tariff,
+.sim-card-paid-until {
+  position: absolute;
+  bottom: 10px;
+  max-width: calc(50% - 14px);
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: rgba(245, 240, 230, 0.82);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.sim-card-tariff {
+  left: 12px;
+  text-align: left;
+}
+
+.sim-card-paid-until {
+  right: 12px;
+  text-align: right;
+}
+
+.sim-tariff-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sim-tariff-list > li {
+  margin: 0;
+  padding: 0;
+}
+
+.sim-tariff-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 13px 14px;
+  border: 1px solid #3d5168;
+  border-radius: 12px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s;
+}
+
+.sim-tariff-row:not(:disabled):hover {
+  border-color: rgba(232, 168, 73, 0.55);
+  background: var(--bg-elevated);
+}
+
+.sim-tariff-row:disabled {
+  cursor: default;
+}
+
+.sim-tariff-row--current {
+  border-color: var(--accent);
+  background: rgba(232, 168, 73, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(232, 168, 73, 0.28),
+    0 4px 14px rgba(0, 0, 0, 0.22);
+}
+
+.sim-tariff-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.sim-tariff-row-title {
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.sim-tariff-row-price {
+  flex-shrink: 0;
+  align-self: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: var(--text);
+  white-space: nowrap;
+  text-align: right;
+}
+
+.sim-tariff-row-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
 }
 
 .sim-card-label {
@@ -1747,6 +1898,20 @@ body {
   display: inline;
 }
 
+.job-btn-label--stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.job-btn-reason {
+  font-size: 0.78em;
+  font-weight: 400;
+  line-height: 1.2;
+  opacity: 0.92;
+}
+
 .job-btn-text,
 .job-btn-cooldown {
   white-space: nowrap;
@@ -1834,6 +1999,7 @@ body {
   font-size: 0.9rem;
   line-height: 1.45;
   color: var(--text-muted);
+  white-space: pre-line;
 }
 
 .confirm-dialog-actions {

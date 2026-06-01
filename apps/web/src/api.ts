@@ -1,3 +1,5 @@
+import { formatLocaleDateRu } from "./formatLocaleDate.js";
+
 export type Skills = {
   agility: number;
   stamina: number;
@@ -35,6 +37,9 @@ export type Player = {
   phoneNumber: string | null;
   hasSim: boolean;
   simBalanceRub: number;
+  simTariffId: string;
+  simTariffTitle: string;
+  simTariffPaidUntil: number | null;
   phoneDeviceId: string | null;
   phoneDeviceName: string | null;
   carOwned: boolean;
@@ -372,6 +377,9 @@ export type JobView = {
   kind: "duration" | "cooldown";
   shiftHoursMin: number | null;
   shiftHoursMax: number | null;
+  shiftHours: number | null;
+  shiftEndsAtHour: number | null;
+  shiftDurationLabel: string;
   payoutPerHourMin: number | null;
   payoutPerHourMax: number | null;
   cooldownMs: number;
@@ -381,10 +389,16 @@ export type JobView = {
   skillMin?: number;
   skillGain?: number;
   requiresSim?: boolean;
+  requiresSimTariff?: string | null;
   requiresDriversLicense?: boolean;
   schedule?: JobScheduleView;
   payoutPeriods?: Array<{ fromHour: number; toHour: number; multiplier: number }>;
-  cooldown: { ready: boolean; remainingMs: number };
+  cooldown: {
+    ready: boolean;
+    remainingMs: number;
+    effectiveReadyAt: number | null;
+    displayReadyAt: number | null;
+  };
   scheduleAllowed: boolean;
   payoutMultiplier: number;
   scheduleHint: string | null;
@@ -493,12 +507,49 @@ export type SimShopPrices = {
   startBalance: number;
 };
 
+export type SimTariffPlanView = {
+  id: string;
+  title: string;
+  weeklyRub: number;
+  priceLabel: string;
+};
+
+export type SimTariffQuote = {
+  planId: string;
+  title: string;
+  kind: "new" | "upgrade" | "downgrade";
+  currentTitle: string;
+  chargeRub: number;
+  nextChargeAt: number | null;
+  nextChargeLabel: string | null;
+  effectiveAt: number | null;
+  effectiveAtLabel: string | null;
+  paidUntilLabel: string;
+  cityName: string;
+  weeklyRub: number;
+  isCurrent: boolean;
+  prorateDaysUsed: number | null;
+  prorateDaysRemaining: number | null;
+  currentWeeklyRub: number;
+};
+
 export type SimShopInfo = {
   prices: SimShopPrices;
   hasPhoneDevice: boolean;
   hasSim: boolean;
   number: string | null;
   simBalanceRub: number;
+  tariff: {
+    id: string;
+    title: string;
+    pendingId: string | null;
+    pendingTitle: string | null;
+    paidUntil: number | null;
+    paidUntilLabel: string;
+    pendingEffectiveLabel: string | null;
+  };
+  tariffs: SimTariffPlanView[];
+  cityName: string;
 };
 
 export async function fetchShopPrices() {
@@ -647,6 +698,24 @@ export async function topupSim(amount: number) {
   });
 }
 
+export async function fetchSimTariffQuote(planId: string) {
+  return api<SimTariffQuote>(`/api/shop/sim/tariff/quote?planId=${encodeURIComponent(planId)}`);
+}
+
+export async function selectSimTariff(planId: string) {
+  return api<{ planId: string; paidUntil: number | null; user: User }>("/api/shop/sim/tariff", {
+    method: "POST",
+    body: JSON.stringify({ planId }),
+  });
+}
+
+export const SIM_TARIFF_LABELS: Record<string, string> = {
+  incoming_only: "Только входящие",
+  minimal: "Минимальный",
+  connected: "На связи",
+  unlimited: "Полный безлимит",
+};
+
 export async function fetchCarSellQuote(playerCarId: number) {
   return api<{
     amountRub: number;
@@ -720,23 +789,10 @@ export async function sellHousing() {
 
 export function formatHousingExpiry(ts: number | null): string {
   if (ts == null) return "";
-  const d = new Date(ts);
-  return d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  return formatLocaleDateRu(ts, { withTime: true });
 }
 
-export function formatDuration(ms: number): string {
-  if (ms <= 0) return "готово";
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  if (h > 0) return `${h} ч ${m} мин`;
-  return `${m} мин`;
-}
-
-/** Минуты до конца перерыва (для подписи на кнопках). */
-export function formatCooldownMinutes(ms: number): string {
-  if (ms <= 0) return "0 мин";
-  return `${Math.ceil(ms / 60000)} мин`;
-}
+export { formatDuration } from "./formatDuration.js";
 
 export const SKILL_LABELS: Record<string, string> = {
   agility: "Ловкость",

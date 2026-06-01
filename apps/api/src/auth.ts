@@ -9,6 +9,7 @@ import { getHousingProperty, housingPropertyLabel } from "./housingCatalog.js";
 import { formatVehiclePlate, parsePlatePartsFromRow } from "./licensePlate.js";
 import { housingStatusForPlayer } from "./housing.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
+import { getPlayerSimTariffId, getSimTariffPlan, syncPlayerSimTariffBilling } from "./simTariff.js";
 import {
   createPlayer,
   createUser,
@@ -129,7 +130,7 @@ export async function buildSession(userId: number, refreshToken: string) {
 
 export async function getPublicUser(userId: number) {
   const user = getUserById(userId);
-  const player = getPlayer(userId);
+  const player = syncPlayerSimTariffBilling(userId);
   if (!user || !player) return null;
   return {
     login: user.login,
@@ -164,6 +165,9 @@ export function serializePlayer(p: import("./db.js").PlayerRow) {
     phoneNumber: formatSimFromPlayer(p),
     hasSim: playerHasSim(p),
     simBalanceRub: Math.floor(p.sim_balance_rub ?? 0),
+    simTariffId: getPlayerSimTariffId(p),
+    simTariffTitle: getSimTariffPlan(getPlayerSimTariffId(p))?.title ?? "Только входящие",
+    simTariffPaidUntil: p.sim_tariff_paid_until,
     phoneDeviceId: p.phone_device_id,
     phoneDeviceName: p.phone_device_id
       ? (() => {

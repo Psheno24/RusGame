@@ -22,6 +22,9 @@ export type PlayerRow = {
   sim_mid: string | null;
   sim_last: string | null;
   sim_balance_rub: number;
+  sim_tariff_id: string;
+  sim_tariff_paid_until: number | null;
+  sim_tariff_pending_id: string | null;
   phone_device_id: string | null;
   phone_acquired_at: number | null;
   car_owned: number;
@@ -209,6 +212,18 @@ function migrate(database: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_player_cars_user ON player_cars(user_id);
   `);
 
+  const colsTariff = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!colsTariff.some((c) => c.name === "sim_tariff_id")) {
+    database.exec(
+      "ALTER TABLE players ADD COLUMN sim_tariff_id TEXT NOT NULL DEFAULT 'incoming_only'",
+    );
+    database.exec("ALTER TABLE players ADD COLUMN sim_tariff_paid_until INTEGER");
+  }
+  const colsTariffPending = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!colsTariffPending.some((c) => c.name === "sim_tariff_pending_id")) {
+    database.exec("ALTER TABLE players ADD COLUMN sim_tariff_pending_id TEXT");
+  }
+
   const cols8 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
   if (!cols8.some((c) => c.name === "driver_licenses")) {
     database.exec("ALTER TABLE players ADD COLUMN driver_licenses TEXT");
@@ -286,6 +301,7 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
         agility = ?, stamina = ?, charisma = ?, wit = ?,
         side_gig_ready_at = ?, shift_ready_at = ?, last_work_at_by_job = ?,
         phone_number = ?, sim_operator = ?, sim_mid = ?, sim_last = ?, sim_balance_rub = ?,
+        sim_tariff_id = ?, sim_tariff_paid_until = ?, sim_tariff_pending_id = ?,
         phone_device_id = ?, phone_acquired_at = ?,
         car_owned = ?, car_model_id = ?, car_acquired_at = ?,
         plate_text = ?, plate_l1 = ?, plate_digits = ?, plate_l2 = ?, plate_region = ?,
@@ -315,6 +331,9 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
       next.sim_mid,
       next.sim_last,
       next.sim_balance_rub ?? 0,
+      next.sim_tariff_id ?? "incoming_only",
+      next.sim_tariff_paid_until ?? null,
+      next.sim_tariff_pending_id ?? null,
       next.phone_device_id,
       next.phone_acquired_at ?? null,
       next.car_owned,

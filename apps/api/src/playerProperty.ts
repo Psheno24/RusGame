@@ -4,6 +4,7 @@ import { getCar, getPhone, getVehicleRental } from "./gameData.js";
 import { getHousingProperty } from "./housingCatalog.js";
 import { housingStatusForPlayer } from "./housing.js";
 import { listPlayerCars } from "./playerCars.js";
+import { formatLocaleDateRu } from "./formatLocaleDate.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 
 export type PropertyCard = {
@@ -15,10 +16,6 @@ export type PropertyCard = {
   plate: VehiclePlateParts | null;
   accent: string;
 };
-
-function formatExpiryDate(ts: number): string {
-  return new Date(ts).toLocaleString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
-}
 
 export function buildPropertyCards(player: PlayerRow, now = Date.now()): PropertyCard[] {
   const cards: PropertyCard[] = [];
@@ -62,7 +59,7 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
       id: "rental",
       kind: "rental",
       title: rental?.label ?? "Аренда транспорта",
-      rightText: `до ${formatExpiryDate(player.vehicle_rental_expires_at)}`,
+      rightText: `до ${formatLocaleDateRu(player.vehicle_rental_expires_at)}`,
       rightSubtext: null,
       plate: null,
       accent: rental?.accent ?? "#2d8f5c",
@@ -86,7 +83,7 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
       id: "housing",
       kind: "housing",
       title: player.housing_type === "rent" ? "Аренда квартиры" : "Общежитие",
-      rightText: housing.expiresAt ? `до ${formatExpiryDate(housing.expiresAt)}` : null,
+      rightText: housing.expiresAt ? `до ${formatLocaleDateRu(housing.expiresAt)}` : null,
       rightSubtext: null,
       plate: null,
       accent: "#4a6fa5",

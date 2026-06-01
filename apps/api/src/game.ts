@@ -15,6 +15,12 @@ import {
   scheduleBlockedMessage,
   type CityLocalTime,
 } from "./cityTime.js";
+import { formatDuration } from "./formatDuration.js";
+import {
+  computeNightGuardShiftMinutes,
+  isNightGuardJob,
+  nightGuardStaminaEligible,
+} from "./jobShift.js";
 import {
   findCityJob,
   getCity,
@@ -37,6 +43,7 @@ import {
 } from "./playerStats.js";
 import { applyCarCooldownReduction, hasDriverLicense } from "./playerCars.js";
 import { playerHasSim } from "./simNumber.js";
+import { playerMeetsSimTariff, syncPlayerSimTariffBilling, type SimTariffId } from "./simTariff.js";
 import {
   canWorkJobNow,
   jobCooldownState,
@@ -74,11 +81,13 @@ export function resolveTravel(player: PlayerRow, now = Date.now()): PlayerRow {
     job_id: null,
   };
   updatePlayer(player.user_id, next);
-  return { ...player, ...next } as PlayerRow;
+  const arrived = { ...player, ...next } as PlayerRow;
+  syncPlayerSimTariffBilling(player.user_id, now);
+  return getPlayer(player.user_id) ?? arrived;
 }
 
 function cooldownBlockedMessage(remainingMs: number): string {
-  return `Дождитесь окончания перерыва (${Math.ceil(remainingMs / 60000)} мин)`;
+  return `Дождитесь окончания смены (ещё ${formatDuration(remainingMs)})`;
 }
 
 function checkJobRequirements(player: PlayerRow, job: JobDef): string | null {
@@ -87,6 +96,16 @@ function checkJobRequirements(player: PlayerRow, job: JobDef): string | null {
   }
   if (jobRequiresSim(job) && !playerHasSim(player)) {
     return "Нужна сим-карта — оформите в магазине (телефон → сим-карта)";
+  }
+  if (job.requiresSimTariff && !playerMeetsSimTariff(player, job.requiresSimTariff)) {
+    const titles: Record<SimTariffId, string> = {
+      incoming_only: "Только входящие",
+      minimal: "Минимальный",
+      connected: "На связи",
+      unlimited: "Полный безлимит",
+    };
+    const need = titles[job.requiresSimTariff];
+    return `Нужен тариф «${need}» — подключите в магазине (телефон → сим-карта)`;
   }
   if (job.skill && job.skillMin != null) {
     const v = getSkill(player, job.skill as SkillKey);
@@ -276,10 +295,11 @@ export function quitJob(
 }
 
 export function doJobWork(userId: number, jobId: string, hours?: number, now = Date.now()): WorkResult {
-  let player = getPlayer(userId);
+  let player = syncPlayerSimTariffBilling(userId, now);
   if (!player) return { ok: false, error: "Игрок не найден" };
   player = resolveTravel(player, now);
   if (player.status === "traveling") return { ok: false, error: "Вы в пути — подождите прибытия" };
+  player = syncPlayerSimTariffBilling(userId, now) ?? player;
 
   const guestErr = requireCityResident(player, now);
   if (guestErr) {
@@ -320,12 +340,36 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
     shiftHours = hours;
     cooldownMs = applyCarCooldownReduction(userId, hours * 3600000);
     workCosts = scaleWorkCostsByHours(job.workCosts, hours);
+  } else if (isNightGuardJob(job)) {
+    if (hours != null) {
+      return { ok: false, error: "Для этой работы длительность смены не выбирается" };
+    }
+    const endHour = job.shiftEndsAtHour ?? 8;
+    const shiftMinutes = computeNightGuardShiftMinutes(
+      schedule.localTime.hour,
+      schedule.localTime.minute,
+      endHour,
+    );
+    if (shiftMinutes <= 0) {
+      return {
+        ok: false,
+        error: `Смена до ${String(endHour).padStart(2, "0")}:00 уже закончилась. Выходите с 22:00.`,
+        code: "outside_schedule",
+        localTime: schedule.localTime,
+      };
+    }
+    shiftHours = shiftMinutes / 60;
+    workCosts = scaleWorkCostsByHours(job.workCosts, shiftHours, 10);
+    cooldownMs = applyCarCooldownReduction(userId, job.cooldownMs ?? 0);
   } else {
     if (hours != null) {
       return { ok: false, error: "Для этой работы длительность смены не выбирается" };
     }
-    shiftHours = 0;
+    shiftHours = job.shiftHours ?? 0;
     cooldownMs = applyCarCooldownReduction(userId, job.cooldownMs ?? 0);
+    if (shiftHours > 0) {
+      workCosts = scaleWorkCostsByHours(job.workCosts, shiftHours, shiftHours);
+    }
   }
 
   const scaledCosts = scaleWorkCosts(player, workCosts);
@@ -334,9 +378,11 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
 
   const cd = jobCooldownState(player, job, now);
   if (!cd.ready) {
-    const record = lastWorkRecordForJob(player, job.id);
-    const readyAt = record ? record.at + cooldownMs : now;
-    return { ok: false, error: "Смена ещё не готова", readyAt };
+    return {
+      ok: false,
+      error: "Смена ещё не готова",
+      readyAt: cd.effectiveReadyAt ?? now,
+    };
   }
 
   const payoutResult =
@@ -358,9 +404,14 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
 
   let skillGain: { key: SkillKey; amount: number } | undefined;
   if (job.skill && job.skillGain) {
-    const key = job.skill as SkillKey;
-    patch[key] = getSkill(player, key) + job.skillGain;
-    skillGain = { key, amount: job.skillGain };
+    const grantSkill =
+      !isNightGuardJob(job) ||
+      nightGuardStaminaEligible(schedule.localTime, job.shiftEndsAtHour ?? 8);
+    if (grantSkill) {
+      const key = job.skill as SkillKey;
+      patch[key] = getSkill(player, key) + job.skillGain;
+      skillGain = { key, amount: job.skillGain };
+    }
   }
 
   updatePlayer(userId, patch);
@@ -369,7 +420,15 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
   let message =
     job.kind === "duration"
       ? `${job.title} (${shiftHours} ч): +${payout.toLocaleString("ru-RU")} ₽`
-      : payoutMessage(job, payout, multiplier);
+      : isNightGuardJob(job)
+        ? `${job.title} (до ${String(job.shiftEndsAtHour ?? 8).padStart(2, "0")}:00, ${formatShiftMinutesRu(
+            computeNightGuardShiftMinutes(
+              schedule.localTime.hour,
+              schedule.localTime.minute,
+              job.shiftEndsAtHour ?? 8,
+            ),
+          )}): +${payout.toLocaleString("ru-RU")} ₽`
+        : payoutMessage(job, payout, multiplier);
 
   if (multiplier > 1 && job.kind === "duration") {
     const multLabel = multiplier.toFixed(2).replace(/\.?0+$/, "");

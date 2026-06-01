@@ -71,3 +71,32 @@ export function isWorkScheduleAllowed(
   if (schedule.mode === "night") return !isDayTime(localTime.minutesOfDay, schedule);
   return true;
 }
+
+export function scheduleBlockedMessage(localTime: CityLocalTime, schedule: JobSchedule): string {
+  const nightStart = schedule.nightStartHour ?? 22;
+  const dayStart = schedule.dayStartHour ?? 6;
+  if (schedule.mode === "night") {
+    return `Смена с ${nightStart}:00 до ${dayStart}:00. Сейчас в городе ${localTime.label}`;
+  }
+  return `Работа только днём (${dayStart}:00–${nightStart}:00). Сейчас в городе ${localTime.label}`;
+}
+
+/** Recompute schedule flags from city timezone (clock ticks between API reloads). */
+export function applyLiveJobSchedule<T extends {
+  schedule?: JobSchedule;
+  scheduleAllowed: boolean;
+  scheduleHint: string | null;
+}>(timezone: string, job: T, now = Date.now()): T {
+  const localTime = getCityLocalTime(timezone, now);
+  const scheduleAllowed = isWorkScheduleAllowed(localTime, job.schedule);
+  return {
+    ...job,
+    scheduleAllowed,
+    scheduleHint:
+      !scheduleAllowed && job.schedule
+        ? scheduleBlockedMessage(localTime, job.schedule)
+        : job.scheduleAllowed
+          ? job.scheduleHint
+          : null,
+  };
+}

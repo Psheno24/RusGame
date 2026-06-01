@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { SKILL_LABELS } from "../api";
+import { formatLocaleDateRu } from "../formatLocaleDate";
 import { cityDisplayName } from "../cityNames";
 import { ProfilePropertyCards } from "../components/ProfilePropertyCards";
 import { VitalsBar } from "../components/VitalsBar";
@@ -33,10 +34,7 @@ export function ProfilePage() {
               <span className="profile-stat-value">
                 {(p.isResident ?? false) ? "Житель" : "Гость"}
                 {p.housingExpiresAt && p.isResident && p.housingType !== "owned"
-                  ? ` · до ${new Date(p.housingExpiresAt).toLocaleString("ru-RU", {
-                      day: "numeric",
-                      month: "short",
-                    })}`
+                  ? ` · до ${formatLocaleDateRu(p.housingExpiresAt)}`
                   : null}
               </span>
             </div>

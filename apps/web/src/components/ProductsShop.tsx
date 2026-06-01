@@ -52,10 +52,7 @@ export function ProductsShop({ user, setUser, onToast }: Props) {
 
   return (
     <div className="products-shop">
-      <p className="products-shop-lead">
-        Еда и напитки восстанавливают показатели. На счёте:{" "}
-        <strong>{user.player.rubles.toLocaleString("ru-RU")} ₽</strong>
-      </p>
+      <p className="products-shop-lead">Еда и напитки восстанавливают показатели.</p>
       <ul className="products-list">
         {items.map((p) => (
           <li key={p.id} className="card product-card">

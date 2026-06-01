@@ -485,7 +485,6 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
             {!selected.isOwned && tradeInPriceHint(selected) && (
               <p className="shop-trade-in">{tradeInPriceHint(selected)}</p>
             )}
-            <p className="shop-balance">На счёте: {rub(p.rubles)}</p>
             {selected.isOwned && ownedInstance ? (
               <button
                 type="button"
@@ -708,7 +707,6 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
             {plateInfo.brand} {plateInfo.model}
           </h3>
           <p className="shop-owned">Оформление и смена госномера</p>
-          <p className="shop-balance">На счёте: {rub(p.rubles)}</p>
           <PlateShopPanel
             info={plateInfo}
             spinning={plateSpin}

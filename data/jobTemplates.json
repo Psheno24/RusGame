@@ -8,6 +8,7 @@
     "payoutPerHourMin": 380,
     "payoutPerHourMax": 620,
     "requiresSim": true,
+    "requiresSimTariff": "unlimited",
     "workCosts": { "energy": 18, "hunger": 10, "mood": 3 }
   },
   "taxi": {
@@ -20,6 +21,7 @@
     "payoutPerHourMax": 780,
     "requiresDriversLicense": true,
     "requiresSim": true,
+    "requiresSimTariff": "unlimited",
     "workCosts": { "energy": 16, "hunger": 8, "mood": 4 },
     "payoutPeriods": [
       { "fromHour": 7, "toHour": 10, "multiplier": 1.2 },
@@ -29,8 +31,9 @@
   },
   "cashier": {
     "title": "Кассир «Пятёрочка»",
-    "description": "Работа на кассе. Можно в любое время, перерыв между сменами — 12 часов.",
+    "description": "Работа на кассе. Смена 8 ч. Можно в любое время.",
     "kind": "cooldown",
+    "shiftHours": 8,
     "cooldownMs": 43200000,
     "payoutMin": 2200,
     "payoutMax": 3200,
@@ -38,10 +41,11 @@
   },
   "night_guard": {
     "title": "Ночной сторож",
-    "description": "Охрана объекта ночью. Перерыв между сменами — 24 часа.",
+    "description": "Охрана с 22:00 до 8:00 по местному времени. До следующей смены — 24 ч.",
     "kind": "cooldown",
+    "shiftEndsAtHour": 8,
     "cooldownMs": 86400000,
-    "schedule": { "mode": "night", "nightStartHour": 22, "dayStartHour": 6 },
+    "schedule": { "mode": "night", "nightStartHour": 22, "dayStartHour": 8 },
     "payoutMin": 3500,
     "payoutMax": 5500,
     "skill": "stamina",
