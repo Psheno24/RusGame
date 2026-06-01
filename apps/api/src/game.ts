@@ -18,6 +18,7 @@ import {
 import { formatDuration } from "./formatDuration.js";
 import {
   computeNightGuardShiftMinutes,
+  formatShiftMinutesRu,
   isNightGuardJob,
   jobNominalCooldownMs,
   nightGuardStaminaEligible,

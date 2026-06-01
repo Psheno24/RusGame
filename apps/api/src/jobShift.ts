@@ -50,10 +50,7 @@ export function isNightGuardJob(job: Pick<JobDef, "templateKey" | "shiftEndsAtHo
 }
 
 export function getShiftDurationLabel(
-  job: Pick<
-    JobDef,
-    "kind" | "templateKey" | "shiftHoursMin" | "shiftHoursMax" | "shiftHours" | "shiftEndsAtHour"
-  >,
+  job: Pick<JobDef, "kind" | "shiftHoursMin" | "shiftHoursMax" | "shiftHours" | "shiftEndsAtHour">,
   local?: Pick<CityLocalTime, "hour" | "minute">,
 ): string {
   if (job.kind === "duration") {
