@@ -31,6 +31,18 @@ type ShopTab = "products" | "phone" | "car";
 
 type JobCard = JobView;
 
+type JobRequirement = {
+  label: string;
+  ok: boolean;
+  status?: string;
+};
+
+function phoneRequirementStatus(player: User["player"]): { ok: boolean; status: string } {
+  if (player.hasSim) return { ok: true, status: "есть" };
+  if (player.phoneDeviceId) return { ok: false, status: "нет сим-карты (купите в магазине)" };
+  return { ok: false, status: "нет" };
+}
+
 type JobPendingAction =
   | { type: "apply"; job: JobCard }
   | { type: "switch"; job: JobCard; currentTitle: string }
@@ -613,9 +625,10 @@ function JobsSection({
     const player = user.player;
     const licenseCategories = new Set(player.driverLicenseCategories ?? []);
     const hasLicenseB = licenseCategories.has("B");
-    const jobRequirements: Array<{ label: string; ok: boolean }> = [];
+    const jobRequirements: JobRequirement[] = [];
     if (selected.requiresSim) {
-      jobRequirements.push({ label: "Телефон", ok: player.hasSim });
+      const phone = phoneRequirementStatus(player);
+      jobRequirements.push({ label: "Телефон", ok: phone.ok, status: phone.status });
     }
     if (selected.requiresDriversLicense) {
       jobRequirements.push({ label: "В/у категории B", ok: hasLicenseB });
@@ -685,7 +698,7 @@ function JobsSection({
                       <li key={req.label}>
                         {req.label}{" "}
                         <span className={req.ok ? "license-ok" : "license-miss"}>
-                          {req.ok ? "есть" : "нет"}
+                          {req.status ?? (req.ok ? "есть" : "нет")}
                         </span>
                       </li>
                     ))}
