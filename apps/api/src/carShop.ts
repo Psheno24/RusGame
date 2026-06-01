@@ -17,7 +17,11 @@ import {
   parseDriverLicenses,
   tradeInValueForPlayerCar,
 } from "./playerCars.js";
-import { formatVehiclePlate, parsePlatePartsFromRow } from "./licensePlate.js";
+import {
+  formatVehiclePlate,
+  parsePlatePartsFromRow,
+  type VehiclePlateParts,
+} from "./licensePlate.js";
 import type { PlayerCarRow } from "./playerCars.js";
 import { getCarShopPriceRub } from "./shopCatalog.js";
 
@@ -43,6 +47,7 @@ export type OwnedCarView = {
   accent: string;
   year: number;
   body: string;
+  plate: VehiclePlateParts | null;
   plateText: string | null;
   tradeInRub: number;
 };
@@ -139,7 +144,8 @@ export function listOwnedCars(player: PlayerRow, now = Date.now()): OwnedCarView
         accent: car.accent,
         year: car.year,
         body: car.body,
-        plateText: row.plate_text,
+        plate: parsePlatePartsFromRow(row),
+        plateText: plateTextForCarRow(row),
         tradeInRub,
       };
     })

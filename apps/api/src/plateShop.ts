@@ -21,6 +21,7 @@ export type PlateGarageCar = {
   brand: string;
   model: string;
   accent: string;
+  plate: VehiclePlateParts | null;
   plateText: string | null;
 };
 
@@ -57,6 +58,7 @@ export function getPlateGarageList(player: PlayerRow): PlateGarageCar[] {
         brand: car.brand,
         model: car.model,
         accent: car.accent,
+        plate: parsePlatePartsFromRow(row),
         plateText: plateTextFromRow(row),
       };
     })

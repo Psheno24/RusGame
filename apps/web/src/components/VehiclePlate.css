@@ -1,0 +1,107 @@
+/* ГОСТ Р 50577-93: 520×112; серия 76; регион 58 (в зоне 92); RUS+флаг 20; RUS 17; бок 114 */
+
+@font-face {
+  font-family: "GostPlate";
+  src: url("/fonts/gost-plate.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+.gost-plate {
+  --plate-h: 40px;
+  box-sizing: border-box;
+  line-height: 1;
+  user-select: none;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.gost-plate__svg {
+  display: block;
+  width: 100%;
+  height: var(--plate-h);
+  overflow: visible;
+}
+
+.gost-plate__rim {
+  fill: #000;
+}
+
+.gost-plate__surface {
+  fill: #fff;
+  stroke: #000;
+  stroke-width: 2;
+}
+
+.gost-plate__divider {
+  stroke: #000;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.gost-plate__main-text,
+.gost-plate__region,
+.gost-plate__rus {
+  fill: #000;
+  font-family: "GostPlate", "Arial Narrow", "Liberation Sans Narrow", Arial, sans-serif;
+  font-weight: 700;
+  dominant-baseline: alphabetic;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.gost-plate__main-text {
+  font-size: 72px;
+  letter-spacing: 2px;
+}
+
+.gost-plate__region {
+  font-size: 48px;
+  letter-spacing: 0;
+}
+
+.gost-plate__rus {
+  font-size: 22px;
+  letter-spacing: 1px;
+}
+
+.gost-plate__flag-border {
+  fill: #fff;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 1;
+}
+
+.gost-plate__flag-white {
+  fill: #fff;
+}
+
+.gost-plate__flag-blue {
+  fill: #0039a6;
+}
+
+.gost-plate__flag-red {
+  fill: #d52b1e;
+}
+
+/*
+  The sign is drawn in the official 520×112 coordinate system and scaled by
+  the root width, so all component sizes keep the same proportions.
+*/
+
+.gost-plate--spin {
+  animation: gost-plate-shake 0.35s ease-in-out;
+}
+
+@keyframes gost-plate-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}

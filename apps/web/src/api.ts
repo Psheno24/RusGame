@@ -145,6 +145,7 @@ export type OwnedCar = {
   accent: string;
   year: number;
   body: string;
+  plate: VehiclePlateParts | null;
   plateText: string | null;
   tradeInRub: number;
 };
@@ -167,12 +168,20 @@ export type VehicleRental = {
   accent: string;
 };
 
+export type VehiclePlateParts = {
+  l1: string;
+  digits: string;
+  l2: string;
+  region: string;
+};
+
 export type PlateGarageCar = {
   playerCarId: number;
   modelId: string;
   brand: string;
   model: string;
   accent: string;
+  plate: VehiclePlateParts | null;
   plateText: string | null;
 };
 
@@ -192,6 +201,7 @@ export type PropertyCard = {
   title: string;
   rightText: string | null;
   rightSubtext: string | null;
+  plate: VehiclePlateParts | null;
   accent: string;
 };
 

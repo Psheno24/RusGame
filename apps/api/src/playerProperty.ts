@@ -1,5 +1,5 @@
 import type { PlayerRow } from "./db.js";
-import { formatVehiclePlate, parsePlatePartsFromRow } from "./licensePlate.js";
+import { parsePlatePartsFromRow, type VehiclePlateParts } from "./licensePlate.js";
 import { getCar, getPhone, getVehicleRental } from "./gameData.js";
 import { getHousingProperty } from "./housingCatalog.js";
 import { housingStatusForPlayer } from "./housing.js";
@@ -12,6 +12,7 @@ export type PropertyCard = {
   title: string;
   rightText: string | null;
   rightSubtext: string | null;
+  plate: VehiclePlateParts | null;
   accent: string;
 };
 
@@ -32,6 +33,7 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
       title: phone ? `${phone.brand} ${phone.model}` : "Телефон",
       rightText: number,
       rightSubtext: number ? `${balance} ₽` : null,
+      plate: null,
       accent: phone?.accent ?? "#3d4f6f",
     });
   }
@@ -39,13 +41,13 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
   for (const row of listPlayerCars(player.user_id)) {
     const car = getCar(row.car_model_id);
     const parts = parsePlatePartsFromRow(row);
-    const plateText = row.plate_text ?? (parts ? formatVehiclePlate(parts) : null);
     cards.push({
       id: `car-${row.id}`,
       kind: "car",
       title: car ? `${car.brand} ${car.model} · ${car.year}` : "Автомобиль",
-      rightText: plateText,
+      rightText: null,
       rightSubtext: null,
+      plate: parts,
       accent: car?.accent ?? "#4a5568",
     });
   }
@@ -62,6 +64,7 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
       title: rental?.label ?? "Аренда транспорта",
       rightText: `до ${formatExpiryDate(player.vehicle_rental_expires_at)}`,
       rightSubtext: null,
+      plate: null,
       accent: rental?.accent ?? "#2d8f5c",
     });
   }
@@ -75,6 +78,7 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
       title: prop?.title ?? "Квартира",
       rightText: null,
       rightSubtext: null,
+      plate: null,
       accent: "#5a4a7a",
     });
   } else if (housing.isResident && player.housing_type !== "owned") {
@@ -84,6 +88,7 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
       title: player.housing_type === "rent" ? "Аренда квартиры" : "Общежитие",
       rightText: housing.expiresAt ? `до ${formatExpiryDate(housing.expiresAt)}` : null,
       rightSubtext: null,
+      plate: null,
       accent: "#4a6fa5",
     });
   }

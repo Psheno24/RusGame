@@ -1,4 +1,5 @@
 import type { PlateShopCarInfo } from "../api";
+import { VehiclePlate } from "./VehiclePlate";
 
 type Props = {
   info: PlateShopCarInfo;
@@ -15,25 +16,11 @@ function rub(n: number) {
 }
 
 export function PlateShopPanel({ info, spinning, busy, onRegister, onDigits, onLetters, onRegion }: Props) {
-  const p = info.plate;
-  const display = p
-    ? `${p.l1} ${p.digits} ${p.l2}`
-    : spinning
-      ? "··· ···· ··"
-      : "— ·— ——";
-  const region = p?.region ?? (spinning ? "··" : "—");
-
   return (
     <div className="plate-shop">
-      <div className={`plate-preview${spinning ? " plate-preview--spin" : ""}`}>
-        <div className="plate-preview-main">{display}</div>
-        <div className="plate-preview-region">
-          {region} <span className="plate-preview-rus">RUS</span>
-        </div>
-      </div>
-      {info.plateText && <p className="shop-balance">{info.plateText}</p>}
+      <VehiclePlate parts={info.plate} spinning={spinning} size="lg" className="plate-shop-preview" />
       <div className="plate-shop-actions">
-        {!p ? (
+        {!info.plate ? (
           <button type="button" className="btn btn-primary" disabled={busy} onClick={onRegister}>
             Оформить ({rub(info.prices.register)})
           </button>

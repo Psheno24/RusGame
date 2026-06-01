@@ -27,6 +27,7 @@ import {
 import type { NavBackHandler } from "../navBack";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { PlateShopPanel } from "./PlateShopPanel";
+import { VehiclePlate } from "./VehiclePlate";
 
 type CarNav =
   | "hub"
@@ -466,10 +467,12 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
                     <span className="license-ok">куплено</span>
                   </dd>
                 </div>
-                {ownedInstance?.plateText && (
+                {ownedInstance?.plate && (
                   <div>
                     <dt>Гос.номер</dt>
-                    <dd>{ownedInstance.plateText}</dd>
+                    <dd className="car-detail-plate">
+                      <VehiclePlate parts={ownedInstance.plate} size="md" />
+                    </dd>
                   </div>
                 )}
               </>
@@ -683,7 +686,11 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
                         {c.plateText ? "номер оформлен" : "без номера"}
                       </span>
                     </span>
-                    <span className="plate-list-number">{c.plateText ?? "—"}</span>
+                    {c.plate ? (
+                      <VehiclePlate parts={c.plate} size="sm" className="plate-list-plate" />
+                    ) : (
+                      <span className="plate-list-empty">—</span>
+                    )}
                   </button>
                 </li>
               ))}
