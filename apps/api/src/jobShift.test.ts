@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   computeNightGuardShiftMinutes,
   getShiftDurationLabel,
+  jobNominalCooldownMs,
   nightGuardStaminaEligible,
 } from "./jobShift.js";
 
@@ -20,6 +21,13 @@ describe("jobShift", () => {
     assert.equal(nightGuardStaminaEligible({ hour: 2, minute: 59, minutesOfDay: 0, label: "", period: "night", periodLabel: "" }), true);
     assert.equal(nightGuardStaminaEligible({ hour: 3, minute: 0, minutesOfDay: 0, label: "", period: "night", periodLabel: "" }), false);
     assert.equal(nightGuardStaminaEligible({ hour: 5, minute: 0, minutesOfDay: 0, label: "", period: "night", periodLabel: "" }), false);
+  });
+
+  it("cashier cooldown matches shiftHours", () => {
+    assert.equal(
+      jobNominalCooldownMs({ kind: "cooldown", shiftHours: 8, cooldownMs: 43_200_000 }),
+      8 * 3_600_000,
+    );
   });
 
   it("shift duration labels", () => {

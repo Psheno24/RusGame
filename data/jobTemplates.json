@@ -34,7 +34,7 @@
     "description": "Работа на кассе. Смена 8 ч. Можно в любое время.",
     "kind": "cooldown",
     "shiftHours": 8,
-    "cooldownMs": 43200000,
+    "cooldownMs": 28800000,
     "payoutMin": 2200,
     "payoutMax": 3200,
     "workCosts": { "energy": 14, "hunger": 8, "mood": 2 }

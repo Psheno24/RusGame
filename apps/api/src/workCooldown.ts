@@ -1,5 +1,6 @@
 import type { PlayerRow } from "./db.js";
 import { findCityJob, type JobDef } from "./gameData.js";
+import { jobNominalCooldownMs } from "./jobShift.js";
 import { scaleCooldownMs } from "./testAccount.js";
 
 export function formatCooldown(readyAt: number, now = Date.now()): { ready: boolean; remainingMs: number } {
@@ -22,10 +23,7 @@ export function parseLastWorkByJob(player: PlayerRow): LastWorkByJob {
     for (const [jobId, value] of Object.entries(parsed)) {
       if (typeof value === "number") {
         const job = findCityJob(player.city_id, jobId);
-        const cooldownMs =
-          job?.kind === "duration"
-            ? (job.shiftHoursMin ?? 4) * 3600000
-            : (job?.cooldownMs ?? 0);
+        const cooldownMs = job ? jobNominalCooldownMs(job) : 0;
         map[jobId] = { at: value, cooldownMs };
       } else if (value && typeof value === "object" && "at" in value) {
         const rec = value as JobWorkRecord;
@@ -71,10 +69,7 @@ export function withLastWork(
 /** @deprecated use withLastWork */
 export function withLastWorkAt(player: PlayerRow, jobId: string, ts: number): LastWorkByJob {
   const job = findCityJob(player.city_id, jobId);
-  const cooldownMs =
-    job?.kind === "duration"
-      ? (job.shiftHoursMin ?? 4) * 3600000
-      : (job?.cooldownMs ?? 0);
+  const cooldownMs = job ? jobNominalCooldownMs(job) : 0;
   return withLastWork(player, jobId, ts, cooldownMs);
 }
 
@@ -83,9 +78,10 @@ export function getJobDefInCity(cityId: string, jobId: string): JobDef | null {
 }
 
 export function jobCooldownMs(job: JobDef, record: JobWorkRecord | null): number {
+  const nominal = jobNominalCooldownMs(job);
+  if (job.kind === "cooldown" && job.shiftHours != null && job.shiftHours > 0) return nominal;
   if (record?.cooldownMs) return record.cooldownMs;
-  if (job.kind === "duration") return (job.shiftHoursMin ?? 4) * 3600000;
-  return job.cooldownMs ?? 0;
+  return nominal;
 }
 
 export type JobCooldownState = {

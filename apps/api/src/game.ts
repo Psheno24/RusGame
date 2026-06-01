@@ -19,6 +19,7 @@ import { formatDuration } from "./formatDuration.js";
 import {
   computeNightGuardShiftMinutes,
   isNightGuardJob,
+  jobNominalCooldownMs,
   nightGuardStaminaEligible,
 } from "./jobShift.js";
 import {
@@ -360,13 +361,13 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
     }
     shiftHours = shiftMinutes / 60;
     workCosts = scaleWorkCostsByHours(job.workCosts, shiftHours, 10);
-    cooldownMs = applyCarCooldownReduction(userId, job.cooldownMs ?? 0);
+    cooldownMs = applyCarCooldownReduction(userId, jobNominalCooldownMs(job));
   } else {
     if (hours != null) {
       return { ok: false, error: "Для этой работы длительность смены не выбирается" };
     }
     shiftHours = job.shiftHours ?? 0;
-    cooldownMs = applyCarCooldownReduction(userId, job.cooldownMs ?? 0);
+    cooldownMs = applyCarCooldownReduction(userId, jobNominalCooldownMs(job));
     if (shiftHours > 0) {
       workCosts = scaleWorkCostsByHours(job.workCosts, shiftHours, shiftHours);
     }

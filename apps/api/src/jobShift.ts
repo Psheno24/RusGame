@@ -2,9 +2,19 @@ import type { CityLocalTime } from "./cityTime.js";
 import { formatDuration } from "./formatDuration.js";
 import type { JobDef } from "./gameData.js";
 
+const HOUR_MS = 3_600_000;
 const NIGHT_GUARD_NIGHT_START = 22;
 const NIGHT_GUARD_SHIFT_END = 8;
 const NIGHT_GUARD_PERIOD_MINUTES = (24 - NIGHT_GUARD_NIGHT_START + NIGHT_GUARD_SHIFT_END) * 60;
+
+/** КД после смены: для фиксированной смены (кассир) — из shiftHours, иначе из cooldownMs. */
+export function jobNominalCooldownMs(
+  job: Pick<JobDef, "kind" | "shiftHoursMin" | "shiftHours" | "cooldownMs">,
+): number {
+  if (job.kind === "duration") return (job.shiftHoursMin ?? 4) * HOUR_MS;
+  if (job.shiftHours != null && job.shiftHours > 0) return job.shiftHours * HOUR_MS;
+  return job.cooldownMs ?? 0;
+}
 
 export function computeNightGuardShiftMinutes(
   hour: number,
