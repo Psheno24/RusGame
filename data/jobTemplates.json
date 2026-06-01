@@ -41,10 +41,9 @@
   },
   "night_guard": {
     "title": "Ночной сторож",
-    "description": "Охрана с 22:00 до 8:00 по местному времени. До следующей смены — 24 ч.",
+    "description": "Охрана с 22:00 до 8:00 по местному времени. Смена до 8:00 — столько, сколько осталось до конца ночи.",
     "kind": "cooldown",
     "shiftEndsAtHour": 8,
-    "cooldownMs": 86400000,
     "schedule": { "mode": "night", "nightStartHour": 22, "dayStartHour": 8 },
     "payoutMin": 3500,
     "payoutMax": 5500,

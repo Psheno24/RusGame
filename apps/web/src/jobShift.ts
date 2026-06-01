@@ -3,7 +3,20 @@ import { formatDuration } from "./formatDuration";
 
 const NIGHT_GUARD_NIGHT_START = 22;
 const NIGHT_GUARD_SHIFT_END = 8;
-const NIGHT_GUARD_PERIOD_MINUTES = (24 - NIGHT_GUARD_NIGHT_START + NIGHT_GUARD_SHIFT_END) * 60;
+export const NIGHT_GUARD_PERIOD_MINUTES = (24 - NIGHT_GUARD_NIGHT_START + NIGHT_GUARD_SHIFT_END) * 60;
+export const NIGHT_GUARD_MAX_SHIFT_HOURS = NIGHT_GUARD_PERIOD_MINUTES / 60;
+
+export function scaleNightGuardPayoutRange(
+  payoutMin: number,
+  payoutMax: number,
+  shiftHours: number,
+): { min: number; max: number } {
+  const proportion = Math.min(1, shiftHours / NIGHT_GUARD_MAX_SHIFT_HOURS);
+  return {
+    min: Math.floor(payoutMin * proportion),
+    max: Math.floor(payoutMax * proportion),
+  };
+}
 
 export function computeNightGuardShiftMinutes(
   hour: number,
@@ -65,12 +78,14 @@ export function getJobCooldownLabel(
     shiftHoursMin?: number | null;
     shiftHoursMax?: number | null;
     shiftHours?: number | null;
+    shiftEndsAtHour?: number | null;
     cooldownMs?: number;
   },
   opts?: {
     remainingMs?: number;
     lastShiftHours?: number | null;
     selectedShiftHours?: number;
+    local?: Pick<CityLocalTime, "hour" | "minute">;
   },
 ): string {
   if (opts?.remainingMs != null && opts.remainingMs > 0) {
@@ -82,6 +97,9 @@ export function getJobCooldownLabel(
     const min = job.shiftHoursMin ?? 4;
     const max = job.shiftHoursMax ?? 12;
     return `${min}–${max} ч`;
+  }
+  if (job.shiftEndsAtHour != null) {
+    return getShiftDurationLabel(job, opts?.local);
   }
   if (job.shiftHours != null && job.shiftHours > 0) return `${job.shiftHours} ч`;
   const ms = job.cooldownMs ?? 0;

@@ -25,7 +25,7 @@ import {
 } from "./auth.js";
 import { countPlayersInCity, getDb, getPlayer, getUserById, listPlayersForAdmin, updatePlayer } from "./db.js";
 import { getCityLocalTime, getCityTimezone } from "./cityTime.js";
-import { getJobCooldownLabel, jobNominalCooldownMs } from "./jobShift.js";
+import { getJobCooldownLabel, isNightGuardJob, jobNominalCooldownMs, scaleNightGuardPayoutRange } from "./jobShift.js";
 import {
   findCityJob,
   getCars,
@@ -237,17 +237,22 @@ export async function registerRoutes(app: FastifyInstance) {
       const cooldown = jobCooldownState(player, job, now);
       const record = lastWorkRecordForJob(player, job.id);
       const baseCooldownMs =
-        job.kind === "duration" && record?.cooldownMs
-          ? record.cooldownMs
-          : jobNominalCooldownMs(job);
-      const payoutMin =
+        record?.cooldownMs ?? jobNominalCooldownMs(job, work.localTime);
+      let payoutMin =
         job.kind === "duration"
           ? (job.payoutPerHourMin ?? 0) * (job.shiftHoursMin ?? 4)
           : (job.payoutMin ?? 0);
-      const payoutMax =
+      let payoutMax =
         job.kind === "duration"
           ? (job.payoutPerHourMax ?? 0) * (job.shiftHoursMax ?? 12)
           : (job.payoutMax ?? 0);
+      if (isNightGuardJob(job)) {
+        const shiftHours =
+          jobNominalCooldownMs(job, work.localTime) / 3_600_000;
+        const scaled = scaleNightGuardPayoutRange(job.payoutMin ?? 0, job.payoutMax ?? 0, shiftHours);
+        payoutMin = scaled.min;
+        payoutMax = scaled.max;
+      }
       const workCityId = city?.id ?? player.city_id;
       const access = jobAccessStatus(player, job.id, now);
       return {
@@ -267,6 +272,7 @@ export async function registerRoutes(app: FastifyInstance) {
         shiftDurationLabel: getJobCooldownLabel(job, {
           remainingMs: cooldown.ready ? undefined : cooldown.remainingMs,
           lastShiftHours: job.kind === "duration" && record ? Math.round(record.cooldownMs / 3600000) : null,
+          local: work.localTime,
         }),
         payoutPerHourMin: job.payoutPerHourMin ?? null,
         payoutPerHourMax: job.payoutPerHourMax ?? null,

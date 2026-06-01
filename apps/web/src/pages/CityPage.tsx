@@ -16,7 +16,7 @@ import {
   type User,
 } from "../api";
 import { applyLiveJobSchedule, getCityLocalTime } from "../cityTime";
-import { getJobCooldownLabel, getShiftDurationLabel, nightGuardStaminaHint } from "../jobShift";
+import { getJobCooldownLabel, nightGuardStaminaHint } from "../jobShift";
 import { CityActivityFeed } from "../components/CityActivityFeed";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { CarShop } from "../components/CarShop";
@@ -512,6 +512,7 @@ function JobsSection({
   const isResident = user.player.isResident;
 
   const allJobs = useMemo((): JobCard[] => {
+    const local = getCityLocalTime(cityTimezone);
     return jobs.map((job) => {
       const cooldown = resolveJobCooldown(job.cooldown, user.isTest);
       return {
@@ -519,6 +520,7 @@ function JobsSection({
         shiftDurationLabel: getJobCooldownLabel(job, {
           remainingMs: cooldown.remainingMs > 0 ? cooldown.remainingMs : undefined,
           lastShiftHours: job.lastShiftHours,
+          local,
         }),
       };
     });
@@ -695,7 +697,8 @@ function JobsSection({
         confirmClassName: "btn-primary",
       };
     }
-    const shiftLabel = getShiftDurationLabel(job, getCityLocalTime(cityTimezone));
+    const local = getCityLocalTime(cityTimezone);
+    const shiftLabel = getJobCooldownLabel(job, { local });
     const staminaNote =
       job.templateKey === "night_guard" && job.skill
         ? `\nОпыт: +${job.skillGain ?? 1} ${SKILL_LABELS[job.skill] ?? job.skill} (${nightGuardStaminaHint()})`
@@ -727,11 +730,13 @@ function JobsSection({
       !workBlocked;
     const canQuit = employed && !busy && !employmentBlocked;
 
+    const local = getCityLocalTime(cityTimezone);
     const shiftCooldownLabel = getJobCooldownLabel(selected, {
       remainingMs: !selectedCooldown.ready ? selectedCooldown.remainingMs : undefined,
       lastShiftHours: selected.lastShiftHours,
       selectedShiftHours:
         employed && selected.kind === "duration" && selectedCooldown.ready ? shiftHours : undefined,
+      local,
     });
 
     const minH = selected.shiftHoursMin ?? 4;

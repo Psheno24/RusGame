@@ -3,17 +3,43 @@ import { formatDuration } from "./formatDuration.js";
 import type { JobDef } from "./gameData.js";
 
 const HOUR_MS = 3_600_000;
+const MIN_MS = 60_000;
 const NIGHT_GUARD_NIGHT_START = 22;
 const NIGHT_GUARD_SHIFT_END = 8;
-const NIGHT_GUARD_PERIOD_MINUTES = (24 - NIGHT_GUARD_NIGHT_START + NIGHT_GUARD_SHIFT_END) * 60;
+export const NIGHT_GUARD_PERIOD_MINUTES = (24 - NIGHT_GUARD_NIGHT_START + NIGHT_GUARD_SHIFT_END) * 60;
+export const NIGHT_GUARD_MAX_SHIFT_HOURS = NIGHT_GUARD_PERIOD_MINUTES / 60;
 
-/** КД после смены: для фиксированной смены (кассир) — из shiftHours, иначе из cooldownMs. */
+/** КД после смены: для фиксированной смены (кассир) — из shiftHours; для сторожа — до 8:00. */
 export function jobNominalCooldownMs(
-  job: Pick<JobDef, "kind" | "shiftHoursMin" | "shiftHours" | "cooldownMs">,
+  job: Pick<JobDef, "kind" | "shiftHoursMin" | "shiftHours" | "shiftEndsAtHour" | "cooldownMs">,
+  local?: Pick<CityLocalTime, "hour" | "minute">,
 ): number {
   if (job.kind === "duration") return (job.shiftHoursMin ?? 4) * HOUR_MS;
   if (job.shiftHours != null && job.shiftHours > 0) return job.shiftHours * HOUR_MS;
+  if (job.shiftEndsAtHour != null && local) {
+    return computeNightGuardShiftMinutes(local.hour, local.minute, job.shiftEndsAtHour) * MIN_MS;
+  }
+  if (job.shiftEndsAtHour != null) return NIGHT_GUARD_PERIOD_MINUTES * MIN_MS;
   return job.cooldownMs ?? 0;
+}
+
+export function computeNightGuardShiftMs(
+  local: Pick<CityLocalTime, "hour" | "minute">,
+  shiftEndHour = NIGHT_GUARD_SHIFT_END,
+): number {
+  return computeNightGuardShiftMinutes(local.hour, local.minute, shiftEndHour) * MIN_MS;
+}
+
+export function scaleNightGuardPayoutRange(
+  payoutMin: number,
+  payoutMax: number,
+  shiftHours: number,
+): { min: number; max: number } {
+  const proportion = Math.min(1, shiftHours / NIGHT_GUARD_MAX_SHIFT_HOURS);
+  return {
+    min: Math.floor(payoutMin * proportion),
+    max: Math.floor(payoutMax * proportion),
+  };
 }
 
 export function computeNightGuardShiftMinutes(
@@ -73,11 +99,15 @@ export function getShiftDurationLabel(
 
 /** КД смены — совпадает с таймером на кнопках «Выйти на смену» / «Уволиться». */
 export function getJobCooldownLabel(
-  job: Pick<JobDef, "kind" | "shiftHoursMin" | "shiftHoursMax" | "shiftHours" | "cooldownMs">,
+  job: Pick<
+    JobDef,
+    "kind" | "shiftHoursMin" | "shiftHoursMax" | "shiftHours" | "shiftEndsAtHour" | "cooldownMs"
+  >,
   opts?: {
     remainingMs?: number;
     lastShiftHours?: number | null;
     selectedShiftHours?: number;
+    local?: Pick<CityLocalTime, "hour" | "minute">;
   },
 ): string {
   if (opts?.remainingMs != null && opts.remainingMs > 0) {
@@ -89,6 +119,9 @@ export function getJobCooldownLabel(
     const min = job.shiftHoursMin ?? 4;
     const max = job.shiftHoursMax ?? 12;
     return `${min}–${max} ч`;
+  }
+  if (job.shiftEndsAtHour != null) {
+    return getShiftDurationLabel(job, opts?.local);
   }
   if (job.shiftHours != null && job.shiftHours > 0) return `${job.shiftHours} ч`;
   const ms = job.cooldownMs ?? 0;
