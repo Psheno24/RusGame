@@ -13,9 +13,11 @@ import {
   workSideGig,
   SKILL_LABELS,
   type CityFeedEvent,
+  type CityLocalTimeView,
   type JobView,
   type User,
 } from "../api";
+import { getCityLocalTime } from "../cityTime";
 import { CityActivityFeed } from "../components/CityActivityFeed";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PhoneShop } from "../components/PhoneShop";
@@ -97,6 +99,8 @@ export function CityPage() {
   const [cityName, setCityName] = useState("");
   const [population, setPopulation] = useState(0);
   const [playable, setPlayable] = useState(true);
+  const [cityTimezone, setCityTimezone] = useState("Europe/Moscow");
+  const [cityLocalTime, setCityLocalTime] = useState<CityLocalTimeView | null>(null);
   const [traveling, setTraveling] = useState(false);
   const [arrivesAt, setArrivesAt] = useState<number | null>(null);
   const [section, setSection] = useState<CitySection | null>(null);
@@ -109,13 +113,15 @@ export function CityPage() {
   const [shift, setShift] = useState<JobView | null>(null);
   const [feed, setFeed] = useState<CityFeedEvent[]>([]);
   const [error, setError] = useState("");
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
 
   const load = useCallback(async () => {
     const data = await fetchCity();
     setCityName(data.city?.name ?? "—");
     setPopulation(data.city?.population ?? 0);
     setPlayable(data.city?.playable ?? false);
+    setCityTimezone(data.city?.timezone ?? "Europe/Moscow");
+    setCityLocalTime(data.city?.localTime ?? null);
     setTraveling(data.traveling);
     setArrivesAt(data.travelArrivesAt);
     setSideGig(data.jobs?.sideGig ?? null);
@@ -128,6 +134,18 @@ export function CityPage() {
     const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, [load]);
+
+  const liveLocalTime = useMemo(() => {
+    if (!cityTimezone) return cityLocalTime;
+    const t = getCityLocalTime(cityTimezone);
+    return {
+      hour: t.hour,
+      minute: t.minute,
+      label: t.label,
+      period: t.period,
+      periodLabel: t.periodLabel,
+    };
+  }, [cityTimezone, cityLocalTime, tick]);
 
   useEffect(() => {
     if (!traveling || !arrivesAt) return;
@@ -213,6 +231,7 @@ export function CityPage() {
           <JobsSection
             sideGig={sideGig}
             shift={shift}
+            cityLocalTime={liveLocalTime}
             user={user}
             setUser={setUser}
             onToast={showToast}
@@ -261,7 +280,16 @@ export function CityPage() {
     <>
       <div className="card city-header-card">
         <h2 className="city-header-title">
-          {cityName.toLocaleUpperCase("ru-RU")}{" "}
+          {cityName.toLocaleUpperCase("ru-RU")}
+          {liveLocalTime && (
+            <>
+              <span className="city-header-sep">·</span>
+              <span className="city-header-time">{liveLocalTime.label}</span>
+              <span className={`city-header-period city-header-period--${liveLocalTime.period}`}>
+                {liveLocalTime.periodLabel}
+              </span>
+            </>
+          )}
           <span className="city-header-pop">(нас. {population.toLocaleString("ru-RU")})</span>
         </h2>
         {!playable && (
@@ -389,6 +417,7 @@ function ShopSection({
 function JobsSection({
   sideGig,
   shift,
+  cityLocalTime,
   user,
   setUser,
   onToast,
@@ -398,6 +427,7 @@ function JobsSection({
 }: {
   sideGig: JobView;
   shift: JobView | null;
+  cityLocalTime: CityLocalTimeView | null;
   user: User;
   setUser: (u: User) => void;
   onToast: (msg: string, isErr?: boolean) => void;
@@ -566,9 +596,13 @@ function JobsSection({
       };
     }
     const workLabel = job.kind === "side" ? "подработку" : "смену";
+    const mult =
+      job.payoutMultiplier > 1
+        ? ` (сейчас ×${job.payoutMultiplier.toFixed(2).replace(/\.?0+$/, "")})`
+        : "";
     return {
       title: job.kind === "side" ? "Выйти на подработку?" : "Выйти на смену?",
-      text: `Начать ${workLabel} «${job.title}»? Заработок: ${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽.`,
+      text: `Начать ${workLabel} «${job.title}»? Заработок: ${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽${mult}.`,
       confirmLabel: job.kind === "side" ? "Подработать" : "Выйти на смену",
       confirmClassName: "btn-primary",
     };
@@ -576,9 +610,10 @@ function JobsSection({
 
   if (selected) {
     const employed = employedId === selected.id;
+    const scheduleBlocked = employed && !selected.scheduleAllowed;
     const canHire =
       !employed && !busy && (!employedId || (!employmentBlocked && employedId !== selected.id));
-    const canWork = employed && !busy && selected.cooldown.ready;
+    const canWork = employed && !busy && selected.cooldown.ready && selected.scheduleAllowed;
     const canQuit = employed && !busy && !employmentBlocked;
 
     const leftBase = employed
@@ -598,7 +633,7 @@ function JobsSection({
 
     const onLeftClick = () => {
       if (employed) {
-        if (!selected.cooldown.ready) return;
+        if (!selected.cooldown.ready || scheduleBlocked) return;
         setPending({ type: "work", job: selected });
         return;
       }
@@ -660,6 +695,31 @@ function JobsSection({
                   +{selected.skillGain} {SKILL_LABELS[selected.skill]}
                 </dd>
               </div>
+            )}
+            {cityLocalTime && (
+              <div>
+                <dt>Время в городе</dt>
+                <dd>
+                  {cityLocalTime.label} · {cityLocalTime.periodLabel}
+                </dd>
+              </div>
+            )}
+            {selected.schedule?.mode && selected.schedule.mode !== "any" && (
+              <div>
+                <dt>Расписание</dt>
+                <dd>
+                  {selected.schedule.mode === "night"
+                    ? `Только ночью (с ${selected.schedule.nightStartHour ?? 22}:00)`
+                    : `Только днём (${selected.schedule.dayStartHour ?? 6}:00–${selected.schedule.nightStartHour ?? 22}:00)`}
+                </dd>
+              </div>
+            )}
+            {selected.scheduleHint && (
+              <p
+                className={`job-schedule-hint${scheduleBlocked ? " job-schedule-hint--blocked" : ""}`}
+              >
+                {selected.scheduleHint}
+              </p>
             )}
           </dl>
           <div className="job-detail-actions">

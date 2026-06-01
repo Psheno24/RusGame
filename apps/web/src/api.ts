@@ -102,6 +102,14 @@ export async function fetchMe() {
   return data.user;
 }
 
+export type CityLocalTimeView = {
+  hour: number;
+  minute: number;
+  label: string;
+  period: "morning" | "day" | "evening" | "night";
+  periodLabel: string;
+};
+
 export type CityPin = {
   id: string;
   name: string;
@@ -109,6 +117,8 @@ export type CityPin = {
   mapX: number;
   mapY: number;
   playable: boolean;
+  timezone?: string;
+  localTimeLabel?: string;
 };
 
 export async function fetchMap() {
@@ -139,7 +149,15 @@ export type CityFeedEvent = {
 
 export async function fetchCity() {
   return api<{
-    city: { id: string; name: string; tier: number; playable: boolean; population: number } | null;
+    city: {
+      id: string;
+      name: string;
+      tier: number;
+      playable: boolean;
+      population: number;
+      timezone: string;
+      localTime: CityLocalTimeView;
+    } | null;
     player: Player;
     jobs: {
       sideGig: JobView;
@@ -150,6 +168,12 @@ export async function fetchCity() {
     feed: CityFeedEvent[];
   }>("/api/city");
 }
+
+export type JobScheduleView = {
+  mode: "any" | "day" | "night";
+  dayStartHour?: number;
+  nightStartHour?: number;
+};
 
 export type JobView = {
   id: string;
@@ -162,7 +186,13 @@ export type JobView = {
   skillMin?: number;
   skillGain?: number;
   requiresSim?: boolean;
+  schedule?: JobScheduleView;
+  payoutPeriods?: Array<{ fromHour: number; toHour: number; multiplier: number }>;
   cooldown: { ready: boolean; remainingMs: number };
+  scheduleAllowed: boolean;
+  payoutMultiplier: number;
+  scheduleHint: string | null;
+  nextWindowAt: string | null;
 };
 
 export type ApplyJobResponse =

@@ -18,13 +18,15 @@ import {
 } from "./auth.js";
 import { countPlayersInCity, getDb, getPlayer, getUserById, listPlayersForAdmin, updatePlayer } from "./db.js";
 import { listCityFeed } from "./cityFeed.js";
-import { getCities, getCity, getCityJobs, getPhones, getTravel } from "./gameData.js";
+import { getCityLocalTime, getCityTimezone } from "./cityTime.js";
+import { getCities, getCity, getCityJobs, getPhones, getTravel, type JobDef } from "./gameData.js";
 import {
   applyJob,
   buyCar,
   buyPhoneDevice,
   doShift,
   doSideGig,
+  enrichJobWorkState,
   quitJob,
   resolveTravel,
   SHOP_PRICES,
@@ -114,14 +116,21 @@ export async function registerRoutes(app: FastifyInstance) {
     let player = getPlayer(userId);
     if (player) player = resolveTravel(player);
 
-    const cities = getCities().map((c) => ({
-      id: c.id,
-      name: c.name,
-      tier: c.tier,
-      mapX: c.mapX,
-      mapY: c.mapY,
-      playable: c.playable,
-    }));
+    const now = Date.now();
+    const cities = getCities().map((c) => {
+      const timezone = getCityTimezone(c);
+      const localTime = getCityLocalTime(timezone, now);
+      return {
+        id: c.id,
+        name: c.name,
+        tier: c.tier,
+        mapX: c.mapX,
+        mapY: c.mapY,
+        playable: c.playable,
+        timezone,
+        localTimeLabel: localTime.label,
+      };
+    });
 
     return {
       cities,
@@ -146,6 +155,20 @@ export async function registerRoutes(app: FastifyInstance) {
 
     const sideCd = jobs ? jobCooldownState(player, jobs.sideGig, now) : { ready: true, remainingMs: 0 };
     const shiftCd = jobs ? jobCooldownState(player, jobs.shift, now) : { ready: true, remainingMs: 0 };
+    const timezone = getCityTimezone(city);
+    const localTime = getCityLocalTime(timezone, now);
+
+    const jobPayload = (job: JobDef, cooldown: { ready: boolean; remainingMs: number }) => {
+      const work = enrichJobWorkState(timezone, job, now);
+      return {
+        ...job,
+        cooldown,
+        scheduleAllowed: work.scheduleAllowed,
+        payoutMultiplier: work.payoutMultiplier,
+        scheduleHint: work.scheduleHint,
+        nextWindowAt: work.nextWindowAt,
+      };
+    };
 
     return {
       city: city
@@ -155,13 +178,15 @@ export async function registerRoutes(app: FastifyInstance) {
             tier: city.tier,
             playable: city.playable,
             population: countPlayersInCity(player.city_id),
+            timezone,
+            localTime,
           }
         : null,
       player: serializePlayer(player),
       jobs: jobs
         ? {
-            sideGig: { ...jobs.sideGig, cooldown: sideCd },
-            shift: { ...jobs.shift, cooldown: shiftCd },
+            sideGig: jobPayload(jobs.sideGig, sideCd),
+            shift: jobPayload(jobs.shift, shiftCd),
           }
         : null,
       traveling: player.status === "traveling",
@@ -213,16 +238,32 @@ export async function registerRoutes(app: FastifyInstance) {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
     const result = doSideGig(userId);
-    if (!result.ok) return reply.code(400).send({ error: result.error, readyAt: result.readyAt });
+    if (!result.ok) {
+      return reply.code(400).send({
+        error: result.error,
+        readyAt: result.readyAt,
+        code: result.code,
+        localTime: result.localTime,
+        nextWindowAt: result.nextWindowAt,
+      });
+    }
     const user = await getPublicUser(userId);
-    return { message: result.message, payout: result.payout, user };
+    return { message: result.message, payout: result.payout, skillGain: result.skillGain, user };
   });
 
   app.post("/api/work/shift", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
     const result = doShift(userId);
-    if (!result.ok) return reply.code(400).send({ error: result.error, readyAt: result.readyAt });
+    if (!result.ok) {
+      return reply.code(400).send({
+        error: result.error,
+        readyAt: result.readyAt,
+        code: result.code,
+        localTime: result.localTime,
+        nextWindowAt: result.nextWindowAt,
+      });
+    }
     const user = await getPublicUser(userId);
     return { message: result.message, payout: result.payout, skillGain: result.skillGain, user };
   });

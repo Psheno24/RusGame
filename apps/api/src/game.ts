@@ -2,6 +2,16 @@ import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { getSkill, type SkillKey } from "./auth.js";
 import { appendCityFeed, feedActorName } from "./cityFeed.js";
+import {
+  enrichJobWorkState,
+  getCityLocalTime,
+  getCityTimezone,
+  getNextScheduleWindowAt,
+  getPayoutMultiplier,
+  isWorkScheduleAllowed,
+  scheduleBlockedMessage,
+  type CityLocalTime,
+} from "./cityTime.js";
 import { getCity, getCityJobs, getPhone, getTravel, jobRequiresSim, type JobDef } from "./gameData.js";
 import { playerHasSim } from "./simNumber.js";
 import {
@@ -66,9 +76,57 @@ function checkJobRequirements(player: PlayerRow, job: JobDef): string | null {
   return null;
 }
 
+function checkJobSchedule(player: PlayerRow, job: JobDef, now: number):
+  | { ok: true; localTime: CityLocalTime }
+  | {
+      ok: false;
+      error: string;
+      code: "outside_schedule";
+      localTime: CityLocalTime;
+      nextWindowAt: string | null;
+    } {
+  const city = getCity(player.city_id);
+  const timezone = getCityTimezone(city);
+  const localTime = getCityLocalTime(timezone, now);
+  if (!job.schedule || isWorkScheduleAllowed(localTime, job.schedule)) {
+    return { ok: true, localTime };
+  }
+  return {
+    ok: false,
+    error: scheduleBlockedMessage(localTime, job.schedule),
+    code: "outside_schedule",
+    localTime,
+    nextWindowAt: getNextScheduleWindowAt(timezone, job.schedule, now),
+  };
+}
+
+function calculateJobPayout(job: JobDef, localTime: CityLocalTime): { payout: number; multiplier: number } {
+  const base = randInt(job.payoutMin, job.payoutMax);
+  const multiplier = getPayoutMultiplier(localTime.hour, job.payoutPeriods);
+  return { payout: Math.floor(base * multiplier), multiplier };
+}
+
+function payoutMessage(job: JobDef, payout: number, multiplier: number): string {
+  const amount = `${payout.toLocaleString("ru-RU")} ₽`;
+  if (multiplier > 1) {
+    const multLabel = multiplier.toFixed(2).replace(/\.?0+$/, "");
+    return `${job.title}: +${amount} (×${multLabel})`;
+  }
+  return `${job.title}: +${amount}`;
+}
+
 export type WorkResult =
   | { ok: true; payout: number; message: string; skillGain?: { key: SkillKey; amount: number } }
-  | { ok: false; error: string; readyAt?: number };
+  | {
+      ok: false;
+      error: string;
+      readyAt?: number;
+      code?: string;
+      localTime?: CityLocalTime;
+      nextWindowAt?: string | null;
+    };
+
+export { enrichJobWorkState, getCityLocalTime, getCityTimezone };
 
 export type ApplyJobResult =
   | { ok: true; message: string }
@@ -174,6 +232,17 @@ export function doSideGig(userId: number, now = Date.now()): WorkResult {
     return { ok: false, error: "Сначала устройтесь на эту подработку" };
   }
 
+  const schedule = checkJobSchedule(player, job, now);
+  if (!schedule.ok) {
+    return {
+      ok: false,
+      error: schedule.error,
+      code: schedule.code,
+      localTime: schedule.localTime,
+      nextWindowAt: schedule.nextWindowAt,
+    };
+  }
+
   const cd = jobCooldownState(player, job, now);
   if (!cd.ready) {
     return {
@@ -183,11 +252,16 @@ export function doSideGig(userId: number, now = Date.now()): WorkResult {
     };
   }
 
-  const payout = randInt(job.payoutMin, job.payoutMax);
-  updatePlayer(userId, {
+  const { payout, multiplier } = calculateJobPayout(job, schedule.localTime);
+  const patch: Partial<PlayerRow> = {
     rubles: player.rubles + payout,
     last_work_at_by_job: serializeLastWorkAtByJob(withLastWorkAt(player, job.id, now)),
-  });
+  };
+  if (job.skill && job.skillGain) {
+    const key = job.skill as SkillKey;
+    patch[key] = getSkill(player, key) + job.skillGain;
+  }
+  updatePlayer(userId, patch);
   const name = feedActorName(userId);
   appendCityFeed(
     player.city_id,
@@ -195,7 +269,12 @@ export function doSideGig(userId: number, now = Date.now()): WorkResult {
     `${name} — ${job.title}: +${payout.toLocaleString("ru-RU")} ₽`,
     userId,
   );
-  return { ok: true, payout, message: `${job.title}: +${payout.toLocaleString("ru-RU")} ₽` };
+  const message = payoutMessage(job, payout, multiplier);
+  const skillGain =
+    job.skill && job.skillGain
+      ? { key: job.skill as SkillKey, amount: job.skillGain }
+      : undefined;
+  return { ok: true, payout, message, skillGain };
 }
 
 export function doShift(userId: number, now = Date.now()): WorkResult {
@@ -215,13 +294,24 @@ export function doShift(userId: number, now = Date.now()): WorkResult {
   const reqErr = checkJobRequirements(player, job);
   if (reqErr) return { ok: false, error: reqErr };
 
+  const schedule = checkJobSchedule(player, job, now);
+  if (!schedule.ok) {
+    return {
+      ok: false,
+      error: schedule.error,
+      code: schedule.code,
+      localTime: schedule.localTime,
+      nextWindowAt: schedule.nextWindowAt,
+    };
+  }
+
   const cd = jobCooldownState(player, job, now);
   if (!cd.ready) {
     const last = lastWorkAtForJob(player, job.id);
     return { ok: false, error: "Смена ещё не готова", readyAt: last + job.cooldownMs };
   }
 
-  const payout = randInt(job.payoutMin, job.payoutMax);
+  const { payout, multiplier } = calculateJobPayout(job, schedule.localTime);
   const patch: Partial<PlayerRow> = {
     rubles: player.rubles + payout,
     last_work_at_by_job: serializeLastWorkAtByJob(withLastWorkAt(player, job.id, now)),
@@ -248,7 +338,7 @@ export function doShift(userId: number, now = Date.now()): WorkResult {
   return {
     ok: true,
     payout,
-    message: `${job.title}: +${payout.toLocaleString("ru-RU")} ₽`,
+    message: payoutMessage(job, payout, multiplier),
     skillGain,
   };
 }

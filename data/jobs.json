@@ -12,24 +12,33 @@
     "shift": {
       "id": "omsk_guard",
       "title": "Смена: охрана двора",
-      "description": "Ночная смена. Полезно для стойкости.",
+      "description": "Ночная смена. Полезно для стойкости. Доступна только ночью по местному времени.",
       "cooldownMs": 7200000,
       "payoutMin": 2200,
       "payoutMax": 4800,
       "skill": "stamina",
       "skillMin": 0,
-      "skillGain": 1
+      "skillGain": 1,
+      "schedule": { "mode": "night", "nightStartHour": 22, "dayStartHour": 6 }
     }
   },
   "kazan": {
     "sideGig": {
-      "id": "kazan_cafe",
-      "title": "Подработка в кафе",
-      "description": "Мытьё посуды и зал.",
+      "id": "kazan_taxi",
+      "title": "Подработка: такси",
+      "description": "Развоз заказов. В час пик и ночью заказы дороже.",
       "cooldownMs": 1800000,
-      "payoutMin": 450,
-      "payoutMax": 850,
-      "skill": null
+      "payoutMin": 350,
+      "payoutMax": 700,
+      "skill": "agility",
+      "skillMin": 0,
+      "skillGain": 1,
+      "requiresSim": true,
+      "payoutPeriods": [
+        { "fromHour": 7, "toHour": 10, "multiplier": 1.25 },
+        { "fromHour": 17, "toHour": 22, "multiplier": 1.25 },
+        { "fromHour": 22, "toHour": 6, "multiplier": 1.15 }
+      ]
     },
     "shift": {
       "id": "kazan_courier",

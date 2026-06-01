@@ -37,7 +37,12 @@ function CityListButton({
       className={`city-list-btn${selected ? " selected" : ""}${here ? " here" : ""}${c.playable ? " playable" : ""}`}
       onClick={() => onPick(c)}
     >
-      <span className="city-list-name">{c.name}</span>
+      <span className="city-list-name">
+        {c.name}
+        {(here || selected) && c.localTimeLabel ? (
+          <span className="city-list-time"> {c.localTimeLabel}</span>
+        ) : null}
+      </span>
       <span className="city-list-badge">
         {here ? "вы здесь" : c.playable ? "можно играть" : "скоро"}
       </span>

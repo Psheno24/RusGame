@@ -9,6 +9,19 @@ export type City = {
   mapX: number;
   mapY: number;
   playable: boolean;
+  timezone?: string;
+};
+
+export type JobSchedule = {
+  mode: "any" | "day" | "night";
+  dayStartHour?: number;
+  nightStartHour?: number;
+};
+
+export type PayoutPeriod = {
+  fromHour: number;
+  toHour: number;
+  multiplier: number;
 };
 
 export type JobDef = {
@@ -25,6 +38,8 @@ export type JobDef = {
   requiresSim?: boolean;
   /** @deprecated используйте requiresSim */
   requiresPhone?: boolean;
+  schedule?: JobSchedule;
+  payoutPeriods?: PayoutPeriod[];
 };
 
 export function jobRequiresSim(job: JobDef): boolean {
