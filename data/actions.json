@@ -1,0 +1,13 @@
+{
+  "sleep": {
+    "title": "Сон",
+    "description": "Восстановить силы. Лучше ночью по местному времени города.",
+    "gains": { "energy": 70, "health": 5 }
+  },
+  "cinema": {
+    "title": "Кино",
+    "description": "Сходить в кинотеатр.",
+    "costs": { "rubles": 500 },
+    "gains": { "mood": 22 }
+  }
+}

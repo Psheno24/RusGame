@@ -1,0 +1,51 @@
+{
+  "delivery": {
+    "title": "Доставка",
+    "description": "Развоз заказов по городу. Выберите смену от 4 до 12 часов. Нужна сим-карта.",
+    "kind": "duration",
+    "shiftHoursMin": 4,
+    "shiftHoursMax": 12,
+    "payoutPerHourMin": 380,
+    "payoutPerHourMax": 620,
+    "requiresSim": true,
+    "workCosts": { "energy": 18, "hunger": 10, "mood": 3 }
+  },
+  "taxi": {
+    "title": "Такси",
+    "description": "Пассажирские заказы. Смена 4–12 ч. Нужны водительские права и сим-карта.",
+    "kind": "duration",
+    "shiftHoursMin": 4,
+    "shiftHoursMax": 12,
+    "payoutPerHourMin": 450,
+    "payoutPerHourMax": 780,
+    "requiresDriversLicense": true,
+    "requiresSim": true,
+    "workCosts": { "energy": 16, "hunger": 8, "mood": 4 },
+    "payoutPeriods": [
+      { "fromHour": 7, "toHour": 10, "multiplier": 1.2 },
+      { "fromHour": 17, "toHour": 22, "multiplier": 1.2 },
+      { "fromHour": 22, "toHour": 6, "multiplier": 1.1 }
+    ]
+  },
+  "cashier": {
+    "title": "Кассир «Пятёрочка»",
+    "description": "Работа на кассе. Можно в любое время, перерыв между сменами — 12 часов.",
+    "kind": "cooldown",
+    "cooldownMs": 43200000,
+    "payoutMin": 2200,
+    "payoutMax": 3200,
+    "workCosts": { "energy": 14, "hunger": 8, "mood": 2 }
+  },
+  "night_guard": {
+    "title": "Ночной сторож",
+    "description": "Охрана объекта ночью. Перерыв между сменами — 24 часа.",
+    "kind": "cooldown",
+    "cooldownMs": 86400000,
+    "schedule": { "mode": "night", "nightStartHour": 22, "dayStartHour": 6 },
+    "payoutMin": 3500,
+    "payoutMax": 5500,
+    "skill": "stamina",
+    "skillGain": 1,
+    "workCosts": { "energy": 22, "hunger": 10, "mood": 5 }
+  }
+}

@@ -5,6 +5,24 @@ export type Skills = {
   wit: number;
 };
 
+export type Vitals = {
+  energy: number;
+  hunger: number;
+  mood: number;
+  health: number;
+  reputation: number;
+};
+
+export type ActionPreview = {
+  id: string;
+  title: string;
+  description: string;
+  canDo: boolean;
+  blockReason: string | null;
+  costs?: { rubles?: number; energy?: number; hunger?: number; mood?: number };
+  gains?: { energy?: number; hunger?: number; mood?: number; health?: number; rubles?: number };
+};
+
 export type Player = {
   displayName: string;
   rubles: number;
@@ -21,6 +39,37 @@ export type Player = {
   phoneDeviceName: string | null;
   carOwned: boolean;
   plateText: string | null;
+  driversLicense: boolean;
+  isResident: boolean;
+  housingType: "dorm" | "rent" | "owned" | null;
+  housingCityId: string | null;
+  housingExpiresAt: number | null;
+  housingStatusLabel: string;
+  vitals: Vitals;
+  education: string;
+};
+
+export type HousingPrices = {
+  tier: number;
+  dormRub: number;
+  rentRub: number;
+  buyRub: number;
+  dormHours: number;
+  rentDays: number;
+};
+
+export type HousingInfo = {
+  ok: true;
+  cityId: string;
+  cityName: string;
+  prices: HousingPrices;
+  isResident: boolean;
+  housingType: "dorm" | "rent" | "owned" | null;
+  housingCityId: string | null;
+  housingExpiresAt: number | null;
+  statusLabel: string;
+  expiresAt: number | null;
+  canBuy: boolean;
 };
 
 export type User = {
@@ -157,16 +206,22 @@ export async function fetchCity() {
       population: number;
       timezone: string;
       localTime: CityLocalTimeView;
+      isResident: boolean;
     } | null;
     player: Player;
-    jobs: {
-      sideGig: JobView;
-      shift: JobView;
-    } | null;
+    housing: HousingInfo | { ok: false; error: string } | null;
+    jobs: JobView[] | null;
     traveling: boolean;
     travelArrivesAt: number | null;
     feed: CityFeedEvent[];
+    actions: ActionPreview[];
   }>("/api/city");
+}
+
+export async function performAction(actionId: string) {
+  return api<{ message: string; user: User }>(`/api/action/${encodeURIComponent(actionId)}`, {
+    method: "POST",
+  });
 }
 
 export type JobScheduleView = {
@@ -177,8 +232,14 @@ export type JobScheduleView = {
 
 export type JobView = {
   id: string;
+  templateKey: string;
   title: string;
   description: string;
+  kind: "duration" | "cooldown";
+  shiftHoursMin: number | null;
+  shiftHoursMax: number | null;
+  payoutPerHourMin: number | null;
+  payoutPerHourMax: number | null;
   cooldownMs: number;
   payoutMin: number;
   payoutMax: number;
@@ -186,6 +247,7 @@ export type JobView = {
   skillMin?: number;
   skillGain?: number;
   requiresSim?: boolean;
+  requiresDriversLicense?: boolean;
   schedule?: JobScheduleView;
   payoutPeriods?: Array<{ fromHour: number; toHour: number; multiplier: number }>;
   cooldown: { ready: boolean; remainingMs: number };
@@ -193,6 +255,7 @@ export type JobView = {
   payoutMultiplier: number;
   scheduleHint: string | null;
   nextWindowAt: string | null;
+  lastShiftHours: number | null;
 };
 
 export type ApplyJobResponse =
@@ -241,15 +304,20 @@ export async function quitJob(jobId: string) {
   });
 }
 
-export async function workSideGig() {
-  return api<{ message: string; payout: number; user: User }>("/api/work/side-gig", { method: "POST" });
+export async function workJob(jobId: string, hours?: number) {
+  return api<{
+    message: string;
+    payout: number;
+    user: User;
+    skillGain?: { key: string; amount: number };
+  }>("/api/work/job", {
+    method: "POST",
+    body: JSON.stringify({ jobId, hours }),
+  });
 }
 
-export async function workShift() {
-  return api<{ message: string; payout: number; user: User; skillGain?: { key: string; amount: number } }>(
-    "/api/work/shift",
-    { method: "POST" },
-  );
+export async function buyDriversLicense() {
+  return api<{ user: User }>("/api/shop/drivers-license", { method: "POST" });
 }
 
 export async function travelQuote(to: string) {
@@ -294,7 +362,7 @@ export type SimShopInfo = {
 };
 
 export async function fetchShopPrices() {
-  return api<{ car: number; sim: SimShopPrices }>("/api/shop/prices");
+  return api<{ car: number; driversLicense: number; sim: SimShopPrices }>("/api/shop/prices");
 }
 
 export async function fetchSimShop() {
@@ -332,6 +400,49 @@ export async function topupSim(amount: number) {
 
 export async function buyCar() {
   return api<{ plate: string; user: User }>("/api/shop/car", { method: "POST" });
+}
+
+export type ProductPreview = {
+  id: string;
+  title: string;
+  description: string;
+  priceRub: number;
+  canBuy: boolean;
+  blockReason: string | null;
+  gains?: { energy?: number; hunger?: number; mood?: number; health?: number };
+};
+
+export async function fetchShopProducts() {
+  return api<{ products: ProductPreview[]; previews: ProductPreview[] }>("/api/shop/products");
+}
+
+export async function buyProduct(productId: string) {
+  return api<{ message: string; user: User }>("/api/shop/product", {
+    method: "POST",
+    body: JSON.stringify({ productId }),
+  });
+}
+
+export async function fetchHousing() {
+  return api<HousingInfo>("/api/housing");
+}
+
+export async function payHousingDorm() {
+  return api<{ message: string; user: User }>("/api/housing/dorm", { method: "POST" });
+}
+
+export async function payHousingRent() {
+  return api<{ message: string; user: User }>("/api/housing/rent", { method: "POST" });
+}
+
+export async function payHousingBuy() {
+  return api<{ message: string; user: User }>("/api/housing/buy", { method: "POST" });
+}
+
+export function formatHousingExpiry(ts: number | null): string {
+  if (ts == null) return "";
+  const d = new Date(ts);
+  return d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 export function formatDuration(ms: number): string {

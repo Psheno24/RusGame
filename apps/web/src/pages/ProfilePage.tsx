@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { SKILL_LABELS } from "../api";
 import { cityDisplayName } from "../cityNames";
+import { VitalsBar } from "../components/VitalsBar";
 import { useApp } from "../context";
+
+const EDUCATION_LABELS: Record<string, string> = {
+  none: "Без образования",
+  college: "Колледж",
+  university: "ВУЗ",
+  masters: "Магистратура",
+};
 
 export function ProfilePage() {
   const { user, logout } = useApp();
@@ -19,7 +27,31 @@ export function ProfilePage() {
               <span className="profile-stat-label">Город</span>
               <span className="profile-stat-value">{cityDisplayName(p.cityId)}</span>
             </div>
+            <div className="profile-stat">
+              <span className="profile-stat-label">Статус</span>
+              <span className="profile-stat-value">
+                {(p.isResident ?? false) ? "Житель" : "Гость"}
+                {p.housingExpiresAt && p.isResident && p.housingType !== "owned"
+                  ? ` · до ${new Date(p.housingExpiresAt).toLocaleString("ru-RU", {
+                      day: "numeric",
+                      month: "short",
+                    })}`
+                  : null}
+              </span>
+            </div>
+            <div className="profile-stat">
+              <span className="profile-stat-label">Образование</span>
+              <span className="profile-stat-value">
+                {EDUCATION_LABELS[p.education ?? "none"] ?? p.education}
+              </span>
+            </div>
           </div>
+          {p.vitals && (
+            <>
+              <h3 className="profile-skills-title">Показатели</h3>
+              <VitalsBar vitals={p.vitals} />
+            </>
+          )}
           <h3 className="profile-skills-title">Навыки</h3>
           <div className="skill-grid">
             {(Object.entries(p.skills) as [string, number][]).map(([k, v]) => (

@@ -836,6 +836,158 @@ body {
   color: var(--danger);
 }
 
+.city-header-residency {
+  display: inline-block;
+  margin-left: 0.45rem;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.city-header-residency--resident {
+  background: rgba(76, 175, 80, 0.18);
+  color: #2e7d32;
+}
+
+.city-header-residency--guest {
+  background: rgba(244, 67, 54, 0.12);
+  color: #c62828;
+}
+
+.housing-guest-banner,
+.housing-guest-hint {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  background: rgba(244, 67, 54, 0.08);
+  color: var(--danger);
+}
+
+.housing-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.housing-status-line {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+}
+
+.housing-status-line--resident {
+  color: #2e7d32;
+}
+
+.housing-status-line--guest {
+  color: var(--danger);
+}
+
+.housing-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.housing-card h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.housing-card-price {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.housing-card-desc {
+  margin: 4px 0 12px;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.housing-card .btn {
+  width: 100%;
+}
+
+.city-game-clock {
+  margin-top: 10px;
+  text-align: left;
+}
+
+.city-game-clock-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.city-game-clock-bar {
+  height: 6px;
+  margin: 6px 0 4px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.city-game-clock-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #5c6bc0, #7e57c2);
+  border-radius: 3px;
+}
+
+.city-game-clock-left {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.vitals-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.vitals-bar--compact .vital-label {
+  font-size: 0.78rem;
+}
+
+.vital-row-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  margin-bottom: 3px;
+}
+
+.vital-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.vital-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
+.vital-fill--ok {
+  background: #43a047;
+}
+
+.vital-fill--mid {
+  background: #fb8c00;
+}
+
+.vital-fill--low {
+  background: #e53935;
+}
+
 .city-header-pop {
   font-size: 0.78rem;
   font-weight: 700;
@@ -885,6 +1037,13 @@ body {
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 10px;
+}
+
+.city-feed-stub {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text-muted);
 }
 
 .city-feed-title {
@@ -1009,6 +1168,92 @@ body {
 .shop-stub {
   margin: 0;
   color: var(--text-muted);
+}
+
+.products-shop-lead {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.products-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.product-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.product-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.product-price {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.product-desc,
+.product-gains {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.product-gains {
+  color: var(--accent);
+}
+
+.product-block {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  color: var(--danger);
+}
+
+.product-card .btn {
+  width: 100%;
+}
+
+.job-hours-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.job-hours-btn {
+  min-width: 3.2rem;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.job-hours-btn--active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.job-shift-hours dt {
+  margin-bottom: 4px;
+}
+
+.shop-detail-sub {
+  margin: 16px 0 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.shop-detail-sub:first-child {
+  margin-top: 0;
 }
 
 .phone-hub {

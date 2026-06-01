@@ -25,7 +25,19 @@ export type PlayerRow = {
   phone_device_id: string | null;
   car_owned: number;
   plate_text: string | null;
+  drivers_license: number;
+  housing_type: string | null;
+  housing_city_id: string | null;
+  housing_expires_at: number | null;
+  energy: number;
+  hunger: number;
+  mood: number;
+  health: number;
+  reputation: number;
+  education: string;
 };
+
+export type HousingType = "dorm" | "rent" | "owned";
 
 export type UserRow = {
   id: number;
@@ -113,6 +125,37 @@ function migrate(database: Database.Database) {
   if (!cols2.some((c) => c.name === "last_work_at_by_job")) {
     database.exec("ALTER TABLE players ADD COLUMN last_work_at_by_job TEXT");
   }
+  const cols3 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!cols3.some((c) => c.name === "housing_type")) {
+    database.exec("ALTER TABLE players ADD COLUMN housing_type TEXT");
+    database.exec("ALTER TABLE players ADD COLUMN housing_city_id TEXT");
+    database.exec("ALTER TABLE players ADD COLUMN housing_expires_at INTEGER");
+    const starterMs = 3 * 24 * 60 * 60 * 1000;
+    const expires = Date.now() + starterMs;
+    database
+      .prepare(
+        `UPDATE players SET housing_type = 'dorm', housing_city_id = city_id, housing_expires_at = ? WHERE housing_type IS NULL`,
+      )
+      .run(expires);
+  }
+  const cols4 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!cols4.some((c) => c.name === "game_day")) {
+    database.exec("ALTER TABLE players ADD COLUMN game_day INTEGER NOT NULL DEFAULT 1");
+    database.exec("ALTER TABLE players ADD COLUMN game_minute INTEGER NOT NULL DEFAULT 480");
+    database.exec("ALTER TABLE players ADD COLUMN energy INTEGER NOT NULL DEFAULT 80");
+    database.exec("ALTER TABLE players ADD COLUMN hunger INTEGER NOT NULL DEFAULT 80");
+    database.exec("ALTER TABLE players ADD COLUMN mood INTEGER NOT NULL DEFAULT 70");
+    database.exec("ALTER TABLE players ADD COLUMN health INTEGER NOT NULL DEFAULT 100");
+    database.exec("ALTER TABLE players ADD COLUMN reputation INTEGER NOT NULL DEFAULT 100");
+    database.exec("ALTER TABLE players ADD COLUMN education TEXT NOT NULL DEFAULT 'none'");
+  }
+  const cols5 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!cols5.some((c) => c.name === "drivers_license")) {
+    database.exec("ALTER TABLE players ADD COLUMN drivers_license INTEGER NOT NULL DEFAULT 0");
+    database
+      .prepare("UPDATE players SET drivers_license = 1 WHERE car_owned = 1")
+      .run();
+  }
 }
 
 export function getUserByLogin(login: string): UserRow | undefined {
@@ -131,11 +174,17 @@ export function createUser(login: string, passwordHash: string, isAdmin = false)
 }
 
 export function createPlayer(userId: number, displayName: string) {
+  const starterMs = 3 * 24 * 60 * 60 * 1000;
+  const expires = Date.now() + starterMs;
   getDb()
     .prepare(
-      `INSERT INTO players (user_id, display_name, rubles, city_id) VALUES (?, ?, 5000, 'omsk')`,
+      `INSERT INTO players (
+        user_id, display_name, rubles, city_id,
+        housing_type, housing_city_id, housing_expires_at,
+        energy, hunger, mood, health, reputation, education
+      ) VALUES (?, ?, 5000, 'omsk', 'dorm', 'omsk', ?, 80, 80, 70, 100, 100, 'none')`,
     )
-    .run(userId, displayName);
+    .run(userId, displayName, expires);
 }
 
 export function getPlayer(userId: number): PlayerRow | undefined {
@@ -154,7 +203,9 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
         agility = ?, stamina = ?, charisma = ?, wit = ?,
         side_gig_ready_at = ?, shift_ready_at = ?, last_work_at_by_job = ?,
         phone_number = ?, sim_operator = ?, sim_mid = ?, sim_last = ?, sim_balance_rub = ?,
-        phone_device_id = ?, car_owned = ?, plate_text = ?
+        phone_device_id = ?, car_owned = ?, plate_text = ?, drivers_license = ?,
+        housing_type = ?, housing_city_id = ?, housing_expires_at = ?,
+        energy = ?, hunger = ?, mood = ?, health = ?, reputation = ?, education = ?
       WHERE user_id = ?`,
     )
     .run(
@@ -180,6 +231,16 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
       next.phone_device_id,
       next.car_owned,
       next.plate_text,
+      next.drivers_license ?? 0,
+      next.housing_type ?? null,
+      next.housing_city_id ?? null,
+      next.housing_expires_at ?? null,
+      next.energy ?? 80,
+      next.hunger ?? 80,
+      next.mood ?? 70,
+      next.health ?? 100,
+      next.reputation ?? 100,
+      next.education ?? "none",
       userId,
     );
 }

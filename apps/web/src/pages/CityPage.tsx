@@ -4,15 +4,20 @@ import { useNavBackSlot } from "../navBack";
 import {
   applyJob as applyJobApi,
   buyCar,
+  buyDriversLicense,
   fetchCity,
   fetchShopPrices,
   formatCooldownMinutes,
   formatDuration,
+  formatHousingExpiry,
+  fetchHousing,
+  payHousingBuy,
+  payHousingDorm,
+  payHousingRent,
   quitJob as quitJobApi,
-  workShift,
-  workSideGig,
+  type HousingInfo,
+  workJob,
   SKILL_LABELS,
-  type CityFeedEvent,
   type CityLocalTimeView,
   type JobView,
   type User,
@@ -21,6 +26,7 @@ import { getCityLocalTime } from "../cityTime";
 import { CityActivityFeed } from "../components/CityActivityFeed";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PhoneShop } from "../components/PhoneShop";
+import { ProductsShop } from "../components/ProductsShop";
 import { PlacesSection } from "../components/PlacesSection";
 import { useApp } from "../context";
 import { useNotice } from "../noticeContext";
@@ -29,13 +35,20 @@ import { placeById, type PlaceId } from "../placesData";
 type CitySection = "shop" | "jobs" | "housing" | "places";
 type ShopTab = "products" | "phone" | "car";
 
-type JobCard = JobView & { kind: "side" | "shift" };
+type JobCard = JobView;
 
 type JobPendingAction =
   | { type: "apply"; job: JobCard }
   | { type: "switch"; job: JobCard; currentTitle: string }
   | { type: "quit"; job: JobCard }
-  | { type: "work"; job: JobCard };
+  | { type: "work"; job: JobCard; hours: number };
+
+const JOB_ICONS: Record<string, string> = {
+  delivery: "📦",
+  taxi: "🚕",
+  cashier: "🛒",
+  night_guard: "🌙",
+};
 
 function JobListCard({
   job,
@@ -50,7 +63,7 @@ function JobListCard({
     <li className={`job-list-card${highlighted ? " job-list-card--current" : ""}`}>
       <div className="job-list-head">
         <span className="job-list-icon" aria-hidden>
-          {job.kind === "side" ? "⏱" : "💼"}
+          {JOB_ICONS[job.templateKey] ?? "💼"}
         </span>
         <div className="job-list-info">
           <span className="job-list-name">{job.title}</span>
@@ -81,15 +94,15 @@ function JobActionButtonLabel({ base, remainingMs }: { base: string; remainingMs
 
 const CITY_SECTIONS: { id: CitySection; title: string; hint: string }[] = [
   { id: "shop", title: "Магазин", hint: "Продукты, телефон, авто" },
-  { id: "jobs", title: "Вакансии", hint: "Работа и подработки" },
+  { id: "jobs", title: "Вакансии", hint: "Доставка, такси, касса, охрана" },
   { id: "housing", title: "Недвижимость", hint: "Аренда и покупка" },
-  { id: "places", title: "Разные места", hint: "Куда сходить в городе" },
+  { id: "places", title: "Разные места", hint: "Барахолка и сервисы" },
 ];
 
 const SHOP_CATEGORIES: { id: ShopTab; title: string; hint: string }[] = [
   { id: "products", title: "Продукты", hint: "Еда и бытовое" },
   { id: "phone", title: "Телефон", hint: "Устройства и сим-карта" },
-  { id: "car", title: "Авто", hint: "Машина и номер" },
+  { id: "car", title: "Авто", hint: "Права, машина и номер" },
 ];
 
 export function CityPage() {
@@ -101,6 +114,8 @@ export function CityPage() {
   const [playable, setPlayable] = useState(true);
   const [cityTimezone, setCityTimezone] = useState("Europe/Moscow");
   const [cityLocalTime, setCityLocalTime] = useState<CityLocalTimeView | null>(null);
+  const [isResident, setIsResident] = useState(false);
+  const [housingInfo, setHousingInfo] = useState<HousingInfo | null>(null);
   const [traveling, setTraveling] = useState(false);
   const [arrivesAt, setArrivesAt] = useState<number | null>(null);
   const [section, setSection] = useState<CitySection | null>(null);
@@ -109,9 +124,7 @@ export function CityPage() {
   const [phoneNav, setPhoneNav] = useState({ inSub: false, title: "Телефон", backLabel: "Магазин" });
   const [jobsNav, setJobsNav] = useState({ inSub: false, title: "Вакансии" });
   const { register: registerSectionBack, tryBack: trySectionBack } = useNavBackSlot();
-  const [sideGig, setSideGig] = useState<JobView | null>(null);
-  const [shift, setShift] = useState<JobView | null>(null);
-  const [feed, setFeed] = useState<CityFeedEvent[]>([]);
+  const [cityJobs, setCityJobs] = useState<JobView[]>([]);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
 
@@ -122,12 +135,13 @@ export function CityPage() {
     setPlayable(data.city?.playable ?? false);
     setCityTimezone(data.city?.timezone ?? "Europe/Moscow");
     setCityLocalTime(data.city?.localTime ?? null);
+    setIsResident(data.city?.isResident ?? data.player.isResident ?? false);
+    setHousingInfo(data.housing && "ok" in data.housing && data.housing.ok ? data.housing : null);
     setTraveling(data.traveling);
     setArrivesAt(data.travelArrivesAt);
-    setSideGig(data.jobs?.sideGig ?? null);
-    setShift(data.jobs?.shift ?? null);
-    setFeed(data.feed ?? []);
-  }, []);
+    setCityJobs(data.jobs ?? []);
+    if (user) setUser({ ...user, player: data.player });
+  }, [setUser, user]);
 
   useEffect(() => {
     load().catch((e) => setError(e instanceof Error ? e.message : "Ошибка"));
@@ -215,7 +229,8 @@ export function CityPage() {
   const sectionMeta = CITY_SECTIONS.find((s) => s.id === section);
 
   if (section && sectionMeta) {
-    const isJobsSection = section === "jobs" && playable && sideGig && user;
+    const isJobsSection = section === "jobs" && playable && user && cityJobs.length > 0;
+    const isHousingSection = section === "housing" && playable && user;
 
     return (
       <>
@@ -229,8 +244,7 @@ export function CityPage() {
         </div>
         {isJobsSection ? (
           <JobsSection
-            sideGig={sideGig}
-            shift={shift}
+            jobs={cityJobs}
             cityLocalTime={liveLocalTime}
             user={user}
             setUser={setUser}
@@ -238,6 +252,14 @@ export function CityPage() {
             onNavChange={setJobsNav}
             registerBack={registerSectionBack}
             onJobsReload={load}
+          />
+        ) : isHousingSection ? (
+          <HousingSection
+            initialInfo={housingInfo}
+            user={user}
+            setUser={setUser}
+            onToast={showToast}
+            onReload={load}
           />
         ) : (
           <div className="card">
@@ -260,11 +282,14 @@ export function CityPage() {
                 registerSectionBack={registerSectionBack}
                 onPhoneNavChange={setPhoneNav}
               />
-            ) : section === "places" ? (
+            ) : section === "places" && user ? (
               <PlacesSection
                 placeId={placeId}
                 onPlace={setPlaceId}
                 registerBack={registerSectionBack}
+                user={user}
+                setUser={setUser}
+                onToast={(msg, isErr) => showToast(msg, isErr)}
               />
             ) : (
               <p>Раздел скоро появится. Пока загляните в другие кнопки или на карту.</p>
@@ -290,6 +315,11 @@ export function CityPage() {
               </span>
             </>
           )}
+          <span
+            className={`city-header-residency${isResident ? " city-header-residency--resident" : " city-header-residency--guest"}`}
+          >
+            {isResident ? "Житель" : "Гость"}
+          </span>
           <span className="city-header-pop">(нас. {population.toLocaleString("ru-RU")})</span>
         </h2>
         {!playable && (
@@ -311,7 +341,7 @@ export function CityPage() {
         ))}
       </div>
 
-      <CityActivityFeed cityName={cityName} events={feed} />
+      <CityActivityFeed cityName={cityName} />
     </>
   );
 }
@@ -333,7 +363,7 @@ function ShopSection({
   registerSectionBack: (handler: (() => boolean) | null) => void;
   onPhoneNavChange: (state: { inSub: boolean; title: string; backLabel: string }) => void;
 }) {
-  const [prices, setPrices] = useState<{ sim: number; car: number } | null>(null);
+  const [prices, setPrices] = useState<{ sim: number; car: number; driversLicense: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const p = user.player;
 
@@ -344,6 +374,19 @@ function ShopSection({
         .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
     }
   }, [tab, onToast]);
+
+  const onBuyLicense = async () => {
+    setBusy(true);
+    try {
+      const r = await buyDriversLicense();
+      setUser(r.user);
+      onToast("Водительские права получены");
+    } catch (e) {
+      onToast(e instanceof Error ? e.message : "Ошибка", true);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const onBuyCar = async () => {
     setBusy(true);
@@ -372,7 +415,7 @@ function ShopSection({
   }
 
   if (tab === "products") {
-    return <p className="shop-stub">Продукты и еда появятся в следующих обновлениях.</p>;
+    return <ProductsShop user={user} setUser={setUser} onToast={onToast} />;
   }
 
   if (tab === "phone") {
@@ -388,8 +431,25 @@ function ShopSection({
   }
 
   const price = prices?.car;
+  const licensePrice = prices?.driversLicense;
   return (
     <div className="shop-detail">
+      <h3 className="shop-detail-sub">Водительские права</h3>
+      {p.driversLicense ? (
+        <p className="shop-owned">Права оформлены — можно работать в такси.</p>
+      ) : (
+        <>
+          {licensePrice != null && (
+            <p className="shop-price">
+              Оформление: <strong>{licensePrice.toLocaleString("ru-RU")} ₽</strong>
+            </p>
+          )}
+          <button className="btn btn-primary" type="button" disabled={busy} onClick={onBuyLicense}>
+            Получить права
+          </button>
+        </>
+      )}
+      <h3 className="shop-detail-sub">Автомобиль</h3>
       <p>Личный автомобиль с госномером.</p>
       {p.carOwned && p.plateText ? (
         <p className="shop-owned">
@@ -415,8 +475,7 @@ function ShopSection({
 }
 
 function JobsSection({
-  sideGig,
-  shift,
+  jobs,
   cityLocalTime,
   user,
   setUser,
@@ -425,8 +484,7 @@ function JobsSection({
   registerBack,
   onJobsReload,
 }: {
-  sideGig: JobView;
-  shift: JobView | null;
+  jobs: JobView[];
   cityLocalTime: CityLocalTimeView | null;
   user: User;
   setUser: (u: User) => void;
@@ -438,16 +496,12 @@ function JobsSection({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<JobPendingAction | null>(null);
+  const [shiftHours, setShiftHours] = useState(8);
 
   const employedId = user.player.jobId;
+  const isResident = user.player.isResident;
 
-  const allJobs = useMemo(
-    (): JobCard[] => [
-      { ...sideGig, kind: "side" },
-      ...(shift ? [{ ...shift, kind: "shift" as const }] : []),
-    ],
-    [sideGig, shift],
-  );
+  const allJobs = useMemo((): JobCard[] => jobs, [jobs]);
 
   const employedJob = employedId ? (allJobs.find((j) => j.id === employedId) ?? null) : null;
   const vacancyJobs = employedId ? allJobs.filter((j) => j.id !== employedId) : allJobs;
@@ -510,14 +564,14 @@ function JobsSection({
     }
   };
 
-  const onWork = async (job: JobCard) => {
+  const onWork = async (job: JobCard, hours: number) => {
     setBusy(true);
     try {
-      const r = job.kind === "side" ? await workSideGig() : await workShift();
+      const r = await workJob(job.id, job.kind === "duration" ? hours : undefined);
       setUser(r.user);
       let msg = r.message;
-      if ("skillGain" in r && r.skillGain) {
-        msg += ` · +${r.skillGain.amount} ${SKILL_LABELS[r.skillGain.key] ?? r.skillGain.key}`;
+      if (r.skillGain) {
+        msg += ` · +${r.skillGain.amount} ${SKILL_LABELS[r.skillGain.key as keyof typeof SKILL_LABELS] ?? r.skillGain.key}`;
       }
       onToast(msg);
       await onJobsReload();
@@ -535,7 +589,7 @@ function JobsSection({
     if (action.type === "apply") await onApply(action.job);
     else if (action.type === "switch") await onApply(action.job, true);
     else if (action.type === "quit") await onQuit(action.job);
-    else await onWork(action.job);
+    else await onWork(action.job, action.hours);
   };
 
   const requestApply = (job: JobCard) => {
@@ -595,15 +649,24 @@ function JobsSection({
         confirmClassName: "btn-danger",
       };
     }
-    const workLabel = job.kind === "side" ? "подработку" : "смену";
+    const hours = pending.hours;
     const mult =
       job.payoutMultiplier > 1
         ? ` (сейчас ×${job.payoutMultiplier.toFixed(2).replace(/\.?0+$/, "")})`
         : "";
+    if (job.kind === "duration" && job.payoutPerHourMin != null) {
+      const earn = `около ${(job.payoutPerHourMin * hours).toLocaleString("ru-RU")}–${((job.payoutPerHourMax ?? job.payoutPerHourMin) * hours).toLocaleString("ru-RU")} ₽`;
+      return {
+        title: "Выйти на смену?",
+        text: `«${job.title}», ${hours} ч. Ожидаемый заработок: ${earn}${mult}. Перерыв после смены — ${hours} ч.`,
+        confirmLabel: "Выйти на смену",
+        confirmClassName: "btn-primary",
+      };
+    }
     return {
-      title: job.kind === "side" ? "Выйти на подработку?" : "Выйти на смену?",
-      text: `Начать ${workLabel} «${job.title}»? Заработок: ${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽${mult}.`,
-      confirmLabel: job.kind === "side" ? "Подработать" : "Выйти на смену",
+      title: "Выйти на смену?",
+      text: `«${job.title}»? Заработок: ${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽${mult}. Перерыв: ${formatDuration(job.cooldownMs)}.`,
+      confirmLabel: "Выйти на смену",
       confirmClassName: "btn-primary",
     };
   })();
@@ -611,16 +674,19 @@ function JobsSection({
   if (selected) {
     const employed = employedId === selected.id;
     const scheduleBlocked = employed && !selected.scheduleAllowed;
+    const guestBlocked = !isResident;
     const canHire =
-      !employed && !busy && (!employedId || (!employmentBlocked && employedId !== selected.id));
-    const canWork = employed && !busy && selected.cooldown.ready && selected.scheduleAllowed;
+      !guestBlocked &&
+      !employed &&
+      !busy &&
+      (!employedId || (!employmentBlocked && employedId !== selected.id));
+    const canWork =
+      employed && !busy && selected.cooldown.ready && selected.scheduleAllowed && !guestBlocked;
     const canQuit = employed && !busy && !employmentBlocked;
 
-    const leftBase = employed
-      ? selected.kind === "side"
-        ? "Подработать"
-        : "Выйти на смену"
-      : "Устроиться";
+    const minH = selected.shiftHoursMin ?? 4;
+    const maxH = selected.shiftHoursMax ?? 12;
+    const leftBase = employed ? "Выйти на смену" : "Устроиться";
 
     const leftRemainingMs =
       employed && !selected.cooldown.ready
@@ -634,7 +700,15 @@ function JobsSection({
     const onLeftClick = () => {
       if (employed) {
         if (!selected.cooldown.ready || scheduleBlocked) return;
-        setPending({ type: "work", job: selected });
+        if (selected.kind === "duration") {
+          if (shiftHours < minH || shiftHours > maxH) {
+            onToast(`Выберите смену от ${minH} до ${maxH} ч`, true);
+            return;
+          }
+          setPending({ type: "work", job: selected, hours: shiftHours });
+        } else {
+          setPending({ type: "work", job: selected, hours: 0 });
+        }
         return;
       }
       requestApply(selected);
@@ -650,12 +724,18 @@ function JobsSection({
             <div>
               <dt>Заработок</dt>
               <dd>
-                {selected.payoutMin.toLocaleString("ru-RU")}–{selected.payoutMax.toLocaleString("ru-RU")} ₽
+                {selected.kind === "duration" && selected.payoutPerHourMin != null
+                  ? `${selected.payoutPerHourMin.toLocaleString("ru-RU")}–${(selected.payoutPerHourMax ?? selected.payoutPerHourMin).toLocaleString("ru-RU")} ₽/ч (смена ${selected.shiftHoursMin}–${selected.shiftHoursMax} ч)`
+                  : `${selected.payoutMin.toLocaleString("ru-RU")}–${selected.payoutMax.toLocaleString("ru-RU")} ₽`}
               </dd>
             </div>
             <div>
               <dt>Перерыв между сменами</dt>
-              <dd>{formatDuration(selected.cooldownMs)}</dd>
+              <dd>
+                {selected.kind === "duration"
+                  ? "равен длительности смены (4–12 ч)"
+                  : formatDuration(selected.cooldownMs)}
+              </dd>
             </div>
             <div>
               <dt>Готовность</dt>
@@ -686,6 +766,31 @@ function JobsSection({
               <div>
                 <dt>Связь</dt>
                 <dd>Нужна сим-карта</dd>
+              </div>
+            )}
+            {selected.requiresDriversLicense && (
+              <div>
+                <dt>Права</dt>
+                <dd>{user.player.driversLicense ? "Есть" : "Нужны водительские права (магазин → авто)"}</dd>
+              </div>
+            )}
+            {employed && selected.kind === "duration" && (
+              <div className="job-shift-hours">
+                <dt>Длительность смены</dt>
+                <dd>
+                  <div className="job-hours-row" role="group" aria-label="Часы смены">
+                    {[4, 6, 8, 10, 12].filter((h) => h >= minH && h <= maxH).map((h) => (
+                      <button
+                        key={h}
+                        type="button"
+                        className={`btn btn-secondary job-hours-btn${shiftHours === h ? " job-hours-btn--active" : ""}`}
+                        onClick={() => setShiftHours(h)}
+                      >
+                        {h} ч
+                      </button>
+                    ))}
+                  </div>
+                </dd>
               </div>
             )}
             {selected.skillGain != null && selected.skill && (
@@ -719,6 +824,11 @@ function JobsSection({
                 className={`job-schedule-hint${scheduleBlocked ? " job-schedule-hint--blocked" : ""}`}
               >
                 {selected.scheduleHint}
+              </p>
+            )}
+            {guestBlocked && (
+              <p className="job-schedule-hint job-schedule-hint--blocked">
+                Вы гость в этом городе. Оформите жильё в разделе «Недвижимость», чтобы работать.
               </p>
             )}
           </dl>
@@ -758,6 +868,11 @@ function JobsSection({
 
   return (
     <div className="city-jobs-stack">
+      {!isResident && (
+        <p className="housing-guest-banner">
+          Вы гость — без жилья в этом городе нельзя устроиться на работу. Зайдите в «Недвижимость».
+        </p>
+      )}
       {employedJob && (
         <div className="card">
           <h2>Ваша работа</h2>
@@ -781,6 +896,132 @@ function JobsSection({
             ))}
           </ul>
         )}
+      </div>
+    </div>
+  );
+}
+
+function HousingSection({
+  initialInfo,
+  user,
+  setUser,
+  onToast,
+  onReload,
+}: {
+  initialInfo: HousingInfo | null;
+  user: User;
+  setUser: (u: User) => void;
+  onToast: (msg: string, isErr?: boolean) => void;
+  onReload: () => Promise<void>;
+}) {
+  const [info, setInfo] = useState<HousingInfo | null>(initialInfo);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setInfo(initialInfo);
+  }, [initialInfo]);
+
+  useEffect(() => {
+    if (initialInfo) return;
+    fetchHousing()
+      .then((data) => setInfo(data))
+      .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+  }, [initialInfo, onToast]);
+
+  const pay = async (kind: "dorm" | "rent" | "buy") => {
+    if (!info) return;
+    setBusy(true);
+    try {
+      const fn =
+        kind === "dorm" ? payHousingDorm : kind === "rent" ? payHousingRent : payHousingBuy;
+      const r = await fn();
+      setUser(r.user);
+      onToast(r.message);
+      await onReload();
+    } catch (e) {
+      onToast(e instanceof Error ? e.message : "Ошибка", true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!info) {
+    return (
+      <div className="card">
+        <h2>Недвижимость</h2>
+        <p style={{ color: "var(--text-muted)" }}>Загрузка…</p>
+      </div>
+    );
+  }
+
+  const { prices } = info;
+  const ownedHere = info.housingType === "owned" && info.housingCityId === info.cityId;
+
+  return (
+    <div className="housing-stack">
+      <div className="card">
+        <h2>Недвижимость · {info.cityName}</h2>
+        <p
+          className={`housing-status-line${info.isResident ? " housing-status-line--resident" : " housing-status-line--guest"}`}
+        >
+          {info.statusLabel}
+          {info.expiresAt != null && (
+            <>
+              {" "}
+              · до {formatHousingExpiry(info.expiresAt)}
+            </>
+          )}
+        </p>
+        {!info.isResident && (
+          <p className="housing-guest-hint">
+            Без жилья вы гость: работать в городе нельзя. Общежитие — самый быстрый способ стать
+            жителем.
+          </p>
+        )}
+      </div>
+
+      <div className="housing-cards">
+        <div className="card housing-card">
+          <h3>Общежитие</h3>
+          <p className="housing-card-price">{prices.dormRub.toLocaleString("ru-RU")} ₽ / сутки</p>
+          <p className="housing-card-desc">+{prices.dormHours} ч резидентства в этом городе</p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={busy || user.player.rubles < prices.dormRub}
+            onClick={() => void pay("dorm")}
+          >
+            Оплатить сутки
+          </button>
+        </div>
+
+        <div className="card housing-card">
+          <h3>Аренда</h3>
+          <p className="housing-card-price">{prices.rentRub.toLocaleString("ru-RU")} ₽ / месяц</p>
+          <p className="housing-card-desc">{prices.rentDays} календарных дней</p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={busy || user.player.rubles < prices.rentRub}
+            onClick={() => void pay("rent")}
+          >
+            Оплатить аренду
+          </button>
+        </div>
+
+        <div className="card housing-card">
+          <h3>Покупка</h3>
+          <p className="housing-card-price">{prices.buyRub.toLocaleString("ru-RU")} ₽</p>
+          <p className="housing-card-desc">Постоянное жильё — вы всегда житель этого города</p>
+          <button
+            type="button"
+            className="btn btn-success"
+            disabled={busy || ownedHere || !info.canBuy || user.player.rubles < prices.buyRub}
+            onClick={() => void pay("buy")}
+          >
+            {ownedHere ? "Уже куплено" : "Купить квартиру"}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -24,29 +24,42 @@ export type PayoutPeriod = {
   multiplier: number;
 };
 
-export type JobDef = {
-  id: string;
+export type JobKind = "duration" | "cooldown";
+
+export type JobTemplate = {
   title: string;
   description: string;
-  cooldownMs: number;
-  payoutMin: number;
-  payoutMax: number;
-  skill: "agility" | "stamina" | "charisma" | "wit" | null;
+  kind: JobKind;
+  shiftHoursMin?: number;
+  shiftHoursMax?: number;
+  payoutPerHourMin?: number;
+  payoutPerHourMax?: number;
+  cooldownMs?: number;
+  payoutMin?: number;
+  payoutMax?: number;
+  skill?: "agility" | "stamina" | "charisma" | "wit" | null;
   skillMin?: number;
   skillGain?: number;
-  /** Оформленная сим-карта (не привязана к конкретной профессии). */
   requiresSim?: boolean;
-  /** @deprecated используйте requiresSim */
   requiresPhone?: boolean;
+  requiresDriversLicense?: boolean;
   schedule?: JobSchedule;
   payoutPeriods?: PayoutPeriod[];
+  workCosts?: {
+    energy?: number;
+    hunger?: number;
+    mood?: number;
+  };
+};
+
+export type JobDef = JobTemplate & {
+  id: string;
+  templateKey: string;
 };
 
 export function jobRequiresSim(job: JobDef): boolean {
   return job.requiresSim === true || job.requiresPhone === true;
 }
-
-export type CityJobs = { sideGig: JobDef; shift: JobDef };
 
 export type PhoneDevice = {
   id: string;
@@ -62,13 +75,25 @@ export type PhoneDevice = {
   os: string;
 };
 
+const JOB_TEMPLATE_KEYS = ["delivery", "taxi", "cashier", "night_guard"] as const;
+
 const cities = JSON.parse(readFileSync(join(DATA_DIR, "cities.json"), "utf-8")) as City[];
 const phones = JSON.parse(readFileSync(join(DATA_DIR, "phones.json"), "utf-8")) as PhoneDevice[];
 const travel = JSON.parse(readFileSync(join(DATA_DIR, "travel.json"), "utf-8")) as Record<
   string,
   { priceRub: number; durationMs: number }
 >;
-const jobs = JSON.parse(readFileSync(join(DATA_DIR, "jobs.json"), "utf-8")) as Record<string, CityJobs>;
+const jobTemplates = JSON.parse(
+  readFileSync(join(DATA_DIR, "jobTemplates.json"), "utf-8"),
+) as Record<string, JobTemplate>;
+
+function buildJob(cityId: string, templateKey: string, template: JobTemplate): JobDef {
+  return {
+    ...template,
+    id: `${cityId}_${templateKey}`,
+    templateKey,
+  };
+}
 
 export function getCities(): City[] {
   return cities;
@@ -78,8 +103,17 @@ export function getCity(id: string): City | undefined {
   return cities.find((c) => c.id === id);
 }
 
-export function getCityJobs(cityId: string): CityJobs | undefined {
-  return jobs[cityId];
+export function getCityJobs(cityId: string): JobDef[] {
+  if (!getCity(cityId)) return [];
+  return JOB_TEMPLATE_KEYS.map((key) => {
+    const template = jobTemplates[key];
+    if (!template) throw new Error(`Missing job template: ${key}`);
+    return buildJob(cityId, key, template);
+  });
+}
+
+export function findCityJob(cityId: string, jobId: string): JobDef | undefined {
+  return getCityJobs(cityId).find((j) => j.id === jobId);
 }
 
 export function getTravel(from: string, to: string): { priceRub: number; durationMs: number } | undefined {

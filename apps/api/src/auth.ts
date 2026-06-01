@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import * as jose from "jose";
 import { ACCESS_TOKEN_TTL, COOKIE_SECURE, JWT_SECRET } from "./config.js";
 import { getPhone } from "./gameData.js";
+import { housingStatusForPlayer } from "./housing.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 import {
   createPlayer,
@@ -137,6 +138,7 @@ export function getSkill(player: { agility: number; stamina: number; charisma: n
 }
 
 export function serializePlayer(p: import("./db.js").PlayerRow) {
+  const housing = housingStatusForPlayer(p);
   return {
     displayName: p.display_name,
     rubles: Math.round(p.rubles * 100) / 100,
@@ -163,5 +165,19 @@ export function serializePlayer(p: import("./db.js").PlayerRow) {
       : null,
     carOwned: Boolean(p.car_owned),
     plateText: p.plate_text,
+    driversLicense: Boolean(p.drivers_license),
+    isResident: housing.isResident,
+    housingType: housing.housingType,
+    housingCityId: housing.housingCityId,
+    housingExpiresAt: housing.housingExpiresAt,
+    housingStatusLabel: housing.statusLabel,
+    vitals: {
+      energy: p.energy ?? 80,
+      hunger: p.hunger ?? 80,
+      mood: p.mood ?? 70,
+      health: p.health ?? 100,
+      reputation: p.reputation ?? 100,
+    },
+    education: p.education ?? "none",
   };
 }

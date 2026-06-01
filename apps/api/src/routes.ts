@@ -17,15 +17,14 @@ import {
   verifyAccessToken,
 } from "./auth.js";
 import { countPlayersInCity, getDb, getPlayer, getUserById, listPlayersForAdmin, updatePlayer } from "./db.js";
-import { listCityFeed } from "./cityFeed.js";
 import { getCityLocalTime, getCityTimezone } from "./cityTime.js";
-import { getCities, getCity, getCityJobs, getPhones, getTravel, type JobDef } from "./gameData.js";
+import { findCityJob, getCities, getCity, getCityJobs, getPhones, getTravel, type JobDef } from "./gameData.js";
 import {
   applyJob,
   buyCar,
+  buyDriversLicense,
   buyPhoneDevice,
-  doShift,
-  doSideGig,
+  doJobWork,
   enrichJobWorkState,
   quitJob,
   resolveTravel,
@@ -33,7 +32,16 @@ import {
   startTravel,
 } from "./game.js";
 import { changeSimPart, registerSim, SIM_SHOP_PRICES, topupSim } from "./simShop.js";
-import { jobCooldownState } from "./workCooldown.js";
+import { listActionPreviews, performAction } from "./actions.js";
+import { buyProduct, listProductPreviews, listProducts } from "./products.js";
+import {
+  getHousingInfo,
+  housingStatusForPlayer,
+  payHousingBuy,
+  payHousingDorm,
+  payHousingRent,
+} from "./housing.js";
+import { jobCooldownState, lastWorkRecordForJob } from "./workCooldown.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 
 function getBearer(req: FastifyRequest): string | null {
@@ -148,27 +156,63 @@ export async function registerRoutes(app: FastifyInstance) {
     let player = getPlayer(userId);
     if (!player) return reply.code(404).send({ error: "Игрок не найден" });
     player = resolveTravel(player);
+    if (player.job_id && !findCityJob(player.city_id, player.job_id)) {
+      updatePlayer(userId, { job_id: null });
+      player = { ...player, job_id: null };
+    }
 
     const city = getCity(player.city_id);
-    const jobs = getCityJobs(player.city_id);
+    const cityJobs = getCityJobs(player.city_id);
     const now = Date.now();
-
-    const sideCd = jobs ? jobCooldownState(player, jobs.sideGig, now) : { ready: true, remainingMs: 0 };
-    const shiftCd = jobs ? jobCooldownState(player, jobs.shift, now) : { ready: true, remainingMs: 0 };
     const timezone = getCityTimezone(city);
     const localTime = getCityLocalTime(timezone, now);
 
-    const jobPayload = (job: JobDef, cooldown: { ready: boolean; remainingMs: number }) => {
+    const jobPayload = (job: JobDef) => {
       const work = enrichJobWorkState(timezone, job, now);
+      const cooldown = jobCooldownState(player, job, now);
+      const record = lastWorkRecordForJob(player, job.id);
+      const cooldownMs =
+        job.kind === "duration"
+          ? record?.cooldownMs ?? (job.shiftHoursMin ?? 4) * 3600000
+          : (job.cooldownMs ?? 0);
+      const payoutMin =
+        job.kind === "duration"
+          ? (job.payoutPerHourMin ?? 0) * (job.shiftHoursMin ?? 4)
+          : (job.payoutMin ?? 0);
+      const payoutMax =
+        job.kind === "duration"
+          ? (job.payoutPerHourMax ?? 0) * (job.shiftHoursMax ?? 12)
+          : (job.payoutMax ?? 0);
       return {
-        ...job,
+        id: job.id,
+        templateKey: job.templateKey,
+        title: job.title,
+        description: job.description,
+        kind: job.kind,
+        shiftHoursMin: job.shiftHoursMin ?? null,
+        shiftHoursMax: job.shiftHoursMax ?? null,
+        payoutPerHourMin: job.payoutPerHourMin ?? null,
+        payoutPerHourMax: job.payoutPerHourMax ?? null,
+        payoutMin,
+        payoutMax,
+        cooldownMs,
+        skill: job.skill,
+        skillMin: job.skillMin,
+        skillGain: job.skillGain,
+        requiresSim: job.requiresSim ?? false,
+        requiresDriversLicense: job.requiresDriversLicense ?? false,
+        schedule: job.schedule,
+        payoutPeriods: job.payoutPeriods,
         cooldown,
         scheduleAllowed: work.scheduleAllowed,
         payoutMultiplier: work.payoutMultiplier,
         scheduleHint: work.scheduleHint,
         nextWindowAt: work.nextWindowAt,
+        lastShiftHours: job.kind === "duration" && record ? Math.round(record.cooldownMs / 3600000) : null,
       };
     };
+
+    const housing = housingStatusForPlayer(player, now);
 
     return {
       city: city
@@ -180,19 +224,77 @@ export async function registerRoutes(app: FastifyInstance) {
             population: countPlayersInCity(player.city_id),
             timezone,
             localTime,
+            isResident: housing.isResident,
           }
         : null,
       player: serializePlayer(player),
-      jobs: jobs
-        ? {
-            sideGig: jobPayload(jobs.sideGig, sideCd),
-            shift: jobPayload(jobs.shift, shiftCd),
-          }
-        : null,
+      housing: getHousingInfo(player, now),
+      jobs: cityJobs.length > 0 ? cityJobs.map(jobPayload) : null,
       traveling: player.status === "traveling",
       travelArrivesAt: player.travel_arrives_at,
-      feed: listCityFeed(player.city_id),
+      feed: [],
+      actions: listActionPreviews(player),
     };
+  });
+
+  app.post<{ Params: { actionId?: string } }>("/api/action/:actionId", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    let player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    player = resolveTravel(player);
+    const actionId = req.params.actionId ?? "";
+    const result = performAction(userId, actionId);
+    if (!result.ok) return reply.code(400).send({ error: result.error, code: result.code });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
+  });
+
+  app.get("/api/housing", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    let player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    player = resolveTravel(player);
+    const info = getHousingInfo(player);
+    if (!info?.ok) return reply.code(400).send({ error: info?.error ?? "Ошибка" });
+    return info;
+  });
+
+  app.post("/api/housing/dorm", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    let player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    player = resolveTravel(player);
+    const result = payHousingDorm(player);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
+  });
+
+  app.post("/api/housing/rent", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    let player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    player = resolveTravel(player);
+    const result = payHousingRent(player);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
+  });
+
+  app.post("/api/housing/buy", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    let player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    player = resolveTravel(player);
+    const result = payHousingBuy(player);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
   });
 
   app.post("/api/work/quit", async (req, reply) => {
@@ -225,38 +327,29 @@ export async function registerRoutes(app: FastifyInstance) {
           newTitle: result.newTitle,
         });
       }
-      return reply.code(400).send({
+      const code = "code" in result ? result.code : undefined;
+      return reply.code(code === "guest_no_housing" ? 403 : 400).send({
         error: result.error,
         remainingMs: result.remainingMs,
+        code,
       });
     }
     const user = await getPublicUser(userId);
     return { message: result.message, user };
   });
 
-  app.post("/api/work/side-gig", async (req, reply) => {
+  app.post<{ Body: { jobId?: string; hours?: number } }>("/api/work/job", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    const result = doSideGig(userId);
+    const jobId = req.body?.jobId ?? "";
+    if (!jobId) return reply.code(400).send({ error: "Укажите jobId" });
+    const hours =
+      req.body?.hours != null && Number.isFinite(Number(req.body.hours))
+        ? Math.floor(Number(req.body.hours))
+        : undefined;
+    const result = doJobWork(userId, jobId, hours);
     if (!result.ok) {
-      return reply.code(400).send({
-        error: result.error,
-        readyAt: result.readyAt,
-        code: result.code,
-        localTime: result.localTime,
-        nextWindowAt: result.nextWindowAt,
-      });
-    }
-    const user = await getPublicUser(userId);
-    return { message: result.message, payout: result.payout, skillGain: result.skillGain, user };
-  });
-
-  app.post("/api/work/shift", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    const result = doShift(userId);
-    if (!result.ok) {
-      return reply.code(400).send({
+      return reply.code(result.code === "guest_no_housing" ? 403 : 400).send({
         error: result.error,
         readyAt: result.readyAt,
         code: result.code,
@@ -297,6 +390,29 @@ export async function registerRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/shop/prices", async () => ({ ...SHOP_PRICES, sim: SIM_SHOP_PRICES }));
+
+  app.get("/api/shop/products", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    let player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    player = resolveTravel(player);
+    return {
+      products: listProducts(),
+      previews: listProductPreviews(player),
+    };
+  });
+
+  app.post<{ Body: { productId?: string } }>("/api/shop/product", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const productId = req.body?.productId ?? "";
+    if (!productId) return reply.code(400).send({ error: "Укажите productId" });
+    const result = buyProduct(userId, productId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
+  });
 
   app.get("/api/shop/sim", async (req, reply) => {
     const userId = await resolveUserId(req);
@@ -376,6 +492,15 @@ export async function registerRoutes(app: FastifyInstance) {
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
     return { plate: result.plate, user };
+  });
+
+  app.post("/api/shop/drivers-license", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const result = buyDriversLicense(userId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { user };
   });
 
   // ——— Admin ———
