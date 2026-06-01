@@ -65,14 +65,17 @@ export function ProductsShop({ user, setUser, onToast }: Props) {
             </div>
             <p className="product-desc">{p.description}</p>
             {p.gains && <p className="product-gains">{gainsLabel(p)}</p>}
-            {!p.canBuy && p.blockReason && (
-              <p className="product-block">{p.blockReason}</p>
-            )}
             <button
               type="button"
               className="btn btn-primary"
-              disabled={!p.canBuy || busy != null}
-              onClick={() => void onBuy(p.id)}
+              disabled={busy != null}
+              onClick={() => {
+                if (!p.canBuy) {
+                  onToast(p.blockReason ?? "Нельзя купить", true);
+                  return;
+                }
+                void onBuy(p.id);
+              }}
             >
               {busy === p.id ? "…" : "Купить"}
             </button>

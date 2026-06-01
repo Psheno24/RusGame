@@ -1,0 +1,38 @@
+[
+  {
+    "id": "scooter",
+    "label": "Самокат",
+    "hint": "По городу, без прав",
+    "priceRub": 200,
+    "hours": 4,
+    "needsLicense": false,
+    "accent": "#2d8f5c"
+  },
+  {
+    "id": "bike",
+    "label": "Велосипед",
+    "hint": "Прогулки и короткие дела",
+    "priceRub": 150,
+    "hours": 8,
+    "needsLicense": false,
+    "accent": "#1e6b4f"
+  },
+  {
+    "id": "moped",
+    "label": "Скутер",
+    "hint": "Быстрее велосипеда",
+    "priceRub": 450,
+    "hours": 6,
+    "needsLicense": true,
+    "accent": "#4a5568"
+  },
+  {
+    "id": "car-economy",
+    "label": "Каршеринг «Эконом»",
+    "hint": "Дешёвое авто на время",
+    "priceRub": 900,
+    "hours": 4,
+    "needsLicense": true,
+    "accent": "#3d4f6f"
+  }
+]

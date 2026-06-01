@@ -7,7 +7,6 @@ import {
   type CityPin,
 } from "../api";
 import { MapActionPanel } from "../components/MapActionPanel";
-import { DismissibleNotice } from "../components/DismissibleNotice";
 import { useApp } from "../context";
 import { useNotice } from "../noticeContext";
 import { MapLabel } from "../components/MapLabel";
@@ -60,7 +59,6 @@ export function MapPage() {
   const [selected, setSelected] = useState<CityPin | null>(null);
   const [quote, setQuote] = useState<{ priceRub: number; durationMs: number; toName?: string } | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
-  const [loadError, setLoadError] = useState("");
   const [view, setView] = useState<"list" | "map">("map");
 
   const load = useCallback(async () => {
@@ -70,11 +68,10 @@ export function MapPage() {
       if (data.currentCityId) setCurrentId(data.currentCityId);
       setTraveling(data.status === "traveling");
       setArrivesAt(data.travelArrivesAt);
-      setLoadError("");
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : "Ошибка");
+      showNotice(e instanceof Error ? e.message : "Ошибка", "error");
     }
-  }, []);
+  }, [showNotice]);
 
   useEffect(() => {
     if (user?.player?.cityId) setCurrentId(user.player.cityId);
@@ -142,14 +139,6 @@ export function MapPage() {
       <div className="card map-intro">
         <h2>Карта России</h2>
         <p>Щипок — масштаб, палец — двигать. При открытии — ваш город.</p>
-        {loadError && !selected && (
-          <DismissibleNotice
-            variant="inline"
-            tone="error"
-            message={loadError}
-            onDismiss={() => setLoadError("")}
-          />
-        )}
         {traveling && arrivesAt && (
           <p className="map-travel-hint">В пути… осталось {formatDuration(remaining)}</p>
         )}

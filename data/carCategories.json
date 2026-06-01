@@ -1,0 +1,7 @@
+[
+  { "id": "A", "title": "Категория A", "subtitle": "Мотоциклы", "licensePriceRub": 12000 },
+  { "id": "B", "title": "Категория B", "subtitle": "Легковые автомобили", "licensePriceRub": 28000 },
+  { "id": "C", "title": "Категория C", "subtitle": "Грузовые автомобили", "licensePriceRub": 45000 },
+  { "id": "D", "title": "Категория D", "subtitle": "Автобусы", "licensePriceRub": 55000 },
+  { "id": "BE", "title": "Категория BE", "subtitle": "Легковые с прицепом", "licensePriceRub": 35000 }
+]

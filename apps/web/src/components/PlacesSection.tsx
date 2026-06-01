@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { performAction, type User } from "../api";
 import type { NavBackHandler } from "../navBack";
 import { CITY_PLACES, type PlaceId } from "../placesData";
+import { PoliceLicenseShop } from "./PoliceLicenseShop";
 
 type Props = {
   placeId: PlaceId | null;
@@ -23,7 +24,7 @@ export function PlacesSection({
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!placeId) {
+    if (!placeId || placeId === "police") {
       registerBack(null);
       return;
     }
@@ -50,6 +51,20 @@ export function PlacesSection({
       );
     }
 
+    if (placeId === "police") {
+      return (
+        <div className="place-detail">
+          <PoliceLicenseShop
+            user={user}
+            setUser={setUser}
+            onToast={onToast}
+            registerBack={registerBack}
+            onExitPlace={() => onPlace(null)}
+          />
+        </div>
+      );
+    }
+
     if (placeId === "cinema") {
       const rubles = user.player.rubles;
       return (
@@ -60,8 +75,12 @@ export function PlacesSection({
           <button
             type="button"
             className="btn btn-primary"
-            disabled={busy || rubles < 500}
+            disabled={busy}
             onClick={() => {
+              if (rubles < 500) {
+                onToast("Не хватает денег", true);
+                return;
+              }
               setBusy(true);
               performAction("cinema")
                 .then((r) => {
@@ -74,7 +93,6 @@ export function PlacesSection({
           >
             {busy ? "…" : "Купить билет"}
           </button>
-          {rubles < 500 && <p className="product-block">Не хватает денег</p>}
         </div>
       );
     }

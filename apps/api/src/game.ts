@@ -1,5 +1,8 @@
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
+import { computeResaleValue } from "./assetTrade.js";
+import type { AssetQuote } from "./carShop.js";
+import { getPhoneShopPriceRub } from "./shopCatalog.js";
 import { getSkill, type SkillKey } from "./auth.js";
 import { appendCityFeed, feedActorName } from "./cityFeed.js";
 import {
@@ -17,6 +20,7 @@ import {
   getCity,
   getCityJobs,
   getPhone,
+  getPhones,
   getTravel,
   jobRequiresSim,
   type JobDef,
@@ -31,6 +35,7 @@ import {
   type StatCosts,
   workPayoutMultiplier,
 } from "./playerStats.js";
+import { applyCarCooldownReduction, hasDriverLicense } from "./playerCars.js";
 import { playerHasSim } from "./simNumber.js";
 import {
   canWorkJobNow,
@@ -39,6 +44,7 @@ import {
   serializeLastWorkByJob,
   withLastWork,
 } from "./workCooldown.js";
+import { scaleTravelMs } from "./testAccount.js";
 
 export { canWorkJobNow, formatCooldown } from "./workCooldown.js";
 
@@ -76,8 +82,8 @@ function cooldownBlockedMessage(remainingMs: number): string {
 }
 
 function checkJobRequirements(player: PlayerRow, job: JobDef): string | null {
-  if (job.requiresDriversLicense && !player.drivers_license) {
-    return "Нужны водительские права — оформите в магазине (раздел «Авто»)";
+  if (job.requiresDriversLicense && !hasDriverLicense(player, "B")) {
+    return "Нужны права категории B — оформите в полиции";
   }
   if (jobRequiresSim(job) && !playerHasSim(player)) {
     return "Нужна сим-карта — оформите в магазине (телефон → сим-карта)";
@@ -312,14 +318,14 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
       return { ok: false, error: `Укажите длительность смены: от ${minH} до ${maxH} ч` };
     }
     shiftHours = hours;
-    cooldownMs = hours * 3600000;
+    cooldownMs = applyCarCooldownReduction(userId, hours * 3600000);
     workCosts = scaleWorkCostsByHours(job.workCosts, hours);
   } else {
     if (hours != null) {
       return { ok: false, error: "Для этой работы длительность смены не выбирается" };
     }
     shiftHours = 0;
-    cooldownMs = job.cooldownMs ?? 0;
+    cooldownMs = applyCarCooldownReduction(userId, job.cooldownMs ?? 0);
   }
 
   const scaledCosts = scaleWorkCosts(player, workCosts);
@@ -404,7 +410,7 @@ export function startTravel(userId: number, toCityId: string, now = Date.now()):
     return { ok: false, error: `Не хватает денег (нужно ${route.priceRub.toLocaleString("ru-RU")} ₽)` };
   }
 
-  const arrivesAt = now + route.durationMs;
+  const arrivesAt = now + scaleTravelMs(route.durationMs, userId);
   const name = feedActorName(userId);
   appendCityFeed(
     player.city_id,
@@ -422,55 +428,131 @@ export function startTravel(userId: number, toCityId: string, now = Date.now()):
   return { ok: true, arrivesAt, priceRub: route.priceRub };
 }
 
-export function randomPlateLetter(): string {
-  return CYR[randInt(0, CYR.length - 1)]!;
-}
-
-export function generatePlate(): string {
-  const l1 = randomPlateLetter();
-  const digits = String(randInt(100, 999));
-  const l2 = randomPlateLetter() + randomPlateLetter();
-  const region = String(randInt(1, 199));
-  return `${l1}${digits}${l2} ${region}`;
-}
-
-const CAR_PRICE = 280000;
 const LICENSE_PRICE = 28000;
 
+export type { AssetQuote } from "./carShop.js";
+export {
+  buyCar,
+  listCarCatalog,
+  listCarCategoriesWithCounts,
+  listCarsInCategory,
+  listOwnedCars,
+  quoteCarPurchase,
+  quoteCarSell,
+  sellCar,
+  tradeInForCar,
+} from "./carShop.js";
+export {
+  buyDriverLicenseCategory,
+  getDriverLicenseShop,
+  getPlayerLicenseCategories,
+} from "./driverLicense.js";
+import { buyDriverLicenseCategory } from "./driverLicense.js";
+
+/** @deprecated use buyDriverLicenseCategory(userId, "B") */
 export function buyDriversLicense(
   userId: number,
 ): { ok: true } | { ok: false; error: string } {
-  const player = getPlayer(userId);
-  if (!player) return { ok: false, error: "Игрок не найден" };
-  if (player.drivers_license) return { ok: false, error: "Права уже есть" };
-  if (player.rubles < LICENSE_PRICE) {
-    return { ok: false, error: `Нужно ${LICENSE_PRICE.toLocaleString("ru-RU")} ₽` };
-  }
-  updatePlayer(userId, { rubles: player.rubles - LICENSE_PRICE, drivers_license: 1 });
-  return { ok: true };
+  return buyDriverLicenseCategory(userId, "B");
 }
 
-export function buyCar(userId: number): { ok: true; plate: string } | { ok: false; error: string } {
-  const player = getPlayer(userId);
-  if (!player) return { ok: false, error: "Игрок не найден" };
-  if (player.car_owned) return { ok: false, error: "Машина уже есть" };
-  if (player.rubles < CAR_PRICE) return { ok: false, error: `Нужно ${CAR_PRICE.toLocaleString("ru-RU")} ₽` };
-  const plate = generatePlate();
-  updatePlayer(userId, { rubles: player.rubles - CAR_PRICE, car_owned: 1, plate_text: plate });
-  const name = feedActorName(userId);
-  appendCityFeed(
-    player.city_id,
-    "shop:car",
-    `${name} купил авто, номер ${plate}`,
-    userId,
-  );
-  return { ok: true, plate };
+export type PhoneCatalogItem = {
+  id: string;
+  brand: string;
+  model: string;
+  priceRub: number;
+  accent: string;
+  screen: string;
+  ram: string;
+  storage: string;
+  battery: string;
+  camera: string;
+  os: string;
+  listPriceRub: number;
+  netPriceRub: number | null;
+  tradeInRub: number;
+  isOwned: boolean;
+  canBuy: boolean;
+  quoteError: string | null;
+};
+
+export function listPhoneCatalog(player: PlayerRow, now = Date.now()): PhoneCatalogItem[] {
+  return getPhones().map((d) => {
+    const base = {
+      id: d.id,
+      brand: d.brand,
+      model: d.model,
+      priceRub: d.priceRub,
+      accent: d.accent,
+      screen: d.screen,
+      ram: d.ram,
+      storage: d.storage,
+      battery: d.battery,
+      camera: d.camera,
+      os: d.os,
+      listPriceRub: d.priceRub,
+      netPriceRub: d.priceRub as number | null,
+      tradeInRub: 0,
+      isOwned: player.phone_device_id === d.id,
+      canBuy: false,
+      quoteError: null as string | null,
+    };
+    if (player.phone_device_id === d.id) {
+      return { ...base, netPriceRub: null };
+    }
+    const q = quotePhonePurchase(player, d.id, now);
+    if ("error" in q) {
+      return { ...base, netPriceRub: null, quoteError: q.error };
+    }
+    return {
+      ...base,
+      listPriceRub: q.listPriceRub,
+      netPriceRub: q.netPriceRub,
+      tradeInRub: q.tradeInRub,
+      canBuy: true,
+      priceRub: q.netPriceRub,
+    };
+  });
+}
+
+export function quotePhonePurchase(
+  player: PlayerRow,
+  deviceId: string,
+  now = Date.now(),
+): AssetQuote | { error: string } {
+  const listPriceRub = getPhoneShopPriceRub(deviceId);
+  if (listPriceRub == null) return { error: "Модель не найдена" };
+  const tradeInCatalogPriceRub = player.phone_device_id
+    ? getPhoneShopPriceRub(player.phone_device_id)
+    : null;
+  let tradeInRub = 0;
+  if (tradeInCatalogPriceRub != null) {
+    if (listPriceRub <= tradeInCatalogPriceRub) {
+      return { error: "Можно купить только модель дороже текущей" };
+    }
+    tradeInRub = computeResaleValue(
+      tradeInCatalogPriceRub,
+      "phone",
+      player.phone_acquired_at,
+      now,
+      "trade_in",
+    );
+  }
+  return {
+    listPriceRub,
+    tradeInRub,
+    netPriceRub: listPriceRub - tradeInRub,
+    resaleRatePct: tradeInCatalogPriceRub
+      ? Math.round((tradeInRub / tradeInCatalogPriceRub) * 100)
+      : 0,
+    tradeInCatalogPriceRub,
+  };
 }
 
 export function buyPhoneDevice(
   userId: number,
   deviceId: string,
-): { ok: true; deviceName: string } | { ok: false; error: string } {
+): { ok: true; deviceName: string; tradeInRub: number } | { ok: false; error: string } {
   const player = getPlayer(userId);
   if (!player) return { ok: false, error: "Игрок не найден" };
   const device = getPhone(deviceId);
@@ -478,12 +560,16 @@ export function buyPhoneDevice(
   if (player.phone_device_id === deviceId) {
     return { ok: false, error: "Этот телефон уже у вас" };
   }
-  if (player.rubles < device.priceRub) {
-    return { ok: false, error: `Нужно ${device.priceRub.toLocaleString("ru-RU")} ₽` };
+  const now = Date.now();
+  const quote = quotePhonePurchase(player, deviceId, now);
+  if ("error" in quote) return { ok: false, error: quote.error };
+  if (player.rubles < quote.netPriceRub) {
+    return { ok: false, error: `Нужно ${quote.netPriceRub.toLocaleString("ru-RU")} ₽` };
   }
   updatePlayer(userId, {
-    rubles: player.rubles - device.priceRub,
+    rubles: player.rubles - quote.netPriceRub,
     phone_device_id: deviceId,
+    phone_acquired_at: now,
   });
   const name = feedActorName(userId);
   const deviceName = `${device.brand} ${device.model}`;
@@ -493,7 +579,47 @@ export function buyPhoneDevice(
     `${name} купил телефон ${deviceName}`,
     userId,
   );
-  return { ok: true, deviceName };
+  return { ok: true, deviceName, tradeInRub: quote.tradeInRub };
 }
 
-export const SHOP_PRICES = { car: CAR_PRICE, driversLicense: LICENSE_PRICE };
+export function quotePhoneSell(
+  player: PlayerRow,
+  now = Date.now(),
+): { amountRub: number; catalogPriceRub: number } | { error: string } {
+  if (!player.phone_device_id) return { error: "У вас нет телефона" };
+  const catalogPriceRub = getPhoneShopPriceRub(player.phone_device_id);
+  if (catalogPriceRub == null) return { error: "Модель не найдена" };
+  return {
+    catalogPriceRub,
+    amountRub: computeResaleValue(catalogPriceRub, "phone", player.phone_acquired_at, now, "sell"),
+  };
+}
+
+export function sellPhoneDevice(
+  userId: number,
+): { ok: true; amountRub: number } | { ok: false; error: string } {
+  const player = getPlayer(userId);
+  if (!player) return { ok: false, error: "Игрок не найден" };
+  if (!player.phone_device_id) return { ok: false, error: "У вас нет телефона" };
+  const current = getPhone(player.phone_device_id);
+  if (!current) return { ok: false, error: "Модель не найдена" };
+  const catalogPriceRub = getPhoneShopPriceRub(player.phone_device_id);
+  if (catalogPriceRub == null) return { ok: false, error: "Модель не найдена" };
+  const now = Date.now();
+  const amountRub = computeResaleValue(catalogPriceRub, "phone", player.phone_acquired_at, now, "sell");
+  updatePlayer(userId, {
+    rubles: player.rubles + amountRub,
+    phone_device_id: null,
+    phone_acquired_at: null,
+  });
+  const name = feedActorName(userId);
+  appendCityFeed(
+    player.city_id,
+    "shop:phone",
+    `${name} продал телефон ${current.brand} ${current.model} (+${amountRub.toLocaleString("ru-RU")} ₽)`,
+    userId,
+  );
+  return { ok: true, amountRub };
+}
+
+export const SHOP_PRICES = { driversLicense: LICENSE_PRICE };

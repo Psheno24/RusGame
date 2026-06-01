@@ -1,0 +1,86 @@
+[
+  {
+    "id": "lada-granta",
+    "brand": "Lada",
+    "model": "Granta",
+    "priceRub": 165000,
+    "accent": "#5a7a9a",
+    "year": 2022,
+    "body": "Седан",
+    "category": "B",
+    "licenseCategory": "B",
+    "cooldownReducePct": 3
+  },
+  {
+    "id": "lada-vesta",
+    "brand": "Lada",
+    "model": "Vesta",
+    "priceRub": 280000,
+    "accent": "#2e5a8a",
+    "year": 2023,
+    "body": "Седан",
+    "category": "B",
+    "licenseCategory": "B",
+    "cooldownReducePct": 5
+  },
+  {
+    "id": "renault-logan",
+    "brand": "Renault",
+    "model": "Logan",
+    "priceRub": 320000,
+    "accent": "#c4a035",
+    "year": 2022,
+    "body": "Седан",
+    "category": "B",
+    "licenseCategory": "B",
+    "cooldownReducePct": 6
+  },
+  {
+    "id": "hyundai-solaris",
+    "brand": "Hyundai",
+    "model": "Solaris",
+    "priceRub": 450000,
+    "accent": "#1a3d5c",
+    "year": 2023,
+    "body": "Седан",
+    "category": "B",
+    "licenseCategory": "B",
+    "cooldownReducePct": 8
+  },
+  {
+    "id": "kia-rio",
+    "brand": "Kia",
+    "model": "Rio",
+    "priceRub": 520000,
+    "accent": "#8b2942",
+    "year": 2023,
+    "body": "Хэтчбек",
+    "category": "B",
+    "licenseCategory": "B",
+    "cooldownReducePct": 9
+  },
+  {
+    "id": "vw-polo",
+    "brand": "Volkswagen",
+    "model": "Polo",
+    "priceRub": 680000,
+    "accent": "#3d4f5f",
+    "year": 2022,
+    "body": "Седан",
+    "category": "B",
+    "licenseCategory": "B",
+    "cooldownReducePct": 11
+  },
+  {
+    "id": "toyota-camry",
+    "brand": "Toyota",
+    "model": "Camry",
+    "priceRub": 1200000,
+    "accent": "#6b3030",
+    "year": 2021,
+    "body": "Седан",
+    "category": "B",
+    "licenseCategory": "B",
+    "cooldownReducePct": 15
+  }
+]

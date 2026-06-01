@@ -1908,3 +1908,232 @@ body {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+.plate-shop {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.plate-preview {
+  background: linear-gradient(180deg, #f8f8f2 0%, #e8e8dc 100%);
+  color: #111;
+  border: 3px solid #1a1a1a;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  text-align: center;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  box-shadow: inset 0 2px 0 #fff;
+}
+
+.plate-preview--spin .plate-preview-main,
+.plate-preview--spin .plate-preview-region {
+  animation: plate-shake 0.35s ease-in-out;
+}
+
+@keyframes plate-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.plate-preview-main {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.plate-preview-region {
+  margin-top: 0.35rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.plate-preview-rus {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.plate-shop-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.property-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.property-card {
+  background: var(--bg);
+  border-radius: 12px;
+  padding: 12px 14px;
+  border-left: 4px solid var(--accent);
+}
+
+.property-card-kind {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.property-card-title {
+  margin: 4px 0 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.property-card-sub {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.property-card-meta {
+  margin: 8px 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.property-thumb {
+  background: linear-gradient(135deg, #4a6fa5, #2d4a6f) !important;
+}
+
+.car-catalog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.car-catalog-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.car-catalog-name {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+}
+
+.car-catalog-meta {
+  margin: 0 0 0.65rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.car-visual {
+  width: 100%;
+  height: 72px;
+  border-radius: 10px;
+  margin-bottom: 0.65rem;
+  opacity: 0.92;
+}
+
+.car-visual--lg {
+  height: 120px;
+}
+
+.car-catalog-license {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+}
+
+.car-catalog-price {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--gold);
+}
+
+.car-catalog-pay-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.license-ok {
+  color: #3ecf8e;
+  font-weight: 600;
+}
+
+.license-miss {
+  color: #e85d5d;
+  font-weight: 600;
+}
+
+.car-detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.shop-license-banner {
+  margin-bottom: 0.75rem;
+}
+
+.police-license-list {
+  margin-top: 0.75rem;
+}
+
+.police-license-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #2d3f56;
+  border-radius: 14px;
+  background: var(--bg-elevated);
+}
+
+.police-license-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.police-license-btn {
+  flex-shrink: 0;
+  width: auto;
+  min-width: 5.5rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.police-hub {
+  margin-top: 0;
+}
+
+.plate-list-number {
+  flex-shrink: 0;
+  max-width: 46%;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--gold);
+  text-align: right;
+  word-break: break-word;
+}

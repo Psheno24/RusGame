@@ -77,8 +77,45 @@ export type PhoneDevice = {
 
 const JOB_TEMPLATE_KEYS = ["delivery", "taxi", "cashier", "night_guard"] as const;
 
+export type CarModel = {
+  id: string;
+  brand: string;
+  model: string;
+  priceRub: number;
+  accent: string;
+  year: number;
+  body: string;
+  category: string;
+  licenseCategory: string;
+  cooldownReducePct: number;
+};
+
+export type CarCategoryDef = {
+  id: string;
+  title: string;
+  subtitle: string;
+  licensePriceRub: number;
+};
+
+export type VehicleRentalDef = {
+  id: string;
+  label: string;
+  hint: string;
+  priceRub: number;
+  hours: number;
+  needsLicense: boolean;
+  accent: string;
+};
+
 const cities = JSON.parse(readFileSync(join(DATA_DIR, "cities.json"), "utf-8")) as City[];
 const phones = JSON.parse(readFileSync(join(DATA_DIR, "phones.json"), "utf-8")) as PhoneDevice[];
+const cars = JSON.parse(readFileSync(join(DATA_DIR, "cars.json"), "utf-8")) as CarModel[];
+const carCategories = JSON.parse(
+  readFileSync(join(DATA_DIR, "carCategories.json"), "utf-8"),
+) as CarCategoryDef[];
+const vehicleRentals = JSON.parse(
+  readFileSync(join(DATA_DIR, "vehicleRentals.json"), "utf-8"),
+) as VehicleRentalDef[];
 const travel = JSON.parse(readFileSync(join(DATA_DIR, "travel.json"), "utf-8")) as Record<
   string,
   { priceRub: number; durationMs: number }
@@ -130,4 +167,32 @@ export function getPhones(): PhoneDevice[] {
 
 export function getPhone(id: string): PhoneDevice | undefined {
   return phones.find((p) => p.id === id);
+}
+
+export function getCars(): CarModel[] {
+  return [...cars].sort((a, b) => a.priceRub - b.priceRub);
+}
+
+export function getCar(id: string): CarModel | undefined {
+  return cars.find((c) => c.id === id);
+}
+
+export function getCarCategories(): CarCategoryDef[] {
+  return carCategories;
+}
+
+export function getCarCategory(id: string): CarCategoryDef | undefined {
+  return carCategories.find((c) => c.id === id);
+}
+
+export function getCarsByCategory(categoryId: string): CarModel[] {
+  return getCars().filter((c) => c.category === categoryId);
+}
+
+export function getVehicleRentals(): VehicleRentalDef[] {
+  return [...vehicleRentals];
+}
+
+export function getVehicleRental(id: string): VehicleRentalDef | undefined {
+  return vehicleRentals.find((r) => r.id === id);
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { SKILL_LABELS } from "../api";
 import { cityDisplayName } from "../cityNames";
+import { ProfilePropertyCards } from "../components/ProfilePropertyCards";
 import { VitalsBar } from "../components/VitalsBar";
 import { useApp } from "../context";
 
@@ -52,6 +53,8 @@ export function ProfilePage() {
               <VitalsBar vitals={p.vitals} />
             </>
           )}
+          <h3 className="profile-skills-title">Имущество</h3>
+          <ProfilePropertyCards />
           <h3 className="profile-skills-title">Навыки</h3>
           <div className="skill-grid">
             {(Object.entries(p.skills) as [string, number][]).map(([k, v]) => (

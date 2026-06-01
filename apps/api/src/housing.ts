@@ -1,9 +1,19 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { HousingType, PlayerRow } from "./db.js";
-import { getPlayer, updatePlayer } from "./db.js";
+import { updatePlayer } from "./db.js";
+import { computeResaleValue } from "./assetTrade.js";
 import { DATA_DIR } from "./config.js";
 import { getCity } from "./gameData.js";
+import {
+  getHousingPropertiesForCity,
+  getHousingProperty,
+  housingPropertyLabel,
+} from "./housingCatalog.js";
+
+function ownsApartmentInCity(player: PlayerRow, cityId: string): boolean {
+  return player.housing_type === "owned" && player.housing_city_id === cityId;
+}
 
 type HousingConfig = {
   byTier: Record<string, { dormRub: number; rentRub: number; buyRub: number }>;
@@ -53,7 +63,11 @@ export function housingStatusForPlayer(player: PlayerRow, now = Date.now()) {
   let label = "Гость";
   let expiresAt: number | null = null;
   if (activeInCurrent && player.housing_type === "owned") {
-    label = "Житель (своё жильё)";
+    const prop =
+      player.housing_property_id && player.housing_city_id
+        ? getHousingProperty(player.housing_city_id, player.housing_property_id)
+        : undefined;
+    label = prop ? `Житель · ${housingPropertyLabel(prop)}` : "Житель (своё жильё)";
   } else if (activeInCurrent && player.housing_expires_at) {
     label = "Житель";
     expiresAt = player.housing_expires_at;
@@ -86,13 +100,60 @@ export function getHousingInfo(player: PlayerRow, now = Date.now()) {
   const status = housingStatusForPlayer(player, now);
   const city = getCity(player.city_id);
 
+  const ownedHere =
+    player.housing_type === "owned" && player.housing_city_id === player.city_id;
+  const buyQuote = null;
+  const sellQuote = ownedHere ? quoteHousingSell(player, now) : null;
+
   return {
     ok: true as const,
     cityId: player.city_id,
     cityName: city?.name ?? player.city_id,
     prices,
     ...status,
-    canBuy: player.housing_type !== "owned" || player.housing_city_id !== player.city_id,
+    canBuy: !ownedHere,
+    canSell: ownedHere,
+    buyQuote: buyQuote && !("error" in buyQuote) ? buyQuote : null,
+    sellAmountRub: sellQuote && !("error" in sellQuote) ? sellQuote.amountRub : null,
+    sellCatalogPriceRub:
+      sellQuote && !("error" in sellQuote) ? sellQuote.catalogPriceRub : null,
+    properties: getHousingPropertiesForCity(player.city_id).map((prop) => {
+      if (ownedHere && player.housing_property_id === prop.id) {
+        return {
+          ...prop,
+          listPriceRub: prop.priceRub,
+          netPriceRub: null,
+          tradeInRub: 0,
+          isOwned: true,
+          canBuy: false,
+          quoteError: null,
+        };
+      }
+      const q = quoteHousingBuy(player, prop.id, now);
+      if ("error" in q) {
+        return {
+          ...prop,
+          listPriceRub: prop.priceRub,
+          netPriceRub: null,
+          tradeInRub: 0,
+          isOwned: false,
+          canBuy: false,
+          quoteError: q.error,
+        };
+      }
+      return {
+        ...prop,
+        listPriceRub: q.listPriceRub,
+        netPriceRub: q.netPriceRub,
+        tradeInRub: q.tradeInRub,
+        isOwned: false,
+        canBuy: true,
+        quoteError: null,
+        priceRub: q.netPriceRub,
+      };
+    }),
+    ownedPropertyId: ownedHere ? player.housing_property_id : null,
+    canRent: !ownedHere,
   };
 }
 
@@ -101,6 +162,9 @@ export type HousingPayResult =
   | { ok: false; error: string; code?: string };
 
 function payDorm(player: PlayerRow, now: number): HousingPayResult {
+  if (ownsApartmentInCity(player, player.city_id)) {
+    return { ok: false, error: "У вас своя квартира — общежитие не нужно" };
+  }
   const prices = getHousingPrices(player.city_id);
   if (player.rubles < prices.dormRub) {
     return { ok: false, error: `Не хватает денег (нужно ${prices.dormRub.toLocaleString("ru-RU")} ₽)` };
@@ -127,6 +191,9 @@ function payDorm(player: PlayerRow, now: number): HousingPayResult {
 }
 
 function payRent(player: PlayerRow, now: number): HousingPayResult {
+  if (ownsApartmentInCity(player, player.city_id)) {
+    return { ok: false, error: "У вас своя квартира — аренда не нужна" };
+  }
   const prices = getHousingPrices(player.city_id);
   if (player.rubles < prices.rentRub) {
     return { ok: false, error: `Не хватает денег (нужно ${prices.rentRub.toLocaleString("ru-RU")} ₽)` };
@@ -152,25 +219,127 @@ function payRent(player: PlayerRow, now: number): HousingPayResult {
   };
 }
 
-function payBuy(player: PlayerRow): HousingPayResult {
-  const prices = getHousingPrices(player.city_id);
-  if (player.housing_type === "owned" && player.housing_city_id === player.city_id) {
+export type HousingBuyQuote = {
+  listPriceRub: number;
+  tradeInRub: number;
+  netPriceRub: number;
+  tradeInCatalogPriceRub: number | null;
+  propertyId: string;
+  propertyTitle: string;
+};
+
+function catalogPriceForOwned(player: PlayerRow): number | null {
+  if (player.housing_type !== "owned" || !player.housing_city_id) return null;
+  if (player.housing_property_id) {
+    const p = getHousingProperty(player.housing_city_id, player.housing_property_id);
+    if (p) return p.priceRub;
+  }
+  return getHousingPrices(player.housing_city_id).buyRub;
+}
+
+export function quoteHousingBuy(
+  player: PlayerRow,
+  propertyId: string,
+  now = Date.now(),
+): HousingBuyQuote | { error: string } {
+  const prop = getHousingProperty(player.city_id, propertyId);
+  if (!prop) return { error: "Вариант не найден" };
+  if (ownsApartmentInCity(player, player.city_id)) {
+    return { error: "У вас уже есть жильё в этом городе" };
+  }
+  let tradeInRub = 0;
+  let tradeInCatalogPriceRub: number | null = null;
+  if (player.housing_type === "owned" && player.housing_city_id && player.housing_city_id !== player.city_id) {
+    tradeInCatalogPriceRub = catalogPriceForOwned(player);
+    if (tradeInCatalogPriceRub != null) {
+      tradeInRub = computeResaleValue(
+        tradeInCatalogPriceRub,
+        "housing",
+        player.housing_owned_at,
+        now,
+        "trade_in",
+      );
+    }
+  }
+  return {
+    listPriceRub: prop.priceRub,
+    tradeInRub,
+    netPriceRub: prop.priceRub - tradeInRub,
+    tradeInCatalogPriceRub,
+    propertyId: prop.id,
+    propertyTitle: housingPropertyLabel(prop),
+  };
+}
+
+export function quoteHousingSell(
+  player: PlayerRow,
+  now = Date.now(),
+): { amountRub: number; catalogPriceRub: number } | { error: string } {
+  if (player.housing_type !== "owned" || !player.housing_city_id) {
+    return { error: "Нет квартиры для продажи" };
+  }
+  const catalogPriceRub = catalogPriceForOwned(player);
+  if (catalogPriceRub == null) return { error: "Не удалось оценить жильё" };
+  return {
+    catalogPriceRub,
+    amountRub: computeResaleValue(catalogPriceRub, "housing", player.housing_owned_at, now, "sell"),
+  };
+}
+
+function payBuy(player: PlayerRow, propertyId: string, now = Date.now()): HousingPayResult {
+  const prop = getHousingProperty(player.city_id, propertyId);
+  if (!prop) return { ok: false, error: "Вариант не найден" };
+  if (ownsApartmentInCity(player, player.city_id)) {
     return { ok: false, error: "У вас уже есть жильё в этом городе" };
   }
-  if (player.rubles < prices.buyRub) {
-    return { ok: false, error: `Не хватает денег (нужно ${prices.buyRub.toLocaleString("ru-RU")} ₽)` };
+  const quote = quoteHousingBuy(player, propertyId, now);
+  if ("error" in quote) return { ok: false, error: quote.error };
+  if (player.rubles < quote.netPriceRub) {
+    return {
+      ok: false,
+      error: `Не хватает денег (нужно ${quote.netPriceRub.toLocaleString("ru-RU")} ₽)`,
+    };
   }
 
   updatePlayer(player.user_id, {
-    rubles: player.rubles - prices.buyRub,
+    rubles: player.rubles - quote.netPriceRub,
     housing_type: "owned",
     housing_city_id: player.city_id,
     housing_expires_at: null,
+    housing_owned_at: now,
+    housing_property_id: propertyId,
+  });
+
+  const tradeNote =
+    quote.tradeInRub > 0 ? ` (зачёт ${quote.tradeInRub.toLocaleString("ru-RU")} ₽)` : "";
+  return {
+    ok: true,
+    message: `${prop.title} куплена (−${quote.netPriceRub.toLocaleString("ru-RU")} ₽)${tradeNote}.`,
+  };
+}
+
+export function sellOwnedHousing(player: PlayerRow, now = Date.now()): HousingPayResult {
+  if (player.housing_type !== "owned" || !player.housing_city_id) {
+    return { ok: false, error: "Нет квартиры для продажи" };
+  }
+  if (player.housing_city_id !== player.city_id) {
+    return { ok: false, error: "Продать можно только жильё в текущем городе" };
+  }
+  const sellQuote = quoteHousingSell(player, now);
+  if ("error" in sellQuote) return { ok: false, error: sellQuote.error };
+
+  updatePlayer(player.user_id, {
+    rubles: player.rubles + sellQuote.amountRub,
+    housing_type: null,
+    housing_city_id: null,
+    housing_expires_at: null,
+    housing_owned_at: null,
+    housing_property_id: null,
   });
 
   return {
     ok: true,
-    message: `Квартира куплена (−${prices.buyRub.toLocaleString("ru-RU")} ₽). Вы житель города.`,
+    message: `Квартира продана (+${sellQuote.amountRub.toLocaleString("ru-RU")} ₽)`,
   };
 }
 
@@ -184,9 +353,13 @@ export function payHousingRent(player: PlayerRow, now = Date.now()): HousingPayR
   return payRent(player, now);
 }
 
-export function payHousingBuy(player: PlayerRow, now = Date.now()): HousingPayResult {
+export function payHousingBuy(
+  player: PlayerRow,
+  propertyId: string,
+  now = Date.now(),
+): HousingPayResult {
   if (player.status === "traveling") return { ok: false, error: "Вы в пути" };
-  return payBuy(player);
+  return payBuy(player, propertyId, now);
 }
 
 export const GUEST_WORK_ERROR =

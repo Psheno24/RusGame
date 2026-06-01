@@ -1,5 +1,6 @@
 import type { PlayerRow } from "./db.js";
 import { findCityJob, type JobDef } from "./gameData.js";
+import { scaleCooldownMs } from "./testAccount.js";
 
 export function formatCooldown(readyAt: number, now = Date.now()): { ready: boolean; remainingMs: number } {
   const remainingMs = Math.max(0, readyAt - now);
@@ -94,7 +95,7 @@ export function jobCooldownState(
 ): { ready: boolean; remainingMs: number } {
   const record = lastWorkRecordForJob(player, job.id);
   if (!record) return { ready: true, remainingMs: 0 };
-  const cd = jobCooldownMs(job, record);
+  const cd = scaleCooldownMs(jobCooldownMs(job, record), player.user_id);
   return formatCooldown(record.at + cd, now);
 }
 

@@ -1,5 +1,12 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { ADMIN_LOGIN, ADMIN_PASSWORD } from "./config.js";
+import {
+  ADMIN_LOGIN,
+  ADMIN_PASSWORD,
+  LOCAL_DEV,
+  TEST_COOLDOWN_SEC,
+  TEST_LOGIN,
+  TEST_PASSWORD,
+} from "./config.js";
 import {
   buildSession,
   createRefreshToken,
@@ -18,16 +25,39 @@ import {
 } from "./auth.js";
 import { countPlayersInCity, getDb, getPlayer, getUserById, listPlayersForAdmin, updatePlayer } from "./db.js";
 import { getCityLocalTime, getCityTimezone } from "./cityTime.js";
-import { findCityJob, getCities, getCity, getCityJobs, getPhones, getTravel, type JobDef } from "./gameData.js";
+import {
+  findCityJob,
+  getCars,
+  getCities,
+  getCity,
+  getCityJobs,
+  getPhones,
+  getTravel,
+  getVehicleRentals,
+  type JobDef,
+} from "./gameData.js";
 import {
   applyJob,
   buyCar,
+  buyDriverLicenseCategory,
   buyDriversLicense,
   buyPhoneDevice,
   doJobWork,
   enrichJobWorkState,
+  getDriverLicenseShop,
+  listCarsInCategory,
+  listCarCategoriesWithCounts,
+  listOwnedCars,
+  listPhoneCatalog,
+  quoteCarPurchase,
+  quoteCarSell,
+  quotePhonePurchase,
+  quotePhoneSell,
   quitJob,
   resolveTravel,
+  sellCar,
+  tradeInForCar,
+  sellPhoneDevice,
   SHOP_PRICES,
   startTravel,
 } from "./game.js";
@@ -40,8 +70,21 @@ import {
   payHousingBuy,
   payHousingDorm,
   payHousingRent,
+  quoteHousingBuy,
+  sellOwnedHousing,
 } from "./housing.js";
+import {
+  changePlateDigits,
+  changePlateLetters,
+  changePlateRegion,
+  getPlateGarageList,
+  getPlateShopViewForCar,
+  registerVehiclePlate,
+} from "./plateShop.js";
+import { rentVehicle } from "./vehicleRent.js";
+import { buildPropertyCards } from "./playerProperty.js";
 import { jobCooldownState, lastWorkRecordForJob } from "./workCooldown.js";
+import { ensureTestAccount, scaleCooldownMs, scaleTravelMs } from "./testAccount.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 
 function getBearer(req: FastifyRequest): string | null {
@@ -171,10 +214,11 @@ export async function registerRoutes(app: FastifyInstance) {
       const work = enrichJobWorkState(timezone, job, now);
       const cooldown = jobCooldownState(player, job, now);
       const record = lastWorkRecordForJob(player, job.id);
-      const cooldownMs =
+      const baseCooldownMs =
         job.kind === "duration"
           ? record?.cooldownMs ?? (job.shiftHoursMin ?? 4) * 3600000
           : (job.cooldownMs ?? 0);
+      const cooldownMs = scaleCooldownMs(baseCooldownMs, userId);
       const payoutMin =
         job.kind === "duration"
           ? (job.payoutPerHourMin ?? 0) * (job.shiftHoursMin ?? 4)
@@ -285,13 +329,40 @@ export async function registerRoutes(app: FastifyInstance) {
     return { message: result.message, user };
   });
 
-  app.post("/api/housing/buy", async (req, reply) => {
+  app.get<{ Querystring: { propertyId?: string } }>("/api/housing/buy/quote", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
     let player = getPlayer(userId);
     if (!player) return reply.code(404).send({ error: "Игрок не найден" });
     player = resolveTravel(player);
-    const result = payHousingBuy(player);
+    const propertyId = req.query.propertyId ?? "";
+    if (!propertyId) return reply.code(400).send({ error: "Укажите propertyId" });
+    const quote = quoteHousingBuy(player, propertyId);
+    if ("error" in quote) return reply.code(400).send({ error: quote.error });
+    return quote;
+  });
+
+  app.post<{ Body: { propertyId?: string } }>("/api/housing/buy", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    let player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    player = resolveTravel(player);
+    const propertyId = req.body?.propertyId ?? "";
+    if (!propertyId) return reply.code(400).send({ error: "Укажите propertyId" });
+    const result = payHousingBuy(player, propertyId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
+  });
+
+  app.post("/api/housing/sell", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    let player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    player = resolveTravel(player);
+    const result = sellOwnedHousing(player);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
     return { message: result.message, user };
@@ -375,7 +446,7 @@ export async function registerRoutes(app: FastifyInstance) {
       to,
       toName: dest?.name,
       priceRub: route.priceRub,
-      durationMs: route.durationMs,
+      durationMs: scaleTravelMs(route.durationMs, userId),
     };
   });
 
@@ -390,6 +461,71 @@ export async function registerRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/shop/prices", async () => ({ ...SHOP_PRICES, sim: SIM_SHOP_PRICES }));
+
+  app.get("/api/player/property", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    let player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    player = resolveTravel(player);
+    return { cards: buildPropertyCards(player) };
+  });
+
+  app.get("/api/shop/car-categories", async () => ({
+    categories: listCarCategoriesWithCounts(),
+  }));
+
+  app.get<{ Querystring: { category?: string } }>("/api/shop/cars", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const category = req.query.category ?? "B";
+    return {
+      category,
+      cars: listCarsInCategory(player, category),
+      ownedCars: listOwnedCars(player),
+    };
+  });
+
+  app.get("/api/shop/vehicle-rentals", async () => ({ rentals: getVehicleRentals() }));
+
+  app.get<{ Querystring: { carId?: string; tradeInIds?: string } }>(
+    "/api/shop/car/quote",
+    async (req, reply) => {
+      const userId = await resolveUserId(req);
+      if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+      const player = getPlayer(userId);
+      if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+      const carId = req.query.carId ?? "";
+      if (!carId) return reply.code(400).send({ error: "Укажите carId" });
+      const tradeInIds = (req.query.tradeInIds ?? "")
+        .split(",")
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isInteger(n) && n > 0);
+      const quote = quoteCarPurchase(player, carId, tradeInIds);
+      if ("error" in quote) return reply.code(400).send({ error: quote.error });
+      return quote;
+    },
+  );
+
+  app.get<{ Querystring: { playerCarId?: string } }>("/api/shop/plate", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const raw = req.query.playerCarId;
+    if (raw) {
+      const playerCarId = Number(raw);
+      if (!Number.isInteger(playerCarId) || playerCarId <= 0) {
+        return reply.code(400).send({ error: "Некорректный playerCarId" });
+      }
+      const view = getPlateShopViewForCar(player, playerCarId);
+      if ("error" in view) return reply.code(400).send({ error: view.error });
+      return view;
+    }
+    return { cars: getPlateGarageList(player) };
+  });
 
   app.get("/api/shop/products", async (req, reply) => {
     const userId = await resolveUserId(req);
@@ -428,21 +564,25 @@ export async function registerRoutes(app: FastifyInstance) {
     };
   });
 
-  app.get("/api/shop/phones", async () => ({
-    phones: getPhones().map((d) => ({
-      id: d.id,
-      brand: d.brand,
-      model: d.model,
-      priceRub: d.priceRub,
-      accent: d.accent,
-      screen: d.screen,
-      ram: d.ram,
-      storage: d.storage,
-      battery: d.battery,
-      camera: d.camera,
-      os: d.os,
-    })),
-  }));
+  app.get("/api/shop/phones", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    return { phones: listPhoneCatalog(player) };
+  });
+
+  app.get<{ Querystring: { deviceId?: string } }>("/api/shop/phone/quote", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const deviceId = req.query.deviceId ?? "";
+    if (!deviceId) return reply.code(400).send({ error: "Укажите deviceId" });
+    const quote = quotePhonePurchase(player, deviceId);
+    if ("error" in quote) return reply.code(400).send({ error: quote.error });
+    return quote;
+  });
 
   app.post<{ Body: { deviceId?: string } }>("/api/shop/phone", async (req, reply) => {
     const userId = await resolveUserId(req);
@@ -451,7 +591,51 @@ export async function registerRoutes(app: FastifyInstance) {
     const result = buyPhoneDevice(userId, deviceId);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
-    return { deviceName: result.deviceName, user };
+    return { deviceName: result.deviceName, tradeInRub: result.tradeInRub, user };
+  });
+
+  app.get("/api/shop/phone/sell/quote", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const quote = quotePhoneSell(player);
+    if ("error" in quote) return reply.code(400).send({ error: quote.error });
+    return quote;
+  });
+
+  app.post("/api/shop/phone/sell", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const result = sellPhoneDevice(userId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { amountRub: result.amountRub, user };
+  });
+
+  app.get<{ Querystring: { playerCarId?: string } }>("/api/shop/car/sell/quote", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const playerCarId = Number(req.query.playerCarId);
+    if (!Number.isInteger(playerCarId) || playerCarId <= 0) {
+      return reply.code(400).send({ error: "Укажите playerCarId" });
+    }
+    const quote = quoteCarSell(player, playerCarId);
+    if ("error" in quote) return reply.code(400).send({ error: quote.error });
+    return quote;
+  });
+
+  app.post<{ Body: { playerCarId?: number } }>("/api/shop/car/sell", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const playerCarId = req.body?.playerCarId;
+    if (!playerCarId) return reply.code(400).send({ error: "Укажите playerCarId" });
+    const result = sellCar(userId, playerCarId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { amountRub: result.amountRub, user };
   });
 
   app.post("/api/shop/sim/register", async (req, reply) => {
@@ -485,13 +669,98 @@ export async function registerRoutes(app: FastifyInstance) {
     return { simBalanceRub: result.simBalance, user };
   });
 
-  app.post("/api/shop/car", async (req, reply) => {
+  app.post<{ Body: { carId?: string } }>("/api/shop/car", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    const result = buyCar(userId);
+    const carId = req.body?.carId ?? "";
+    if (!carId) return reply.code(400).send({ error: "Укажите carId" });
+    const result = buyCar(userId, carId);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
-    return { plate: result.plate, user };
+    return { carName: result.carName, user };
+  });
+
+  app.post<{ Body: { carId?: string; tradeInCarIds?: number[] } }>(
+    "/api/shop/car/trade-in",
+    async (req, reply) => {
+      const userId = await resolveUserId(req);
+      if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+      const carId = req.body?.carId ?? "";
+      const tradeInCarIds = req.body?.tradeInCarIds ?? [];
+      if (!carId) return reply.code(400).send({ error: "Укажите carId" });
+      const result = tradeInForCar(userId, carId, tradeInCarIds);
+      if (!result.ok) return reply.code(400).send({ error: result.error });
+      const user = await getPublicUser(userId);
+      return { carName: result.carName, excessRub: result.excessRub, user };
+    },
+  );
+
+  app.get("/api/police/licenses", async () => ({ licenses: getDriverLicenseShop() }));
+
+  app.post<{ Body: { category?: string } }>("/api/police/license", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const category = req.body?.category ?? "";
+    if (!category) return reply.code(400).send({ error: "Укажите category" });
+    const result = buyDriverLicenseCategory(userId, category);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { user };
+  });
+
+  app.post<{ Body: { rentalId?: string } }>("/api/shop/vehicle-rent", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const rentalId = req.body?.rentalId ?? "";
+    if (!rentalId) return reply.code(400).send({ error: "Укажите rentalId" });
+    const result = rentVehicle(userId, rentalId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { label: result.label, expiresAt: result.expiresAt, user };
+  });
+
+  app.post<{ Body: { playerCarId?: number } }>("/api/shop/plate/register", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const playerCarId = req.body?.playerCarId;
+    if (!playerCarId) return reply.code(400).send({ error: "Укажите playerCarId" });
+    const result = registerVehiclePlate(userId, playerCarId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { plateText: result.plateText, user };
+  });
+
+  app.post<{ Body: { playerCarId?: number } }>("/api/shop/plate/digits", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const playerCarId = req.body?.playerCarId;
+    if (!playerCarId) return reply.code(400).send({ error: "Укажите playerCarId" });
+    const result = changePlateDigits(userId, playerCarId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { plateText: result.plateText, user };
+  });
+
+  app.post<{ Body: { playerCarId?: number } }>("/api/shop/plate/letters", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const playerCarId = req.body?.playerCarId;
+    if (!playerCarId) return reply.code(400).send({ error: "Укажите playerCarId" });
+    const result = changePlateLetters(userId, playerCarId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { plateText: result.plateText, user };
+  });
+
+  app.post<{ Body: { playerCarId?: number } }>("/api/shop/plate/region", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const playerCarId = req.body?.playerCarId;
+    if (!playerCarId) return reply.code(400).send({ error: "Укажите playerCarId" });
+    const result = changePlateRegion(userId, playerCarId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { plateText: result.plateText, user };
   });
 
   app.post("/api/shop/drivers-license", async (req, reply) => {
@@ -502,6 +771,19 @@ export async function registerRoutes(app: FastifyInstance) {
     const user = await getPublicUser(userId);
     return { user };
   });
+
+  if (LOCAL_DEV) {
+    app.post("/api/dev/seed-test", async () => {
+      const { created, login } = ensureTestAccount();
+      return {
+        ok: true,
+        created,
+        login,
+        password: TEST_PASSWORD,
+        hint: `Не в населении и ленте; любое КД — ${TEST_COOLDOWN_SEC} с`,
+      };
+    });
+  }
 
   // ——— Admin ———
   app.post("/api/admin/seed", async (req, reply) => {

@@ -1,8 +1,12 @@
 import { createHash, randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import * as jose from "jose";
-import { ACCESS_TOKEN_TTL, COOKIE_SECURE, JWT_SECRET } from "./config.js";
-import { getPhone } from "./gameData.js";
+import { ACCESS_TOKEN_TTL, COOKIE_SECURE, JWT_SECRET, TEST_LOGIN } from "./config.js";
+import { listOwnedCars } from "./carShop.js";
+import { getCar, getPhone, getVehicleRental } from "./gameData.js";
+import { parseDriverLicenses } from "./playerCars.js";
+import { getHousingProperty, housingPropertyLabel } from "./housingCatalog.js";
+import { formatVehiclePlate, parsePlatePartsFromRow } from "./licensePlate.js";
 import { housingStatusForPlayer } from "./housing.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 import {
@@ -95,8 +99,11 @@ export function registerUser(login: string, password: string, isAdmin = false): 
   if (trimmed.length < 3) return { ok: false, error: "Логин минимум 3 символа" };
   if (password.length < 6) return { ok: false, error: "Пароль минимум 6 символов" };
   if (getUserByLogin(trimmed)) return { ok: false, error: "Такой логин уже занят" };
+  if (trimmed.toLowerCase() === TEST_LOGIN.toLowerCase()) {
+    return { ok: false, error: "Этот логин зарезервирован" };
+  }
 
-  const userId = createUser(trimmed, hashPassword(password), isAdmin);
+  const userId = createUser(trimmed, hashPassword(password), { isAdmin });
   createPlayer(userId, trimmed);
   const refreshToken = createRefreshToken();
   persistRefreshToken(userId, refreshToken);
@@ -127,6 +134,7 @@ export async function getPublicUser(userId: number) {
   return {
     login: user.login,
     isAdmin: Boolean(user.is_admin),
+    isTest: Boolean(user.is_test),
     player: serializePlayer(player),
   };
 }
@@ -164,8 +172,33 @@ export function serializePlayer(p: import("./db.js").PlayerRow) {
         })()
       : null,
     carOwned: Boolean(p.car_owned),
-    plateText: p.plate_text,
+    carModelId: p.car_model_id,
+    carModelName: p.car_model_id
+      ? (() => {
+          const c = getCar(p.car_model_id);
+          return c ? `${c.brand} ${c.model}` : null;
+        })()
+      : null,
+    plateText: (() => {
+      const parts = parsePlatePartsFromRow(p);
+      return parts ? formatVehiclePlate(parts) : p.plate_text;
+    })(),
+    vehicleRentalId: p.vehicle_rental_id,
+    vehicleRentalLabel: p.vehicle_rental_id
+      ? (getVehicleRental(p.vehicle_rental_id)?.label ?? null)
+      : null,
+    vehicleRentalExpiresAt: p.vehicle_rental_expires_at,
     driversLicense: Boolean(p.drivers_license),
+    driverLicenseCategories: parseDriverLicenses(p),
+    ownedCars: listOwnedCars(p),
+    housingPropertyId: p.housing_property_id,
+    housingPropertyTitle:
+      p.housing_property_id && p.housing_city_id
+        ? (() => {
+            const prop = getHousingProperty(p.housing_city_id, p.housing_property_id);
+            return prop ? housingPropertyLabel(prop) : null;
+          })()
+        : null,
     isResident: housing.isResident,
     housingType: housing.housingType,
     housingCityId: housing.housingCityId,

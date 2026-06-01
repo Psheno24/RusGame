@@ -3,17 +3,9 @@ import { useCityNav } from "../cityNav";
 import { useNavBackSlot } from "../navBack";
 import {
   applyJob as applyJobApi,
-  buyCar,
-  buyDriversLicense,
   fetchCity,
-  fetchShopPrices,
   formatCooldownMinutes,
   formatDuration,
-  formatHousingExpiry,
-  fetchHousing,
-  payHousingBuy,
-  payHousingDorm,
-  payHousingRent,
   quitJob as quitJobApi,
   type HousingInfo,
   workJob,
@@ -25,6 +17,8 @@ import {
 import { getCityLocalTime } from "../cityTime";
 import { CityActivityFeed } from "../components/CityActivityFeed";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { CarShop } from "../components/CarShop";
+import { HousingShop } from "../components/HousingShop";
 import { PhoneShop } from "../components/PhoneShop";
 import { ProductsShop } from "../components/ProductsShop";
 import { PlacesSection } from "../components/PlacesSection";
@@ -102,7 +96,7 @@ const CITY_SECTIONS: { id: CitySection; title: string; hint: string }[] = [
 const SHOP_CATEGORIES: { id: ShopTab; title: string; hint: string }[] = [
   { id: "products", title: "Продукты", hint: "Еда и бытовое" },
   { id: "phone", title: "Телефон", hint: "Устройства и сим-карта" },
-  { id: "car", title: "Авто", hint: "Права, машина и номер" },
+  { id: "car", title: "Авто", hint: "Каталог, гараж, номер, тюнинг" },
 ];
 
 export function CityPage() {
@@ -122,10 +116,11 @@ export function CityPage() {
   const [shopTab, setShopTab] = useState<ShopTab | null>(null);
   const [placeId, setPlaceId] = useState<PlaceId | null>(null);
   const [phoneNav, setPhoneNav] = useState({ inSub: false, title: "Телефон", backLabel: "Магазин" });
+  const [carNav, setCarNav] = useState({ inSub: false, title: "Авто", backLabel: "Магазин" });
+  const [housingNav, setHousingNav] = useState({ inSub: false, title: "Недвижимость", backLabel: "Город" });
   const [jobsNav, setJobsNav] = useState({ inSub: false, title: "Вакансии" });
   const { register: registerSectionBack, tryBack: trySectionBack } = useNavBackSlot();
   const [cityJobs, setCityJobs] = useState<JobView[]>([]);
-  const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
 
   const load = useCallback(async () => {
@@ -144,7 +139,7 @@ export function CityPage() {
   }, [setUser, user]);
 
   useEffect(() => {
-    load().catch((e) => setError(e instanceof Error ? e.message : "Ошибка"));
+    load().catch((e) => showNotice(e instanceof Error ? e.message : "Ошибка", "error"));
     const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, [load]);
@@ -188,8 +183,7 @@ export function CityPage() {
   }, [section]);
 
   const showToast = (msg: string, isErr = false) => {
-    showNotice(msg, isErr ? "error" : "info");
-    if (isErr) setError(msg);
+    showNotice(msg, isErr ? "error" : "success");
   };
 
   const remaining = arrivesAt ? Math.max(0, arrivesAt - Date.now()) : 0;
@@ -208,6 +202,8 @@ export function CityPage() {
     setShopTab(null);
     setPlaceId(null);
     setPhoneNav({ inSub: false, title: "Телефон", backLabel: "Магазин" });
+    setCarNav({ inSub: false, title: "Авто", backLabel: "Магазин" });
+    setHousingNav({ inSub: false, title: "Недвижимость", backLabel: "Город" });
     setJobsNav({ inSub: false, title: "Вакансии" });
   }, []);
 
@@ -254,20 +250,26 @@ export function CityPage() {
             onJobsReload={load}
           />
         ) : isHousingSection ? (
-          <HousingSection
+          <HousingShop
             initialInfo={housingInfo}
             user={user}
             setUser={setUser}
             onToast={showToast}
             onReload={load}
+            onNavChange={setHousingNav}
+            registerBack={registerSectionBack}
           />
         ) : (
           <div className="card">
             <h2>
               {section === "shop" && shopTab === "phone" && phoneNav.inSub
                 ? phoneNav.title
+                : section === "shop" && shopTab === "car" && carNav.inSub
+                  ? carNav.title
                 : section === "shop" && shopTab
                   ? SHOP_CATEGORIES.find((c) => c.id === shopTab)!.title
+                  : section === "housing" && housingNav.inSub
+                    ? housingNav.title
                   : section === "places" && placeId
                     ? placeById(placeId).title
                     : sectionMeta.title}
@@ -281,6 +283,7 @@ export function CityPage() {
                 onToast={(msg, isErr) => showToast(msg, isErr)}
                 registerSectionBack={registerSectionBack}
                 onPhoneNavChange={setPhoneNav}
+                onCarNavChange={setCarNav}
               />
             ) : section === "places" && user ? (
               <PlacesSection
@@ -296,7 +299,6 @@ export function CityPage() {
             )}
           </div>
         )}
-        {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
       </>
     );
   }
@@ -354,6 +356,7 @@ function ShopSection({
   onToast,
   registerSectionBack,
   onPhoneNavChange,
+  onCarNavChange,
 }: {
   tab: ShopTab | null;
   onTab: (t: ShopTab | null) => void;
@@ -362,45 +365,8 @@ function ShopSection({
   onToast: (msg: string, isErr?: boolean) => void;
   registerSectionBack: (handler: (() => boolean) | null) => void;
   onPhoneNavChange: (state: { inSub: boolean; title: string; backLabel: string }) => void;
+  onCarNavChange: (state: { inSub: boolean; title: string; backLabel: string }) => void;
 }) {
-  const [prices, setPrices] = useState<{ sim: number; car: number; driversLicense: number } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const p = user.player;
-
-  useEffect(() => {
-    if (tab === "car") {
-      fetchShopPrices()
-        .then(setPrices)
-        .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
-    }
-  }, [tab, onToast]);
-
-  const onBuyLicense = async () => {
-    setBusy(true);
-    try {
-      const r = await buyDriversLicense();
-      setUser(r.user);
-      onToast("Водительские права получены");
-    } catch (e) {
-      onToast(e instanceof Error ? e.message : "Ошибка", true);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onBuyCar = async () => {
-    setBusy(true);
-    try {
-      const r = await buyCar();
-      setUser(r.user);
-      onToast(`Авто куплено, номер ${r.plate}`);
-    } catch (e) {
-      onToast(e instanceof Error ? e.message : "Ошибка", true);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   if (!tab) {
     return (
       <div className="city-grid shop-categories">
@@ -430,47 +396,14 @@ function ShopSection({
     );
   }
 
-  const price = prices?.car;
-  const licensePrice = prices?.driversLicense;
   return (
-    <div className="shop-detail">
-      <h3 className="shop-detail-sub">Водительские права</h3>
-      {p.driversLicense ? (
-        <p className="shop-owned">Права оформлены — можно работать в такси.</p>
-      ) : (
-        <>
-          {licensePrice != null && (
-            <p className="shop-price">
-              Оформление: <strong>{licensePrice.toLocaleString("ru-RU")} ₽</strong>
-            </p>
-          )}
-          <button className="btn btn-primary" type="button" disabled={busy} onClick={onBuyLicense}>
-            Получить права
-          </button>
-        </>
-      )}
-      <h3 className="shop-detail-sub">Автомобиль</h3>
-      <p>Личный автомобиль с госномером.</p>
-      {p.carOwned && p.plateText ? (
-        <p className="shop-owned">
-          Ваш номер: <strong>{p.plateText}</strong>
-        </p>
-      ) : (
-        <>
-          {price != null && (
-            <p className="shop-price">
-              Цена: <strong>{price.toLocaleString("ru-RU")} ₽</strong>
-            </p>
-          )}
-          <p className="shop-balance">
-            На счёте: {p.rubles.toLocaleString("ru-RU")} ₽
-          </p>
-          <button className="btn btn-primary" type="button" disabled={busy} onClick={onBuyCar}>
-            Купить авто
-          </button>
-        </>
-      )}
-    </div>
+    <CarShop
+      user={user}
+      setUser={setUser}
+      onToast={onToast}
+      registerBack={registerSectionBack}
+      onNavChange={onCarNavChange}
+    />
   );
 }
 
@@ -749,11 +682,6 @@ function JobsSection({
                     : "—"}
               </dd>
             </div>
-            {employmentBlocked && employedId && employedId !== selected.id && (
-              <p className="job-cooldown-hint" style={{ color: "var(--text-muted)" }}>
-                Пока идёт перерыв на «{employedJob?.title}», нельзя устроиться на другую вакансию.
-              </p>
-            )}
             {selected.skill && selected.skillMin != null && (
               <div>
                 <dt>Требование</dt>
@@ -771,7 +699,11 @@ function JobsSection({
             {selected.requiresDriversLicense && (
               <div>
                 <dt>Права</dt>
-                <dd>{user.player.driversLicense ? "Есть" : "Нужны водительские права (магазин → авто)"}</dd>
+                <dd>
+                  {user.player.driverLicenseCategories?.length
+                    ? user.player.driverLicenseCategories.join(", ")
+                    : "Нет — оформите в полиции"}
+                </dd>
               </div>
             )}
             {employed && selected.kind === "duration" && (
@@ -819,18 +751,6 @@ function JobsSection({
                 </dd>
               </div>
             )}
-            {selected.scheduleHint && (
-              <p
-                className={`job-schedule-hint${scheduleBlocked ? " job-schedule-hint--blocked" : ""}`}
-              >
-                {selected.scheduleHint}
-              </p>
-            )}
-            {guestBlocked && (
-              <p className="job-schedule-hint job-schedule-hint--blocked">
-                Вы гость в этом городе. Оформите жильё в разделе «Недвижимость», чтобы работать.
-              </p>
-            )}
           </dl>
           <div className="job-detail-actions">
             <button
@@ -868,11 +788,6 @@ function JobsSection({
 
   return (
     <div className="city-jobs-stack">
-      {!isResident && (
-        <p className="housing-guest-banner">
-          Вы гость — без жилья в этом городе нельзя устроиться на работу. Зайдите в «Недвижимость».
-        </p>
-      )}
       {employedJob && (
         <div className="card">
           <h2>Ваша работа</h2>
@@ -901,128 +816,3 @@ function JobsSection({
   );
 }
 
-function HousingSection({
-  initialInfo,
-  user,
-  setUser,
-  onToast,
-  onReload,
-}: {
-  initialInfo: HousingInfo | null;
-  user: User;
-  setUser: (u: User) => void;
-  onToast: (msg: string, isErr?: boolean) => void;
-  onReload: () => Promise<void>;
-}) {
-  const [info, setInfo] = useState<HousingInfo | null>(initialInfo);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    setInfo(initialInfo);
-  }, [initialInfo]);
-
-  useEffect(() => {
-    if (initialInfo) return;
-    fetchHousing()
-      .then((data) => setInfo(data))
-      .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
-  }, [initialInfo, onToast]);
-
-  const pay = async (kind: "dorm" | "rent" | "buy") => {
-    if (!info) return;
-    setBusy(true);
-    try {
-      const fn =
-        kind === "dorm" ? payHousingDorm : kind === "rent" ? payHousingRent : payHousingBuy;
-      const r = await fn();
-      setUser(r.user);
-      onToast(r.message);
-      await onReload();
-    } catch (e) {
-      onToast(e instanceof Error ? e.message : "Ошибка", true);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (!info) {
-    return (
-      <div className="card">
-        <h2>Недвижимость</h2>
-        <p style={{ color: "var(--text-muted)" }}>Загрузка…</p>
-      </div>
-    );
-  }
-
-  const { prices } = info;
-  const ownedHere = info.housingType === "owned" && info.housingCityId === info.cityId;
-
-  return (
-    <div className="housing-stack">
-      <div className="card">
-        <h2>Недвижимость · {info.cityName}</h2>
-        <p
-          className={`housing-status-line${info.isResident ? " housing-status-line--resident" : " housing-status-line--guest"}`}
-        >
-          {info.statusLabel}
-          {info.expiresAt != null && (
-            <>
-              {" "}
-              · до {formatHousingExpiry(info.expiresAt)}
-            </>
-          )}
-        </p>
-        {!info.isResident && (
-          <p className="housing-guest-hint">
-            Без жилья вы гость: работать в городе нельзя. Общежитие — самый быстрый способ стать
-            жителем.
-          </p>
-        )}
-      </div>
-
-      <div className="housing-cards">
-        <div className="card housing-card">
-          <h3>Общежитие</h3>
-          <p className="housing-card-price">{prices.dormRub.toLocaleString("ru-RU")} ₽ / сутки</p>
-          <p className="housing-card-desc">+{prices.dormHours} ч резидентства в этом городе</p>
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={busy || user.player.rubles < prices.dormRub}
-            onClick={() => void pay("dorm")}
-          >
-            Оплатить сутки
-          </button>
-        </div>
-
-        <div className="card housing-card">
-          <h3>Аренда</h3>
-          <p className="housing-card-price">{prices.rentRub.toLocaleString("ru-RU")} ₽ / месяц</p>
-          <p className="housing-card-desc">{prices.rentDays} календарных дней</p>
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={busy || user.player.rubles < prices.rentRub}
-            onClick={() => void pay("rent")}
-          >
-            Оплатить аренду
-          </button>
-        </div>
-
-        <div className="card housing-card">
-          <h3>Покупка</h3>
-          <p className="housing-card-price">{prices.buyRub.toLocaleString("ru-RU")} ₽</p>
-          <p className="housing-card-desc">Постоянное жильё — вы всегда житель этого города</p>
-          <button
-            type="button"
-            className="btn btn-success"
-            disabled={busy || ownedHere || !info.canBuy || user.player.rubles < prices.buyRub}
-            onClick={() => void pay("buy")}
-          >
-            {ownedHere ? "Уже куплено" : "Купить квартиру"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}

@@ -38,8 +38,17 @@ export type Player = {
   phoneDeviceId: string | null;
   phoneDeviceName: string | null;
   carOwned: boolean;
+  carModelId: string | null;
+  carModelName: string | null;
   plateText: string | null;
+  vehicleRentalId: string | null;
+  vehicleRentalLabel: string | null;
+  vehicleRentalExpiresAt: number | null;
   driversLicense: boolean;
+  driverLicenseCategories: string[];
+  ownedCars: OwnedCar[];
+  housingPropertyId: string | null;
+  housingPropertyTitle: string | null;
   isResident: boolean;
   housingType: "dorm" | "rent" | "owned" | null;
   housingCityId: string | null;
@@ -58,6 +67,14 @@ export type HousingPrices = {
   rentDays: number;
 };
 
+export type AssetQuote = {
+  listPriceRub: number;
+  tradeInRub: number;
+  netPriceRub: number;
+  resaleRatePct: number;
+  tradeInCatalogPriceRub: number | null;
+};
+
 export type HousingInfo = {
   ok: true;
   cityId: string;
@@ -70,11 +87,118 @@ export type HousingInfo = {
   statusLabel: string;
   expiresAt: number | null;
   canBuy: boolean;
+  canSell: boolean;
+  canRent: boolean;
+  properties: HousingProperty[];
+  ownedPropertyId: string | null;
+  sellAmountRub: number | null;
+  sellCatalogPriceRub: number | null;
+};
+
+export type HousingProperty = {
+  id: string;
+  title: string;
+  district: string;
+  priceRub: number;
+  rooms: string;
+  areaSqm: number;
+  listPriceRub?: number;
+  netPriceRub?: number | null;
+  tradeInRub?: number;
+  isOwned?: boolean;
+  canBuy?: boolean;
+  quoteError?: string | null;
+};
+
+export type CarCategory = {
+  id: string;
+  title: string;
+  subtitle: string;
+  licensePriceRub: number;
+  carCount: number;
+};
+
+export type CarModel = {
+  id: string;
+  brand: string;
+  model: string;
+  priceRub: number;
+  accent: string;
+  year: number;
+  body: string;
+  category: string;
+  licenseCategory: string;
+  cooldownReducePct: number;
+  isOwned?: boolean;
+  ownedCount?: number;
+  hasLicense?: boolean;
+  payFromRub?: number | null;
+  payToRub?: number | null;
+  singleTradeInRub?: number | null;
+};
+
+export type OwnedCar = {
+  id: number;
+  modelId: string;
+  brand: string;
+  model: string;
+  accent: string;
+  year: number;
+  body: string;
+  plateText: string | null;
+  tradeInRub: number;
+};
+
+export type CarPurchaseQuote = {
+  listPriceRub: number;
+  tradeInRub: number;
+  netPriceRub: number;
+  excessRub: number;
+  tradeInCars: { id: number; modelName: string; amountRub: number }[];
+};
+
+export type VehicleRental = {
+  id: string;
+  label: string;
+  hint: string;
+  priceRub: number;
+  hours: number;
+  needsLicense: boolean;
+  accent: string;
+};
+
+export type PlateGarageCar = {
+  playerCarId: number;
+  modelId: string;
+  brand: string;
+  model: string;
+  accent: string;
+  plateText: string | null;
+};
+
+export type PlateShopCarInfo = {
+  playerCarId: number;
+  brand: string;
+  model: string;
+  accent: string;
+  prices: { register: number; digits: number; letters: number; region: number };
+  plate: { l1: string; digits: string; l2: string; region: string } | null;
+  plateText: string | null;
+};
+
+export type PropertyCard = {
+  id: string;
+  kind: "phone" | "car" | "plate" | "rental" | "housing" | "sim";
+  title: string;
+  subtitle: string;
+  accent: string;
+  meta: string[];
 };
 
 export type User = {
   login: string;
   isAdmin: boolean;
+  isTest?: boolean;
   player: Player;
 };
 
@@ -343,6 +467,12 @@ export type PhoneDevice = {
   battery: string;
   camera: string;
   os: string;
+  listPriceRub?: number;
+  netPriceRub?: number | null;
+  tradeInRub?: number;
+  isOwned?: boolean;
+  canBuy?: boolean;
+  quoteError?: string | null;
 };
 
 export type SimShopPrices = {
@@ -362,7 +492,104 @@ export type SimShopInfo = {
 };
 
 export async function fetchShopPrices() {
-  return api<{ car: number; driversLicense: number; sim: SimShopPrices }>("/api/shop/prices");
+  return api<{ driversLicense: number; sim: SimShopPrices }>("/api/shop/prices");
+}
+
+export async function fetchCarCategories() {
+  return api<{ categories: CarCategory[] }>("/api/shop/car-categories");
+}
+
+export async function fetchShopCars(category: string) {
+  return api<{ category: string; cars: CarModel[]; ownedCars: OwnedCar[] }>(
+    `/api/shop/cars?category=${encodeURIComponent(category)}`,
+  );
+}
+
+export async function fetchCarQuote(carId: string, tradeInCarIds: number[] = []) {
+  const ids = tradeInCarIds.length ? `&tradeInIds=${tradeInCarIds.join(",")}` : "";
+  return api<CarPurchaseQuote>(
+    `/api/shop/car/quote?carId=${encodeURIComponent(carId)}${ids}`,
+  );
+}
+
+export async function buyCar(carId: string) {
+  return api<{ carName: string; user: User }>("/api/shop/car", {
+    method: "POST",
+    body: JSON.stringify({ carId }),
+  });
+}
+
+export async function tradeInCar(carId: string, tradeInCarIds: number[]) {
+  return api<{ carName: string; excessRub: number; user: User }>("/api/shop/car/trade-in", {
+    method: "POST",
+    body: JSON.stringify({ carId, tradeInCarIds }),
+  });
+}
+
+export async function fetchPoliceLicenses() {
+  return api<{
+    licenses: { category: string; title: string; subtitle: string; priceRub: number }[];
+  }>("/api/police/licenses");
+}
+
+export async function buyPoliceLicense(category: string) {
+  return api<{ user: User }>("/api/police/license", {
+    method: "POST",
+    body: JSON.stringify({ category }),
+  });
+}
+
+export async function fetchVehicleRentals() {
+  return api<{ rentals: VehicleRental[] }>("/api/shop/vehicle-rentals");
+}
+
+export async function rentVehicle(rentalId: string) {
+  return api<{ label: string; expiresAt: number; user: User }>("/api/shop/vehicle-rent", {
+    method: "POST",
+    body: JSON.stringify({ rentalId }),
+  });
+}
+
+export async function fetchPlateGarage() {
+  return api<{ cars: PlateGarageCar[] }>("/api/shop/plate");
+}
+
+export async function fetchPlateShopCar(playerCarId: number) {
+  return api<PlateShopCarInfo>(
+    `/api/shop/plate?playerCarId=${encodeURIComponent(String(playerCarId))}`,
+  );
+}
+
+export async function plateRegister(playerCarId: number) {
+  return api<{ plateText: string; user: User }>("/api/shop/plate/register", {
+    method: "POST",
+    body: JSON.stringify({ playerCarId }),
+  });
+}
+
+export async function plateRollDigits(playerCarId: number) {
+  return api<{ plateText: string; user: User }>("/api/shop/plate/digits", {
+    method: "POST",
+    body: JSON.stringify({ playerCarId }),
+  });
+}
+
+export async function plateRollLetters(playerCarId: number) {
+  return api<{ plateText: string; user: User }>("/api/shop/plate/letters", {
+    method: "POST",
+    body: JSON.stringify({ playerCarId }),
+  });
+}
+
+export async function plateRollRegion(playerCarId: number) {
+  return api<{ plateText: string; user: User }>("/api/shop/plate/region", {
+    method: "POST",
+    body: JSON.stringify({ playerCarId }),
+  });
+}
+
+export async function fetchPropertyCards() {
+  return api<{ cards: PropertyCard[] }>("/api/player/property");
 }
 
 export async function fetchSimShop() {
@@ -373,11 +600,23 @@ export async function fetchShopPhones() {
   return api<{ phones: PhoneDevice[] }>("/api/shop/phones");
 }
 
+export async function fetchPhoneQuote(deviceId: string) {
+  return api<AssetQuote>(`/api/shop/phone/quote?deviceId=${encodeURIComponent(deviceId)}`);
+}
+
 export async function buyPhone(deviceId: string) {
-  return api<{ deviceName: string; user: User }>("/api/shop/phone", {
+  return api<{ deviceName: string; tradeInRub: number; user: User }>("/api/shop/phone", {
     method: "POST",
     body: JSON.stringify({ deviceId }),
   });
+}
+
+export async function fetchPhoneSellQuote() {
+  return api<{ amountRub: number; catalogPriceRub: number }>("/api/shop/phone/sell/quote");
+}
+
+export async function sellPhone() {
+  return api<{ amountRub: number; user: User }>("/api/shop/phone/sell", { method: "POST" });
 }
 
 export async function registerSim() {
@@ -398,8 +637,20 @@ export async function topupSim(amount: number) {
   });
 }
 
-export async function buyCar() {
-  return api<{ plate: string; user: User }>("/api/shop/car", { method: "POST" });
+export async function fetchCarSellQuote(playerCarId: number) {
+  return api<{
+    amountRub: number;
+    catalogPriceRub: number;
+    carName: string;
+    plateText: string | null;
+  }>(`/api/shop/car/sell/quote?playerCarId=${playerCarId}`);
+}
+
+export async function sellCar(playerCarId: number) {
+  return api<{ amountRub: number; user: User }>("/api/shop/car/sell", {
+    method: "POST",
+    body: JSON.stringify({ playerCarId }),
+  });
 }
 
 export type ProductPreview = {
@@ -435,8 +686,26 @@ export async function payHousingRent() {
   return api<{ message: string; user: User }>("/api/housing/rent", { method: "POST" });
 }
 
-export async function payHousingBuy() {
-  return api<{ message: string; user: User }>("/api/housing/buy", { method: "POST" });
+export async function fetchHousingBuyQuote(propertyId: string) {
+  return api<{
+    listPriceRub: number;
+    tradeInRub: number;
+    netPriceRub: number;
+    tradeInCatalogPriceRub: number | null;
+    propertyId: string;
+    propertyTitle: string;
+  }>(`/api/housing/buy/quote?propertyId=${encodeURIComponent(propertyId)}`);
+}
+
+export async function payHousingBuy(propertyId: string) {
+  return api<{ message: string; user: User }>("/api/housing/buy", {
+    method: "POST",
+    body: JSON.stringify({ propertyId }),
+  });
+}
+
+export async function sellHousing() {
+  return api<{ message: string; user: User }>("/api/housing/sell", { method: "POST" });
 }
 
 export function formatHousingExpiry(ts: number | null): string {

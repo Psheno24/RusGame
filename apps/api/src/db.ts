@@ -23,12 +23,24 @@ export type PlayerRow = {
   sim_last: string | null;
   sim_balance_rub: number;
   phone_device_id: string | null;
+  phone_acquired_at: number | null;
   car_owned: number;
+  car_model_id: string | null;
+  car_acquired_at: number | null;
   plate_text: string | null;
+  plate_l1: string | null;
+  plate_digits: string | null;
+  plate_l2: string | null;
+  plate_region: string | null;
+  vehicle_rental_id: string | null;
+  vehicle_rental_expires_at: number | null;
   drivers_license: number;
+  driver_licenses: string | null;
   housing_type: string | null;
   housing_city_id: string | null;
   housing_expires_at: number | null;
+  housing_owned_at: number | null;
+  housing_property_id: string | null;
   energy: number;
   hunger: number;
   mood: number;
@@ -44,6 +56,7 @@ export type UserRow = {
   login: string;
   password_hash: string;
   is_admin: number;
+  is_test: number;
   is_banned: number;
   created_at: number;
 };
@@ -156,6 +169,70 @@ function migrate(database: Database.Database) {
       .prepare("UPDATE players SET drivers_license = 1 WHERE car_owned = 1")
       .run();
   }
+  const cols6 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!cols6.some((c) => c.name === "phone_acquired_at")) {
+    database.exec("ALTER TABLE players ADD COLUMN phone_acquired_at INTEGER");
+    database.exec("ALTER TABLE players ADD COLUMN car_acquired_at INTEGER");
+    database.exec("ALTER TABLE players ADD COLUMN housing_owned_at INTEGER");
+  }
+  const cols7 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!cols7.some((c) => c.name === "car_model_id")) {
+    database.exec("ALTER TABLE players ADD COLUMN car_model_id TEXT");
+    database.exec("ALTER TABLE players ADD COLUMN plate_l1 TEXT");
+    database.exec("ALTER TABLE players ADD COLUMN plate_digits TEXT");
+    database.exec("ALTER TABLE players ADD COLUMN plate_l2 TEXT");
+    database.exec("ALTER TABLE players ADD COLUMN plate_region TEXT");
+    database.exec("ALTER TABLE players ADD COLUMN vehicle_rental_id TEXT");
+    database.exec("ALTER TABLE players ADD COLUMN vehicle_rental_expires_at INTEGER");
+    database.exec("ALTER TABLE players ADD COLUMN housing_property_id TEXT");
+    database
+      .prepare("UPDATE players SET car_model_id = 'lada-granta' WHERE car_owned = 1 AND car_model_id IS NULL")
+      .run();
+  }
+  const userCols = database.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+  if (!userCols.some((c) => c.name === "is_test")) {
+    database.exec("ALTER TABLE users ADD COLUMN is_test INTEGER NOT NULL DEFAULT 0");
+  }
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS player_cars (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      car_model_id TEXT NOT NULL,
+      acquired_at INTEGER NOT NULL,
+      plate_text TEXT,
+      plate_l1 TEXT,
+      plate_digits TEXT,
+      plate_l2 TEXT,
+      plate_region TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_player_cars_user ON player_cars(user_id);
+  `);
+
+  const cols8 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!cols8.some((c) => c.name === "driver_licenses")) {
+    database.exec("ALTER TABLE players ADD COLUMN driver_licenses TEXT");
+    database
+      .prepare(`UPDATE players SET driver_licenses = '["B"]' WHERE drivers_license = 1`)
+      .run();
+  }
+
+  const migrated = database
+    .prepare(
+      `SELECT p.user_id FROM players p
+       WHERE p.car_owned = 1 AND p.car_model_id IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM player_cars pc WHERE pc.user_id = p.user_id)`,
+    )
+    .all() as { user_id: number }[];
+  const ins = database.prepare(
+    `INSERT INTO player_cars (user_id, car_model_id, acquired_at, plate_text, plate_l1, plate_digits, plate_l2, plate_region)
+     SELECT user_id, car_model_id, COALESCE(car_acquired_at, ?), plate_text, plate_l1, plate_digits, plate_l2, plate_region
+     FROM players WHERE user_id = ? AND car_owned = 1 AND car_model_id IS NOT NULL`,
+  );
+  const now = Date.now();
+  for (const row of migrated) {
+    ins.run(now, row.user_id);
+  }
 }
 
 export function getUserByLogin(login: string): UserRow | undefined {
@@ -166,14 +243,20 @@ export function getUserById(id: number): UserRow | undefined {
   return getDb().prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRow | undefined;
 }
 
-export function createUser(login: string, passwordHash: string, isAdmin = false): number {
+export function createUser(
+  login: string,
+  passwordHash: string,
+  flags: { isAdmin?: boolean; isTest?: boolean } = {},
+): number {
   const r = getDb()
-    .prepare("INSERT INTO users (login, password_hash, is_admin, created_at) VALUES (?, ?, ?, ?)")
-    .run(login, passwordHash, isAdmin ? 1 : 0, Date.now());
+    .prepare(
+      "INSERT INTO users (login, password_hash, is_admin, is_test, created_at) VALUES (?, ?, ?, ?, ?)",
+    )
+    .run(login, passwordHash, flags.isAdmin ? 1 : 0, flags.isTest ? 1 : 0, Date.now());
   return Number(r.lastInsertRowid);
 }
 
-export function createPlayer(userId: number, displayName: string) {
+export function createPlayer(userId: number, displayName: string, rubles = 5000) {
   const starterMs = 3 * 24 * 60 * 60 * 1000;
   const expires = Date.now() + starterMs;
   getDb()
@@ -182,9 +265,9 @@ export function createPlayer(userId: number, displayName: string) {
         user_id, display_name, rubles, city_id,
         housing_type, housing_city_id, housing_expires_at,
         energy, hunger, mood, health, reputation, education
-      ) VALUES (?, ?, 5000, 'omsk', 'dorm', 'omsk', ?, 80, 80, 70, 100, 100, 'none')`,
+      ) VALUES (?, ?, ?, 'omsk', 'dorm', 'omsk', ?, 80, 80, 70, 100, 100, 'none')`,
     )
-    .run(userId, displayName, expires);
+    .run(userId, displayName, rubles, expires);
 }
 
 export function getPlayer(userId: number): PlayerRow | undefined {
@@ -203,8 +286,12 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
         agility = ?, stamina = ?, charisma = ?, wit = ?,
         side_gig_ready_at = ?, shift_ready_at = ?, last_work_at_by_job = ?,
         phone_number = ?, sim_operator = ?, sim_mid = ?, sim_last = ?, sim_balance_rub = ?,
-        phone_device_id = ?, car_owned = ?, plate_text = ?, drivers_license = ?,
-        housing_type = ?, housing_city_id = ?, housing_expires_at = ?,
+        phone_device_id = ?, phone_acquired_at = ?,
+        car_owned = ?, car_model_id = ?, car_acquired_at = ?,
+        plate_text = ?, plate_l1 = ?, plate_digits = ?, plate_l2 = ?, plate_region = ?,
+        vehicle_rental_id = ?, vehicle_rental_expires_at = ?,
+        drivers_license = ?, driver_licenses = ?,
+        housing_type = ?, housing_city_id = ?, housing_expires_at = ?, housing_owned_at = ?, housing_property_id = ?,
         energy = ?, hunger = ?, mood = ?, health = ?, reputation = ?, education = ?
       WHERE user_id = ?`,
     )
@@ -229,12 +316,24 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
       next.sim_last,
       next.sim_balance_rub ?? 0,
       next.phone_device_id,
+      next.phone_acquired_at ?? null,
       next.car_owned,
+      next.car_model_id ?? null,
+      next.car_acquired_at ?? null,
       next.plate_text,
+      next.plate_l1 ?? null,
+      next.plate_digits ?? null,
+      next.plate_l2 ?? null,
+      next.plate_region ?? null,
+      next.vehicle_rental_id ?? null,
+      next.vehicle_rental_expires_at ?? null,
       next.drivers_license ?? 0,
+      next.driver_licenses ?? null,
       next.housing_type ?? null,
       next.housing_city_id ?? null,
       next.housing_expires_at ?? null,
+      next.housing_owned_at ?? null,
+      next.housing_property_id ?? null,
       next.energy ?? 80,
       next.hunger ?? 80,
       next.mood ?? 70,
@@ -267,7 +366,11 @@ export function deleteUserRefreshTokens(userId: number) {
 
 export function countPlayersInCity(cityId: string): number {
   const row = getDb()
-    .prepare("SELECT COUNT(*) AS c FROM players WHERE city_id = ? AND status = 'idle'")
+    .prepare(
+      `SELECT COUNT(*) AS c FROM players p
+       JOIN users u ON u.id = p.user_id
+       WHERE p.city_id = ? AND p.status = 'idle' AND u.is_test = 0`,
+    )
     .get(cityId) as { c: number };
   return row.c;
 }

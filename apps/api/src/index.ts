@@ -6,14 +6,19 @@ import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
-import { LOCAL_DEV, PORT, ROOT, TRUST_PROXY } from "./config.js";
+import { LOCAL_DEV, PORT, ROOT, TEST_LOGIN, TRUST_PROXY } from "./config.js";
 import { getDb } from "./db.js";
 import { registerRoutes } from "./routes.js";
+import { ensureTestAccount } from "./testAccount.js";
 
 const webDist = join(ROOT, "apps/web/dist");
 
 async function main() {
   getDb();
+  if (LOCAL_DEV) {
+    const { created, login } = ensureTestAccount();
+    if (created) console.log(`Тест-аккаунт: ${login} (см. TEST_LOGIN / TEST_PASSWORD в .env)`);
+  }
 
   const app = Fastify({ logger: true, trustProxy: TRUST_PROXY });
 
@@ -38,7 +43,10 @@ async function main() {
 
   await app.listen({ port: PORT, host: "0.0.0.0" });
   console.log(`API http://localhost:${PORT}`);
-  if (LOCAL_DEV) console.log("Режим: LOCAL_DEV (длинная сессия, cookie без secure)");
+  if (LOCAL_DEV) {
+    console.log("Режим: LOCAL_DEV (длинная сессия, cookie без secure)");
+    console.log(`Тест-аккаунт: логин «${TEST_LOGIN}»`);
+  }
   else console.log("Режим: production (HTTPS cookies, trustProxy)");
   if (existsSync(webDist)) console.log("Фронт: apps/web/dist");
 }

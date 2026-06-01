@@ -1,0 +1,170 @@
+{
+  "byCity": {
+    "omsk": [
+      {
+        "id": "omsk_room",
+        "title": "Комната в общежитии",
+        "district": "Кировский",
+        "priceRub": 520000,
+        "rooms": "1",
+        "areaSqm": 12
+      },
+      {
+        "id": "omsk_studio",
+        "title": "Студия",
+        "district": "Ленинский",
+        "priceRub": 950000,
+        "rooms": "студия",
+        "areaSqm": 28
+      },
+      {
+        "id": "omsk_1br",
+        "title": "1-комнатная",
+        "district": "Советский",
+        "priceRub": 1800000,
+        "rooms": "1",
+        "areaSqm": 38
+      },
+      {
+        "id": "omsk_2br",
+        "title": "2-комнатная",
+        "district": "Центральный",
+        "priceRub": 3200000,
+        "rooms": "2",
+        "areaSqm": 54
+      }
+    ],
+    "kazan": [
+      {
+        "id": "kazan_room",
+        "title": "Комната",
+        "district": "Советский",
+        "priceRub": 580000,
+        "rooms": "1",
+        "areaSqm": 14
+      },
+      {
+        "id": "kazan_studio",
+        "title": "Студия",
+        "district": "Вахитовский",
+        "priceRub": 1100000,
+        "rooms": "студия",
+        "areaSqm": 30
+      },
+      {
+        "id": "kazan_1br",
+        "title": "1-комнатная",
+        "district": "Приволжский",
+        "priceRub": 2100000,
+        "rooms": "1",
+        "areaSqm": 42
+      },
+      {
+        "id": "kazan_2br",
+        "title": "2-комнатная",
+        "district": "Московский",
+        "priceRub": 3800000,
+        "rooms": "2",
+        "areaSqm": 58
+      },
+      {
+        "id": "kazan_3br",
+        "title": "3-комнатная",
+        "district": "Центр",
+        "priceRub": 5500000,
+        "rooms": "3",
+        "areaSqm": 72
+      }
+    ]
+  },
+  "byTier": {
+    "2": [
+      {
+        "id": "tier2_room",
+        "title": "Комната",
+        "district": "Спальный район",
+        "priceRub": 520000,
+        "rooms": "1",
+        "areaSqm": 12
+      },
+      {
+        "id": "tier2_studio",
+        "title": "Студия",
+        "district": "Микрорайон",
+        "priceRub": 950000,
+        "rooms": "студия",
+        "areaSqm": 28
+      },
+      {
+        "id": "tier2_1br",
+        "title": "1-комнатная",
+        "district": "Центр",
+        "priceRub": 1800000,
+        "rooms": "1",
+        "areaSqm": 38
+      }
+    ],
+    "3": [
+      {
+        "id": "tier3_studio",
+        "title": "Студия",
+        "district": "Центр",
+        "priceRub": 1400000,
+        "rooms": "студия",
+        "areaSqm": 32
+      },
+      {
+        "id": "tier3_1br",
+        "title": "1-комнатная",
+        "district": "Исторический центр",
+        "priceRub": 2400000,
+        "rooms": "1",
+        "areaSqm": 44
+      },
+      {
+        "id": "tier3_2br",
+        "title": "2-комнатная",
+        "district": "Престижный район",
+        "priceRub": 4200000,
+        "rooms": "2",
+        "areaSqm": 60
+      }
+    ],
+    "4": [
+      {
+        "id": "tier4_1br",
+        "title": "1-комнатная",
+        "district": "Центр",
+        "priceRub": 4500000,
+        "rooms": "1",
+        "areaSqm": 48
+      },
+      {
+        "id": "tier4_2br",
+        "title": "2-комнатная",
+        "district": "Набережная",
+        "priceRub": 7200000,
+        "rooms": "2",
+        "areaSqm": 68
+      }
+    ],
+    "5": [
+      {
+        "id": "tier5_2br",
+        "title": "2-комнатная",
+        "district": "Центр",
+        "priceRub": 12000000,
+        "rooms": "2",
+        "areaSqm": 75
+      },
+      {
+        "id": "tier5_3br",
+        "title": "3-комнатная",
+        "district": "Патриаршие",
+        "priceRub": 18500000,
+        "rooms": "3",
+        "areaSqm": 95
+      }
+    ]
+  }
+}
