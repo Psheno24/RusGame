@@ -5,6 +5,7 @@ import {
   getJobCooldownLabel,
   getShiftDurationLabel,
   jobNominalCooldownMs,
+  nightGuardCooldownMsAtWork,
   nightGuardStaminaEligible,
 } from "./jobShift.js";
 
@@ -40,6 +41,11 @@ describe("jobShift", () => {
       jobNominalCooldownMs({ kind: "cooldown", shiftEndsAtHour: 8 }, { hour: 22, minute: 0 }),
       10 * 3_600_000,
     );
+  });
+
+  it("night guard cooldown from work time until 8:00", () => {
+    const workAt = new Date("2026-06-01T01:46:00+05:00").getTime();
+    assert.equal(nightGuardCooldownMsAtWork(workAt, "Asia/Yekaterinburg", 8), 374 * 60_000);
   });
 
   it("shift duration labels", () => {

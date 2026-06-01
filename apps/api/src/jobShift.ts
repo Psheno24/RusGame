@@ -1,4 +1,5 @@
 import type { CityLocalTime } from "./cityTime.js";
+import { getCityLocalTime } from "./cityTime.js";
 import { formatDuration } from "./formatDuration.js";
 import type { JobDef } from "./gameData.js";
 
@@ -28,6 +29,16 @@ export function computeNightGuardShiftMs(
   shiftEndHour = NIGHT_GUARD_SHIFT_END,
 ): number {
   return computeNightGuardShiftMinutes(local.hour, local.minute, shiftEndHour) * MIN_MS;
+}
+
+/** Длительность смены сторожа в момент выхода на работу (по timestamp и часовому поясу города). */
+export function nightGuardCooldownMsAtWork(
+  workAtMs: number,
+  timezone: string,
+  shiftEndHour = NIGHT_GUARD_SHIFT_END,
+): number {
+  const local = getCityLocalTime(timezone, workAtMs);
+  return computeNightGuardShiftMs(local, shiftEndHour);
 }
 
 export function scaleNightGuardPayoutRange(

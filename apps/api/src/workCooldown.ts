@@ -1,6 +1,11 @@
 import type { PlayerRow } from "./db.js";
-import { findCityJob, type JobDef } from "./gameData.js";
-import { jobNominalCooldownMs } from "./jobShift.js";
+import { findCityJob, getCity, type JobDef } from "./gameData.js";
+import { getCityLocalTime, getCityTimezone } from "./cityTime.js";
+import {
+  isNightGuardJob,
+  jobNominalCooldownMs,
+  nightGuardCooldownMsAtWork,
+} from "./jobShift.js";
 import { scaleCooldownMs } from "./testAccount.js";
 
 export function formatCooldown(readyAt: number, now = Date.now()): { ready: boolean; remainingMs: number } {
@@ -23,7 +28,19 @@ export function parseLastWorkByJob(player: PlayerRow): LastWorkByJob {
     for (const [jobId, value] of Object.entries(parsed)) {
       if (typeof value === "number") {
         const job = findCityJob(player.city_id, jobId);
-        const cooldownMs = job ? jobNominalCooldownMs(job) : 0;
+        let cooldownMs = 0;
+        if (job) {
+          if (isNightGuardJob(job)) {
+            const city = getCity(player.city_id);
+            cooldownMs = nightGuardCooldownMsAtWork(
+              value,
+              getCityTimezone(city),
+              job.shiftEndsAtHour ?? 8,
+            );
+          } else {
+            cooldownMs = jobNominalCooldownMs(job);
+          }
+        }
         map[jobId] = { at: value, cooldownMs };
       } else if (value && typeof value === "object" && "at" in value) {
         const rec = value as JobWorkRecord;
@@ -77,10 +94,25 @@ export function getJobDefInCity(cityId: string, jobId: string): JobDef | null {
   return findCityJob(cityId, jobId) ?? null;
 }
 
-export function jobCooldownMs(job: JobDef, record: JobWorkRecord | null): number {
+export function jobCooldownMs(
+  job: JobDef,
+  record: JobWorkRecord | null,
+  player?: Pick<PlayerRow, "city_id">,
+): number {
   const nominal = jobNominalCooldownMs(job);
   if (job.kind === "cooldown" && job.shiftHours != null && job.shiftHours > 0) return nominal;
-  if (record?.cooldownMs) return record.cooldownMs;
+  if (record?.cooldownMs) {
+    if (isNightGuardJob(job) && player) {
+      const city = getCity(player.city_id);
+      const expected = nightGuardCooldownMsAtWork(
+        record.at,
+        getCityTimezone(city),
+        job.shiftEndsAtHour ?? 8,
+      );
+      return Math.min(record.cooldownMs, expected);
+    }
+    return record.cooldownMs;
+  }
   return nominal;
 }
 
@@ -100,7 +132,7 @@ export function jobCooldownState(
   if (!record) {
     return { ready: true, remainingMs: 0, effectiveReadyAt: null, displayReadyAt: null };
   }
-  const nominalMs = jobCooldownMs(job, record);
+  const nominalMs = jobCooldownMs(job, record, player);
   const effectiveMs = scaleCooldownMs(nominalMs, player.user_id);
   const effectiveEnd = record.at + effectiveMs;
   const displayEnd = record.at + nominalMs;
