@@ -948,6 +948,25 @@ export async function payLiveHere(ownedId: number) {
   });
 }
 
+export type TestAdminAccount = {
+  userId: number;
+  login: string;
+  displayName: string;
+  rubles: number;
+  isTest: boolean;
+};
+
+export async function fetchTestAccounts() {
+  return api<{ accounts: TestAdminAccount[] }>("/api/test/accounts");
+}
+
+export async function resetTestAccount(login: string) {
+  return api<{ ok: boolean; login: string }>("/api/test/reset-account", {
+    method: "POST",
+    body: JSON.stringify({ login }),
+  });
+}
+
 export function formatHousingExpiry(ts: number | null): string {
   if (ts == null) return "";
   return formatLocaleDateRu(ts, { withTime: true });

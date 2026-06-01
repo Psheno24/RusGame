@@ -2,6 +2,7 @@ import { useState } from "react";
 import { SKILL_LABELS } from "../api";
 import { formatLocaleDateRu } from "../formatLocaleDate";
 import { cityDisplayName } from "../cityNames";
+import { TestAdminPanel } from "../components/TestAdminPanel";
 import { ProfilePropertyCards } from "../components/ProfilePropertyCards";
 import { VitalsBar } from "../components/VitalsBar";
 import { useApp } from "../context";
@@ -66,6 +67,8 @@ export function ProfilePage() {
             <ProfilePropertyCards />
           </section>
         </div>
+
+        {user?.isTest && <TestAdminPanel />}
 
         {user?.isAdmin && (
           <div className="card">

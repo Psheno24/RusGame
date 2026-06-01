@@ -23,7 +23,7 @@ import {
   validateRefreshToken,
   verifyAccessToken,
 } from "./auth.js";
-import { countPlayersInCity, getDb, getPlayer, getUserById, listPlayersForAdmin, updatePlayer } from "./db.js";
+import { countPlayersInCity, getDb, getPlayer, getUserById, getUserByLogin, listPlayersForAdmin, updatePlayer } from "./db.js";
 import { getCityLocalTime, getCityTimezone } from "./cityTime.js";
 import { getJobCooldownLabel, isNightGuardJob, jobNominalCooldownMs, scaleNightGuardPayoutRange } from "./jobShift.js";
 import {
@@ -108,7 +108,8 @@ import {
   sellPropertyById,
 } from "./propertyDetail.js";
 import { activeJobShiftBlock, jobCooldownState, lastWorkRecordForJob } from "./workCooldown.js";
-import { ensureTestAccount, scaleCooldownMs, scaleTravelMs } from "./testAccount.js";
+import { ensureTestAccount, isTestUser, scaleCooldownMs, scaleTravelMs } from "./testAccount.js";
+import { listAccountsForTestAdmin, resetPlayerAccount } from "./playerReset.js";
 import { listCityFeed } from "./cityFeed.js";
 import { listPlayerFeed } from "./playerFeed.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
@@ -1031,6 +1032,32 @@ export async function registerRoutes(app: FastifyInstance) {
       };
     });
   }
+
+  // ——— Test account admin ———
+  app.get("/api/test/accounts", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    if (!isTestUser(userId)) return reply.code(403).send({ error: "Только тестовый аккаунт" });
+    return { accounts: listAccountsForTestAdmin() };
+  });
+
+  app.post<{ Body: { login?: string } }>("/api/test/reset-account", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    if (!isTestUser(userId)) return reply.code(403).send({ error: "Только тестовый аккаунт" });
+
+    const login = req.body?.login?.trim();
+    if (!login) return reply.code(400).send({ error: "Укажите login" });
+
+    const target = getUserByLogin(login);
+    if (!target) return reply.code(404).send({ error: "Пользователь не найден" });
+
+    if (!resetPlayerAccount(target.id)) {
+      return reply.code(404).send({ error: "Игрок не найден" });
+    }
+
+    return { ok: true, login: target.login };
+  });
 
   // ——— Admin ———
   app.post("/api/admin/seed", async (req, reply) => {
