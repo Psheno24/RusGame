@@ -1,67 +1,52 @@
 import type { PlayerRow } from "./db.js";
 import { formatVehiclePlate, parsePlatePartsFromRow } from "./licensePlate.js";
 import { getCar, getPhone, getVehicleRental } from "./gameData.js";
-import { getHousingProperty, housingPropertyLabel } from "./housingCatalog.js";
+import { getHousingProperty } from "./housingCatalog.js";
 import { housingStatusForPlayer } from "./housing.js";
 import { listPlayerCars } from "./playerCars.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 
 export type PropertyCard = {
   id: string;
-  kind: "phone" | "car" | "plate" | "rental" | "housing" | "sim";
+  kind: "phone" | "car" | "rental" | "housing";
   title: string;
-  subtitle: string;
+  rightText: string | null;
+  rightSubtext: string | null;
   accent: string;
-  meta: string[];
 };
+
+function formatExpiryDate(ts: number): string {
+  return new Date(ts).toLocaleString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+}
 
 export function buildPropertyCards(player: PlayerRow, now = Date.now()): PropertyCard[] {
   const cards: PropertyCard[] = [];
 
   if (player.phone_device_id) {
     const phone = getPhone(player.phone_device_id);
+    const number = playerHasSim(player) ? formatSimFromPlayer(player) : null;
+    const balance = Math.floor(player.sim_balance_rub ?? 0).toLocaleString("ru-RU");
     cards.push({
       id: "phone",
       kind: "phone",
       title: phone ? `${phone.brand} ${phone.model}` : "Телефон",
-      subtitle: phone ? `${phone.priceRub.toLocaleString("ru-RU")} ₽ в магазине` : "",
+      rightText: number,
+      rightSubtext: number ? `${balance} ₽` : null,
       accent: phone?.accent ?? "#3d4f6f",
-      meta: phone ? [phone.ram, phone.storage, phone.screen] : [],
-    });
-  }
-
-  if (playerHasSim(player)) {
-    cards.push({
-      id: "sim",
-      kind: "sim",
-      title: "Сим-карта",
-      subtitle: formatSimFromPlayer(player) ?? "Номер оформлен",
-      accent: "#1e6b4f",
-      meta: [`Баланс: ${Math.floor(player.sim_balance_rub ?? 0).toLocaleString("ru-RU")} ₽`],
     });
   }
 
   for (const row of listPlayerCars(player.user_id)) {
     const car = getCar(row.car_model_id);
-    const parts =
-      row.plate_l1 && row.plate_digits && row.plate_l2 && row.plate_region
-        ? {
-            l1: row.plate_l1,
-            digits: row.plate_digits,
-            l2: row.plate_l2,
-            region: row.plate_region,
-          }
-        : parsePlatePartsFromRow(player);
+    const parts = parsePlatePartsFromRow(row);
+    const plateText = row.plate_text ?? (parts ? formatVehiclePlate(parts) : null);
     cards.push({
       id: `car-${row.id}`,
       kind: "car",
-      title: car ? `${car.brand} ${car.model}` : "Автомобиль",
-      subtitle: car ? `${car.year} · ${car.body}` : "",
+      title: car ? `${car.brand} ${car.model} · ${car.year}` : "Автомобиль",
+      rightText: plateText,
+      rightSubtext: null,
       accent: car?.accent ?? "#4a5568",
-      meta: [
-        car ? `КД −${car.cooldownReducePct}%` : "",
-        parts ? formatVehiclePlate(parts) : row.plate_text ?? "Госномер не оформлен",
-      ].filter(Boolean),
     });
   }
 
@@ -75,16 +60,9 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
       id: "rental",
       kind: "rental",
       title: rental?.label ?? "Аренда транспорта",
-      subtitle: "Временный транспорт",
+      rightText: `до ${formatExpiryDate(player.vehicle_rental_expires_at)}`,
+      rightSubtext: null,
       accent: rental?.accent ?? "#2d8f5c",
-      meta: [
-        `До ${new Date(player.vehicle_rental_expires_at).toLocaleString("ru-RU", {
-          day: "numeric",
-          month: "short",
-          hour: "2-digit",
-          minute: "2-digit",
-        })}`,
-      ],
     });
   }
 
@@ -94,28 +72,19 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
     cards.push({
       id: "housing",
       kind: "housing",
-      title: prop?.title ?? "Своё жильё",
-      subtitle: prop ? housingPropertyLabel(prop) : housing.statusLabel,
+      title: prop?.title ?? "Квартира",
+      rightText: null,
+      rightSubtext: null,
       accent: "#5a4a7a",
-      meta: prop
-        ? [`${prop.rooms} комн.`, `${prop.areaSqm} м²`, `${prop.priceRub.toLocaleString("ru-RU")} ₽ в магазине`]
-        : [],
     });
-  } else if (housing.isResident) {
+  } else if (housing.isResident && player.housing_type !== "owned") {
     cards.push({
       id: "housing",
       kind: "housing",
       title: player.housing_type === "rent" ? "Аренда квартиры" : "Общежитие",
-      subtitle: housing.statusLabel,
+      rightText: housing.expiresAt ? `до ${formatExpiryDate(housing.expiresAt)}` : null,
+      rightSubtext: null,
       accent: "#4a6fa5",
-      meta: housing.expiresAt
-        ? [
-            `До ${new Date(housing.expiresAt).toLocaleString("ru-RU", {
-              day: "numeric",
-              month: "short",
-            })}`,
-          ]
-        : [],
     });
   }
 

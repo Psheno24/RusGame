@@ -312,16 +312,8 @@ export function CityPage() {
             <>
               <span className="city-header-sep">·</span>
               <span className="city-header-time">{liveLocalTime.label}</span>
-              <span className={`city-header-period city-header-period--${liveLocalTime.period}`}>
-                {liveLocalTime.periodLabel}
-              </span>
             </>
           )}
-          <span
-            className={`city-header-residency${isResident ? " city-header-residency--resident" : " city-header-residency--guest"}`}
-          >
-            {isResident ? "Житель" : "Гость"}
-          </span>
           <span className="city-header-pop">(нас. {population.toLocaleString("ru-RU")})</span>
         </h2>
         {!playable && (

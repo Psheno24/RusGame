@@ -188,11 +188,11 @@ export type PlateShopCarInfo = {
 
 export type PropertyCard = {
   id: string;
-  kind: "phone" | "car" | "plate" | "rental" | "housing" | "sim";
+  kind: "phone" | "car" | "rental" | "housing";
   title: string;
-  subtitle: string;
+  rightText: string | null;
+  rightSubtext: string | null;
   accent: string;
-  meta: string[];
 };
 
 export type User = {

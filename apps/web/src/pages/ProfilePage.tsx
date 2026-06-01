@@ -48,21 +48,25 @@ export function ProfilePage() {
             </div>
           </div>
           {p.vitals && (
-            <>
-              <h3 className="profile-skills-title">Показатели</h3>
+            <section className="profile-section">
+              <h3 className="profile-section-title">Показатели</h3>
               <VitalsBar vitals={p.vitals} />
-            </>
+            </section>
           )}
-          <h3 className="profile-skills-title">Имущество</h3>
-          <ProfilePropertyCards />
-          <h3 className="profile-skills-title">Навыки</h3>
-          <div className="skill-grid">
-            {(Object.entries(p.skills) as [string, number][]).map(([k, v]) => (
-              <div key={k} className="skill-item">
-                {SKILL_LABELS[k] ?? k}: <strong>{v}</strong>
-              </div>
-            ))}
-          </div>
+          <section className="profile-section">
+            <h3 className="profile-section-title">Навыки</h3>
+            <div className="skill-grid">
+              {(Object.entries(p.skills) as [string, number][]).map(([k, v]) => (
+                <div key={k} className="skill-item">
+                  {SKILL_LABELS[k] ?? k}: <strong>{v}</strong>
+                </div>
+              ))}
+            </div>
+          </section>
+          <section className="profile-section">
+            <h3 className="profile-section-title">Имущество</h3>
+            <ProfilePropertyCards />
+          </section>
         </div>
 
         {user?.isAdmin && (

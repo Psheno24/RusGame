@@ -24,37 +24,15 @@ export function ProfilePropertyCards() {
     <div className="property-cards">
       {cards.map((c) => (
         <article key={c.id} className="property-card" style={{ borderLeftColor: c.accent }}>
-          <header className="property-card-head">
-            <span className="property-card-kind">{kindLabel(c.kind)}</span>
-            <h3 className="property-card-title">{c.title}</h3>
-          </header>
-          {c.subtitle && <p className="property-card-sub">{c.subtitle}</p>}
-          {c.meta.length > 0 && (
-            <ul className="property-card-meta">
-              {c.meta.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
+          <span className="property-card-title">{c.title}</span>
+          {(c.rightText || c.rightSubtext) && (
+            <div className={`property-card-right${c.rightSubtext ? " property-card-right--stacked" : ""}`}>
+              {c.rightText && <span className="property-card-right-main">{c.rightText}</span>}
+              {c.rightSubtext && <span className="property-card-right-sub">{c.rightSubtext}</span>}
+            </div>
           )}
         </article>
       ))}
     </div>
   );
-}
-
-function kindLabel(kind: PropertyCard["kind"]): string {
-  switch (kind) {
-    case "phone":
-      return "Телефон";
-    case "car":
-      return "Авто";
-    case "sim":
-      return "Связь";
-    case "rental":
-      return "Аренда";
-    case "housing":
-      return "Жильё";
-    default:
-      return "Имущество";
-  }
 }
