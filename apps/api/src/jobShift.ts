@@ -49,6 +49,7 @@ export function isNightGuardJob(job: Pick<JobDef, "templateKey" | "shiftEndsAtHo
   return job.templateKey === "night_guard" || job.shiftEndsAtHour != null;
 }
 
+/** Длительность рабочей смены (для подтверждения выхода на работу). */
 export function getShiftDurationLabel(
   job: Pick<JobDef, "kind" | "shiftHoursMin" | "shiftHoursMax" | "shiftHours" | "shiftEndsAtHour">,
   local?: Pick<CityLocalTime, "hour" | "minute">,
@@ -67,6 +68,31 @@ export function getShiftDurationLabel(
     return `до ${end}:00`;
   }
   if (job.shiftHours != null) return `${job.shiftHours} ч`;
+  return "—";
+}
+
+/** КД смены — совпадает с таймером на кнопках «Выйти на смену» / «Уволиться». */
+export function getJobCooldownLabel(
+  job: Pick<JobDef, "kind" | "shiftHoursMin" | "shiftHoursMax" | "shiftHours" | "cooldownMs">,
+  opts?: {
+    remainingMs?: number;
+    lastShiftHours?: number | null;
+    selectedShiftHours?: number;
+  },
+): string {
+  if (opts?.remainingMs != null && opts.remainingMs > 0) {
+    return formatDuration(opts.remainingMs);
+  }
+  if (job.kind === "duration") {
+    if (opts?.selectedShiftHours != null) return `${opts.selectedShiftHours} ч`;
+    if (opts?.lastShiftHours != null) return `${opts.lastShiftHours} ч`;
+    const min = job.shiftHoursMin ?? 4;
+    const max = job.shiftHoursMax ?? 12;
+    return `${min}–${max} ч`;
+  }
+  if (job.shiftHours != null && job.shiftHours > 0) return `${job.shiftHours} ч`;
+  const ms = job.cooldownMs ?? 0;
+  if (ms > 0) return formatDuration(ms);
   return "—";
 }
 

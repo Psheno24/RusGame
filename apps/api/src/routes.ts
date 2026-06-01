@@ -25,7 +25,7 @@ import {
 } from "./auth.js";
 import { countPlayersInCity, getDb, getPlayer, getUserById, listPlayersForAdmin, updatePlayer } from "./db.js";
 import { getCityLocalTime, getCityTimezone } from "./cityTime.js";
-import { getShiftDurationLabel, jobNominalCooldownMs } from "./jobShift.js";
+import { getJobCooldownLabel, jobNominalCooldownMs } from "./jobShift.js";
 import {
   findCityJob,
   getCars,
@@ -264,7 +264,10 @@ export async function registerRoutes(app: FastifyInstance) {
         shiftHoursMax: job.shiftHoursMax ?? null,
         shiftHours: job.shiftHours ?? null,
         shiftEndsAtHour: job.shiftEndsAtHour ?? null,
-        shiftDurationLabel: getShiftDurationLabel(job, work.localTime),
+        shiftDurationLabel: getJobCooldownLabel(job, {
+          remainingMs: cooldown.ready ? undefined : cooldown.remainingMs,
+          lastShiftHours: job.kind === "duration" && record ? Math.round(record.cooldownMs / 3600000) : null,
+        }),
         payoutPerHourMin: job.payoutPerHourMin ?? null,
         payoutPerHourMax: job.payoutPerHourMax ?? null,
         payoutMin,
