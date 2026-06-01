@@ -5,6 +5,7 @@ import {
   applyJob as applyJobApi,
   fetchCity,
   formatDuration,
+  type CityFeedEvent,
   quitJob as quitJobApi,
   type HousingInfo,
   workJob,
@@ -195,7 +196,11 @@ export function CityPage() {
   const [jobsNav, setJobsNav] = useState({ inSub: false, title: "Вакансии" });
   const { register: registerSectionBack, tryBack: trySectionBack } = useNavBackSlot();
   const [cityJobs, setCityJobs] = useState<JobView[]>([]);
+  const [activeEmployment, setActiveEmployment] = useState<Awaited<
+    ReturnType<typeof fetchCity>
+  >["activeEmployment"]>(null);
   const [tick, setTick] = useState(0);
+  const [cityFeed, setCityFeed] = useState<CityFeedEvent[]>([]);
 
   const load = useCallback(async () => {
     const data = await fetchCity();
@@ -209,6 +214,8 @@ export function CityPage() {
     setTraveling(data.traveling);
     setArrivesAt(data.travelArrivesAt);
     setCityJobs(data.jobs ?? []);
+    setActiveEmployment(data.activeEmployment ?? null);
+    setCityFeed(data.feed ?? []);
     if (user) setUser({ ...user, player: data.player });
   }, [setUser, user]);
 
@@ -299,7 +306,8 @@ export function CityPage() {
   const sectionMeta = CITY_SECTIONS.find((s) => s.id === section);
 
   if (section && sectionMeta) {
-    const isJobsSection = section === "jobs" && playable && user && cityJobs.length > 0;
+    const isJobsSection =
+      section === "jobs" && playable && user && (cityJobs.length > 0 || activeEmployment != null);
     const isHousingSection = section === "housing" && playable && user;
 
     return (
@@ -315,6 +323,7 @@ export function CityPage() {
         {isJobsSection ? (
           <JobsSection
             jobs={cityJobs}
+            activeEmployment={activeEmployment}
             cityTimezone={cityTimezone}
             scheduleTick={tick}
             user={user}
@@ -408,7 +417,7 @@ export function CityPage() {
         ))}
       </div>
 
-      <CityActivityFeed cityName={cityName} />
+      <CityActivityFeed cityName={cityName} events={cityFeed} nowMs={Date.now()} />
     </>
   );
 }
@@ -474,6 +483,7 @@ function ShopSection({
 
 function JobsSection({
   jobs,
+  activeEmployment,
   cityTimezone,
   scheduleTick,
   user,
@@ -484,6 +494,7 @@ function JobsSection({
   onJobsReload,
 }: {
   jobs: JobView[];
+  activeEmployment: Awaited<ReturnType<typeof fetchCity>>["activeEmployment"];
   cityTimezone: string;
   scheduleTick: number;
   user: User;
@@ -509,7 +520,9 @@ function JobsSection({
     }));
   }, [jobs, cityTimezone, scheduleTick]);
 
-  const employedJob = employedId ? (allJobs.find((j) => j.id === employedId) ?? null) : null;
+  const employedJob = employedId
+    ? (allJobs.find((j) => j.id === employedId) ?? activeEmployment?.job ?? null)
+    : null;
   const vacancyJobs = employedId ? allJobs.filter((j) => j.id !== employedId) : allJobs;
 
   const selected = selectedId ? allJobs.find((j) => j.id === selectedId) : null;
@@ -696,9 +709,18 @@ function JobsSection({
     const selectedCooldown = resolveJobCooldown(selected.cooldown, user.isTest);
     const employed = employedId === selected.id;
     const scheduleBlocked = employed && !selected.scheduleAllowed;
-    const guestBlocked = !isResident;
+    const workCityName = selected.workCityName ?? "этом городе";
+    const physicallyHere = selected.physicallyHere ?? true;
+    const residentHere = selected.residentHere ?? isResident;
+    const workBlocked = employed && Boolean(activeEmployment?.workBlockedReason);
     const canWork =
-      employed && !busy && selectedCooldown.ready && selected.scheduleAllowed && !guestBlocked;
+      employed &&
+      !busy &&
+      selectedCooldown.ready &&
+      selected.scheduleAllowed &&
+      physicallyHere &&
+      residentHere &&
+      !workBlocked;
     const canQuit = employed && !busy && !employmentBlocked;
 
     const minH = selected.shiftHoursMin ?? 4;
@@ -710,9 +732,14 @@ function JobsSection({
     const hasLicenseB = licenseCategories.has("B");
     const jobRequirements: JobRequirement[] = [
       {
-        label: "Жильё в этом городе",
-        ok: isResident,
-        status: isResident ? "да" : "нет",
+        label: `Сейчас в ${workCityName}`,
+        ok: physicallyHere,
+        status: physicallyHere ? "да" : "нет",
+      },
+      {
+        label: `Проживание в ${workCityName}`,
+        ok: residentHere,
+        status: residentHere ? "да" : "нет",
       },
     ];
     if (selected.requiresSim) {
@@ -895,6 +922,11 @@ function JobsSection({
 
   return (
     <div className="city-jobs-stack">
+      {activeEmployment?.workBlockedReason && (
+        <p className="shop-owned" role="status">
+          {activeEmployment.workBlockedReason}
+        </p>
+      )}
       {employedJob && (
         <div className="card">
           <h2>Ваша работа</h2>

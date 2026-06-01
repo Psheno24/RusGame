@@ -9,7 +9,7 @@ import { getHousingProperty, housingPropertyLabel } from "./housingCatalog.js";
 import { formatVehiclePlate, parsePlatePartsFromRow } from "./licensePlate.js";
 import { housingStatusForPlayer } from "./housing.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
-import { getPlayerSimTariffId, getSimTariffPlan, syncPlayerSimTariffBilling } from "./simTariff.js";
+import { getPlayerSimTariffId, getSimTariffPlan } from "./simTariff.js";
 import {
   createPlayer,
   createUser,
@@ -130,8 +130,10 @@ export async function buildSession(userId: number, refreshToken: string) {
 
 export async function getPublicUser(userId: number) {
   const user = getUserById(userId);
-  const player = syncPlayerSimTariffBilling(userId);
-  if (!user || !player) return null;
+  if (!user) return null;
+  const { refreshPlayerState } = await import("./playerSync.js");
+  const player = refreshPlayerState(userId);
+  if (!player) return null;
   return {
     login: user.login,
     isAdmin: Boolean(user.is_admin),

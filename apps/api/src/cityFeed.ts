@@ -29,12 +29,12 @@ export function appendCityFeed(
   type: CityFeedType,
   text: string,
   actorUserId?: number,
+  ts: number = Date.now(),
 ): CityFeedEvent | null {
   if (actorUserId != null && isTestUser(actorUserId)) return null;
 
   const player = actorUserId ? getPlayer(actorUserId) : undefined;
   const actorName = player?.display_name ?? "Игрок";
-  const ts = Date.now();
   const db = getDb();
   const r = db
     .prepare(

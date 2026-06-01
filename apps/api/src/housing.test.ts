@@ -53,6 +53,8 @@ function player(partial: Partial<PlayerRow>): PlayerRow {
     housing_last_expires_at: null,
     housing_last_owned_id: null,
     housing_last_property_id: null,
+    housing_stack: null,
+    housing_pending_owned_id: null,
     energy: 80,
     hunger: 80,
     mood: 70,

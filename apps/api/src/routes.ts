@@ -76,16 +76,22 @@ import { buyProduct, listProductPreviews, listProducts } from "./products.js";
 import {
   getHousingInfo,
   housingStatusForPlayer,
-  payHousingBuy,
   payHousingDorm,
   payHousingRent,
   payLiveHere,
-  quoteHousingBuy,
   quoteHousingBuyDetailed,
   quoteHousingSellById,
   quoteLiveHere,
   sellOwnedHousing,
 } from "./housing.js";
+import {
+  afterBuyHousingChoice,
+  buyHousingCash,
+  buyHousingWithSell,
+  listOwnedForExchange,
+  quoteHousingPurchase,
+} from "./housingShop.js";
+import { jobAccessStatus, jobCityId } from "./jobLocation.js";
 import {
   changePlateDigits,
   changePlateLetters,
@@ -98,7 +104,9 @@ import { rentVehicle } from "./vehicleRent.js";
 import { buildPropertyCards } from "./playerProperty.js";
 import { jobCooldownState, lastWorkRecordForJob } from "./workCooldown.js";
 import { ensureTestAccount, scaleCooldownMs, scaleTravelMs } from "./testAccount.js";
+import { listCityFeed } from "./cityFeed.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
+import { refreshPlayerState } from "./playerSync.js";
 
 function getBearer(req: FastifyRequest): string | null {
   const h = req.headers.authorization;
@@ -209,13 +217,8 @@ export async function registerRoutes(app: FastifyInstance) {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
 
-    let player = getPlayer(userId);
+    let player = refreshPlayerState(userId);
     if (!player) return reply.code(404).send({ error: "Игрок не найден" });
-    player = resolveTravel(player);
-    if (player.job_id && !findCityJob(player.city_id, player.job_id)) {
-      updatePlayer(userId, { job_id: null });
-      player = { ...player, job_id: null };
-    }
 
     const city = getCity(player.city_id);
     const cityJobs = getCityJobs(player.city_id);
@@ -239,10 +242,16 @@ export async function registerRoutes(app: FastifyInstance) {
         job.kind === "duration"
           ? (job.payoutPerHourMax ?? 0) * (job.shiftHoursMax ?? 12)
           : (job.payoutMax ?? 0);
+      const workCityId = city?.id ?? player.city_id;
+      const access = jobAccessStatus(player, job.id, now);
       return {
         id: job.id,
         templateKey: job.templateKey,
         title: job.title,
+        workCityId,
+        workCityName: access.workCityName,
+        physicallyHere: access.physicallyHere,
+        residentHere: access.residentHere,
         description: job.description,
         kind: job.kind,
         shiftHoursMin: job.shiftHoursMin ?? null,
@@ -274,6 +283,30 @@ export async function registerRoutes(app: FastifyInstance) {
 
     const housing = housingStatusForPlayer(player, now);
 
+    let activeEmployment: {
+      job: ReturnType<typeof jobPayload>;
+      workCityId: string;
+      workCityName: string;
+      physicallyHere: boolean;
+      residentHere: boolean;
+      workBlockedReason: string | null;
+    } | null = null;
+    if (player.job_id) {
+      const wc = jobCityId(player.job_id);
+      const aj = wc ? findCityJob(wc, player.job_id) : null;
+      if (aj && wc) {
+        const access = jobAccessStatus(player, player.job_id, now);
+        activeEmployment = {
+          job: jobPayload(aj),
+          workCityId: wc,
+          workCityName: access.workCityName ?? wc,
+          physicallyHere: access.physicallyHere,
+          residentHere: access.residentHere,
+          workBlockedReason: access.error,
+        };
+      }
+    }
+
     return {
       city: city
         ? {
@@ -290,9 +323,10 @@ export async function registerRoutes(app: FastifyInstance) {
       player: serializePlayer(player),
       housing: getHousingInfo(player, now),
       jobs: cityJobs.length > 0 ? cityJobs.map(jobPayload) : null,
+      activeEmployment,
       traveling: player.status === "traveling",
       travelArrivesAt: player.travel_arrives_at,
-      feed: [],
+      feed: city ? listCityFeed(city.id) : [],
       actions: listActionPreviews(player),
     };
   });
@@ -385,18 +419,74 @@ export async function registerRoutes(app: FastifyInstance) {
     return { message: result.message, user };
   });
 
-  app.post<{ Body: { propertyId?: string } }>("/api/housing/buy", async (req, reply) => {
+  app.get<{ Querystring: { propertyId?: string; sellIds?: string } }>(
+    "/api/housing/buy/exchange-quote",
+    async (req, reply) => {
+      const userId = await resolveUserId(req);
+      if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+      let player = getPlayer(userId);
+      if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+      player = resolveTravel(player);
+      const propertyId = req.query.propertyId ?? "";
+      if (!propertyId) return reply.code(400).send({ error: "Укажите propertyId" });
+      const sellIds = (req.query.sellIds ?? "")
+        .split(",")
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isFinite(n));
+      const quote = quoteHousingPurchase(player, propertyId, sellIds);
+      if ("error" in quote) return reply.code(400).send({ error: quote.error });
+      return quote;
+    },
+  );
+
+  app.post<{ Body: { propertyId?: string; sellOwnedIds?: number[] } }>(
+    "/api/housing/buy",
+    async (req, reply) => {
+      const userId = await resolveUserId(req);
+      if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+      let player = getPlayer(userId);
+      if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+      player = resolveTravel(player);
+      const propertyId = req.body?.propertyId ?? "";
+      if (!propertyId) return reply.code(400).send({ error: "Укажите propertyId" });
+      const sellIds = req.body?.sellOwnedIds ?? [];
+      const result =
+        sellIds.length > 0
+          ? buyHousingWithSell(player, propertyId, sellIds)
+          : buyHousingCash(player, propertyId);
+      if (!result.ok) return reply.code(400).send({ error: result.error });
+      const user = await getPublicUser(userId);
+      return {
+        message: result.message,
+        user,
+        needsPostChoice: result.needsPostChoice,
+        ownedId: result.ownedId,
+      };
+    },
+  );
+
+  app.post<{ Body: { ownedId?: number; mode?: string } }>("/api/housing/after-buy", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
     let player = getPlayer(userId);
     if (!player) return reply.code(404).send({ error: "Игрок не найден" });
     player = resolveTravel(player);
-    const propertyId = req.body?.propertyId ?? "";
-    if (!propertyId) return reply.code(400).send({ error: "Укажите propertyId" });
-    const result = payHousingBuy(player, propertyId);
+    const ownedId = Number(req.body?.ownedId);
+    const mode = req.body?.mode === "sublet" ? "sublet" : "live";
+    if (!Number.isFinite(ownedId)) return reply.code(400).send({ error: "Укажите ownedId" });
+    const result = afterBuyHousingChoice(player, ownedId, mode);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
     return { message: result.message, user };
+  });
+
+  app.get("/api/housing/owned", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    let player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    player = resolveTravel(player);
+    return { owned: listOwnedForExchange(player) };
   });
 
   app.get<{ Querystring: { ownedId?: string } }>("/api/housing/sell/quote", async (req, reply) => {

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import {
+  afterBuyHousingChoice,
   fetchHousing,
   fetchHousingBuyQuote,
+  fetchHousingExchangeQuote,
   formatHousingExpiry,
   payHousingBuy,
   payHousingDorm,
@@ -10,14 +12,23 @@ import {
   type HousingBuyQuote,
   type HousingInfo,
   type HousingProperty,
+  type HousingPurchaseQuote,
   type User,
 } from "../api";
 import { ConfirmDialog } from "./ConfirmDialog";
 
-type HousingNav = "hub" | "buy" | "buyDetail" | "rent";
+type HousingNav = "hub" | "buy" | "buyDetail" | "exchange" | "rent";
 
 type Pending =
   | { kind: "buy"; propertyId: string; title: string; quote: HousingBuyQuote }
+  | {
+      kind: "exchange";
+      propertyId: string;
+      title: string;
+      quote: HousingPurchaseQuote;
+      sellOwnedIds: number[];
+    }
+  | { kind: "postBuy"; ownedId: number; title: string }
   | { kind: "sell"; ownedId: number; amountRub: number; catalogPriceRub: number; title: string }
   | { kind: "dorm"; subletIncomeRub: number }
   | { kind: "rent"; subletIncomeRub: number };
@@ -49,6 +60,8 @@ export function HousingShop({
   const [info, setInfo] = useState<HousingInfo | null>(initialInfo);
   const [propertyId, setPropertyId] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
+  const [exchangeIds, setExchangeIds] = useState<number[]>([]);
+  const [exchangeQuote, setExchangeQuote] = useState<HousingPurchaseQuote | null>(null);
   const [busy, setBusy] = useState(false);
 
   const selected = propertyId ? info?.properties.find((p) => p.id === propertyId) : null;
@@ -74,6 +87,9 @@ export function HousingShop({
     } else if (nav === "buyDetail" && selected) {
       title = selected.title;
       backLabel = "Купить";
+    } else if (nav === "exchange" && selected) {
+      title = "Зачёт квартир";
+      backLabel = selected.title;
     } else if (nav === "rent") {
       title = "Снять";
       backLabel = "Недвижимость";
@@ -83,6 +99,12 @@ export function HousingShop({
 
   useEffect(() => {
     const handler = () => {
+      if (nav === "exchange") {
+        setNav("buyDetail");
+        setExchangeIds([]);
+        setExchangeQuote(null);
+        return true;
+      }
       if (nav === "buyDetail") {
         setNav("buy");
         return true;
@@ -111,6 +133,20 @@ export function HousingShop({
         const r = await payHousingBuy(pending.propertyId);
         setUser(r.user);
         onToast(r.message);
+        if (r.needsPostChoice && r.ownedId != null) {
+          setPending({ kind: "postBuy", ownedId: r.ownedId, title: pending.title });
+          setBusy(false);
+          return;
+        }
+      } else if (pending.kind === "exchange") {
+        const r = await payHousingBuy(pending.propertyId, pending.sellOwnedIds);
+        setUser(r.user);
+        onToast(r.message);
+        if (r.needsPostChoice && r.ownedId != null) {
+          setPending({ kind: "postBuy", ownedId: r.ownedId, title: pending.title });
+          setBusy(false);
+          return;
+        }
       } else if (pending.kind === "sell") {
         const r = await sellHousing(pending.ownedId);
         setUser(r.user);
@@ -172,13 +208,29 @@ export function HousingShop({
         confirmClassName: "btn-danger",
       };
     }
+    if (pending.kind === "exchange") {
+      const lines = pending.quote.tradeInUnits.map(
+        (u) => `• ${u.title}: ${rub(u.amountRub)}`,
+      );
+      const excess =
+        pending.quote.excessRub > 0
+          ? `\nСдача: +${rub(pending.quote.excessRub)}.`
+          : "";
+      return {
+        title: "Купить с зачётом?",
+        text: `«${pending.title}»\nЗачёт: ${rub(pending.quote.tradeInRub)}${lines.length ? `\n${lines.join("\n")}` : ""}\nК оплате: ${rub(pending.quote.netPriceRub)}.${excess}`,
+        confirmLabel: "Подтвердить",
+        confirmClassName: "btn-success",
+      };
+    }
+    const moveNote = pending.quote.willMoveIn ? " Вы переедете сюда." : "";
     const sub =
       pending.quote.subletNewIncomeRub > 0
         ? ` Остальные квартиры сдадутся на 30 дн. (+${rub(pending.quote.subletNewIncomeRub)}).`
         : "";
     return {
       title: "Купить квартиру?",
-      text: `«${pending.title}» за ${rub(pending.quote.netPriceRub)}. Вы переедете сюда.${sub}`,
+      text: `«${pending.title}» за ${rub(pending.quote.netPriceRub)}.${moveNote}${sub}`,
       confirmLabel: "Подтвердить",
       confirmClassName: "btn-success",
     };
@@ -192,9 +244,55 @@ export function HousingShop({
     );
   }
 
+  const runPostBuy = async (mode: "live" | "sublet") => {
+    if (!pending || pending.kind !== "postBuy") return;
+    setBusy(true);
+    try {
+      const r = await afterBuyHousingChoice(pending.ownedId, mode);
+      setUser(r.user);
+      onToast(r.message);
+      setPending(null);
+      await refresh();
+      setNav("hub");
+    } catch (e) {
+      onToast(e instanceof Error ? e.message : "Ошибка", true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (nav !== "exchange" || !propertyId || exchangeIds.length === 0) {
+      setExchangeQuote(null);
+      return;
+    }
+    fetchHousingExchangeQuote(propertyId, exchangeIds)
+      .then(setExchangeQuote)
+      .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+  }, [nav, propertyId, exchangeIds, onToast]);
+
   return (
     <>
-      {pendingCopy && (
+      {pending?.kind === "postBuy" && (
+        <div className="confirm-backdrop" role="presentation">
+          <div className="confirm-dialog card">
+            <h3>Новая квартира</h3>
+            <p>«{pending.title}» — переехать или сдавать 30 дней?</p>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => setPending(null)}>
+                Позже
+              </button>
+              <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void runPostBuy("sublet")}>
+                Сдавать
+              </button>
+              <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void runPostBuy("live")}>
+                Переехать
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {pendingCopy && pending?.kind !== "postBuy" && (
         <ConfirmDialog
           title={pendingCopy.title}
           text={pendingCopy.text}
@@ -304,28 +402,98 @@ export function HousingShop({
             ) : selected.quoteError ? (
               <p className="shop-owned">{selected.quoteError}</p>
             ) : selected.netPriceRub != null && selected.canBuy ? (
-              <button
-                type="button"
-                className="btn btn-success"
-                disabled={busy || user.player.rubles < selected.netPriceRub}
-                onClick={async () => {
-                  try {
-                    const quote = await fetchHousingBuyQuote(selected.id);
-                    setPending({
-                      kind: "buy",
-                      propertyId: selected.id,
-                      title: selected.title,
-                      quote,
-                    });
-                  } catch (e) {
-                    onToast(e instanceof Error ? e.message : "Ошибка", true);
-                  }
-                }}
-              >
-                Купить за {rub(selected.netPriceRub)}
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="btn btn-success"
+                  disabled={busy || user.player.rubles < selected.netPriceRub}
+                  onClick={async () => {
+                    try {
+                      const quote = await fetchHousingBuyQuote(selected.id);
+                      setPending({
+                        kind: "buy",
+                        propertyId: selected.id,
+                        title: selected.title,
+                        quote,
+                      });
+                    } catch (e) {
+                      onToast(e instanceof Error ? e.message : "Ошибка", true);
+                    }
+                  }}
+                >
+                  Купить за {rub(selected.netPriceRub)}
+                </button>
+                {info.ownedForExchange.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={busy}
+                    onClick={() => {
+                      setExchangeIds([]);
+                      setExchangeQuote(null);
+                      setNav("exchange");
+                    }}
+                  >
+                    Зачёт своих квартир
+                  </button>
+                )}
+              </>
             ) : null}
           </div>
+        </div>
+      )}
+
+      {nav === "exchange" && selected && (
+        <div className="phone-detail card">
+          <h3>Зачёт квартир</h3>
+          <p className="shop-owned">Продажа своих квартир в зачёт покупки «{selected.title}».</p>
+          <ul className="phone-list">
+            {info.ownedForExchange.map((u) => (
+              <li key={u.id}>
+                <label className="phone-list-item" style={{ cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={exchangeIds.includes(u.id)}
+                    onChange={() => {
+                      setExchangeIds((ids) =>
+                        ids.includes(u.id) ? ids.filter((x) => x !== u.id) : [...ids, u.id],
+                      );
+                    }}
+                  />
+                  <span className="phone-list-info">
+                    <span className="phone-list-name">
+                      {u.title}
+                      <span className="phone-list-price"> · {u.cityName}</span>
+                    </span>
+                    <span className="phone-list-price">зачёт {rub(u.tradeInRub)}</span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          {exchangeQuote && (
+            <p className="shop-price">
+              К оплате: <strong>{rub(exchangeQuote.netPriceRub)}</strong>
+              {exchangeQuote.excessRub > 0 && ` · сдача ${rub(exchangeQuote.excessRub)}`}
+            </p>
+          )}
+          <button
+            type="button"
+            className="btn btn-success"
+            disabled={busy || exchangeIds.length === 0 || !exchangeQuote}
+            onClick={() => {
+              if (!exchangeQuote) return;
+              setPending({
+                kind: "exchange",
+                propertyId: selected.id,
+                title: selected.title,
+                quote: exchangeQuote,
+                sellOwnedIds: exchangeIds,
+              });
+            }}
+          >
+            Купить с зачётом
+          </button>
         </div>
       )}
 

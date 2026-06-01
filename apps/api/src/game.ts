@@ -35,7 +35,8 @@ import {
 } from "./gameData.js";
 import type { TravelMode } from "./travelCalc.js";
 import { applyWorkStatCosts } from "./actions.js";
-import { requireCityResident } from "./housing.js";
+import { isCityResident, requireCityResident, syncPlayerHousing } from "./housing.js";
+import { jobCityId, validateJobWorkAccess } from "./jobLocation.js";
 import {
   applyPostWorkPassives,
   canAffordCosts,
@@ -67,6 +68,8 @@ export function randInt(min: number, max: number): number {
 export function resolveTravel(player: PlayerRow, now = Date.now()): PlayerRow {
   if (player.status !== "traveling" || !player.travel_arrives_at) return player;
   if (now < player.travel_arrives_at) return player;
+
+  const arrivedAt = player.travel_arrives_at;
   const to = player.travel_to_city_id ?? player.city_id;
   const dest = getCity(to);
   const name = feedActorName(player.user_id);
@@ -75,18 +78,19 @@ export function resolveTravel(player: PlayerRow, now = Date.now()): PlayerRow {
     "travel:arrive",
     `${name} прибыл в город ${dest?.name ?? to}`,
     player.user_id,
+    arrivedAt,
   );
   const next: Partial<PlayerRow> = {
     status: "idle",
     city_id: to,
     travel_to_city_id: null,
     travel_arrives_at: null,
-    job_id: null,
   };
   updatePlayer(player.user_id, next);
   const arrived = { ...player, ...next } as PlayerRow;
   syncPlayerSimTariffBilling(player.user_id, now);
-  return getPlayer(player.user_id) ?? arrived;
+  const synced = syncPlayerHousing(arrived, now);
+  return getPlayer(player.user_id) ?? synced;
 }
 
 function cooldownBlockedMessage(remainingMs: number): string {
@@ -242,7 +246,8 @@ export function applyJob(
   if (reqErr) return { ok: false, error: reqErr };
 
   if (player.job_id) {
-    const curJob = findCityJob(player.city_id, player.job_id);
+    const workCity = jobCityId(player.job_id);
+    const curJob = workCity ? findCityJob(workCity, player.job_id) : null;
     const st = canWorkJobNow(player, player.job_id, now);
     if (!st.ok) {
       return {
@@ -276,10 +281,9 @@ export function quitJob(
   player = resolveTravel(player, now);
   if (player.status === "traveling") return { ok: false, error: "Вы в пути" };
 
-  const cityJobs = getCityJobs(player.city_id);
-  if (cityJobs.length === 0) return { ok: false, error: "В этом городе пока нет вакансий" };
-
-  const job = findCityJob(player.city_id, jobId);
+  const workCity = jobCityId(jobId);
+  if (!workCity) return { ok: false, error: "Вакансия не найдена" };
+  const job = findCityJob(workCity, jobId);
   if (!job) return { ok: false, error: "Вакансия не найдена" };
 
   if (player.job_id !== jobId) return { ok: false, error: "Вы не устроены на эту работу" };
@@ -304,13 +308,21 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
   if (player.status === "traveling") return { ok: false, error: "Вы в пути — подождите прибытия" };
   player = syncPlayerSimTariffBilling(userId, now) ?? player;
 
-  const guestErr = requireCityResident(player, now);
-  if (guestErr) {
-    return { ok: false, error: guestErr, code: "guest_no_housing", guestNoHousing: true };
-  }
-
-  const job = findCityJob(player.city_id, jobId);
+  const workCity = jobCityId(jobId);
+  if (!workCity) return { ok: false, error: "Вакансия не найдена" };
+  const job = findCityJob(workCity, jobId);
   if (!job) return { ok: false, error: "Вакансия не найдена" };
+
+  const workErr = validateJobWorkAccess(player, jobId, now);
+  if (workErr) {
+    const guestNoHousing = !isCityResident(player, workCity, now);
+    return {
+      ok: false,
+      error: workErr,
+      code: guestNoHousing ? "guest_no_housing" : "remote_work_blocked",
+      guestNoHousing,
+    };
+  }
 
   if (player.job_id !== job.id) {
     return { ok: false, error: "Сначала устройтесь на эту работу" };
@@ -494,7 +506,6 @@ export function startTravel(
     status: "traveling",
     travel_to_city_id: toCityId,
     travel_arrives_at: arrivesAt,
-    job_id: null,
   });
   return { ok: true, arrivesAt, priceRub: route.priceRub };
 }

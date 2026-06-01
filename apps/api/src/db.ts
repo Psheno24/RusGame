@@ -50,6 +50,8 @@ export type PlayerRow = {
   housing_last_expires_at: number | null;
   housing_last_owned_id: number | null;
   housing_last_property_id: string | null;
+  housing_stack: string | null;
+  housing_pending_owned_id: number | null;
   energy: number;
   hunger: number;
   mood: number;
@@ -313,6 +315,24 @@ function migrate(database: Database.Database) {
       setOwnedId.run(Number(r.lastInsertRowid), p.user_id);
     }
   }
+
+  const colsStack = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!colsStack.some((c) => c.name === "housing_stack")) {
+    database.exec("ALTER TABLE players ADD COLUMN housing_stack TEXT");
+  }
+
+  const ownedCols2 = database.prepare("PRAGMA table_info(player_owned_housing)").all() as {
+    name: string;
+  }[];
+  if (ownedCols2.length > 0 && !ownedCols2.some((c) => c.name === "sublet_retry_at")) {
+    database.exec("ALTER TABLE player_owned_housing ADD COLUMN sublet_retry_at INTEGER");
+    database.exec("ALTER TABLE player_owned_housing ADD COLUMN sublet_retry_chance REAL");
+  }
+
+  const colsPending = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!colsPending.some((c) => c.name === "housing_pending_owned_id")) {
+    database.exec("ALTER TABLE players ADD COLUMN housing_pending_owned_id INTEGER");
+  }
 }
 
 export function getUserByLogin(login: string): UserRow | undefined {
@@ -374,7 +394,8 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
         drivers_license = ?, driver_licenses = ?,
         housing_type = ?, housing_city_id = ?, housing_expires_at = ?, housing_owned_at = ?, housing_property_id = ?,
         housing_owned_id = ?, housing_last_type = ?, housing_last_city_id = ?, housing_last_expires_at = ?,
-        housing_last_owned_id = ?, housing_last_property_id = ?,
+        housing_last_owned_id = ?, housing_last_property_id = ?, housing_stack = ?,
+        housing_pending_owned_id = ?,
         energy = ?, hunger = ?, mood = ?, health = ?, reputation = ?, education = ?
       WHERE user_id = ?`,
     )
@@ -426,6 +447,8 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
       next.housing_last_expires_at ?? null,
       next.housing_last_owned_id ?? null,
       next.housing_last_property_id ?? null,
+      next.housing_stack ?? null,
+      next.housing_pending_owned_id ?? null,
       next.energy ?? 80,
       next.hunger ?? 80,
       next.mood ?? 70,

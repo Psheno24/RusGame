@@ -11,11 +11,15 @@ import {
   housingPropertyLabel,
 } from "./housingCatalog.js";
 import {
+  migrateLegacyHousingLast,
+  pushCurrentResidenceToStack,
+  restoreFromHousingStack,
+} from "./housingStack.js";
+import {
   clearSublet,
   deleteOwnedHousing,
   findOwnedHousing,
   getOwnedHousing,
-  insertOwnedHousing,
   isSubletActive,
   listOwnedHousing,
   updateOwnedHousing,
@@ -59,9 +63,79 @@ function activeOwnedRecord(player: PlayerRow): OwnedHousingRow | undefined {
   return getOwnedHousing(player.housing_owned_id, player.user_id);
 }
 
+function processOwnedSubletTick(row: OwnedHousingRow, userId: number, now: number): boolean {
+  if (!isSubletActive(row, now) && row.sublet_retry_at != null && now >= row.sublet_retry_at) {
+    const chance = row.sublet_retry_chance ?? 0.2;
+    if (Math.random() < chance) {
+      const periodEnd = now + SUBLET_MONTH_MS;
+      const income = subletIncomeForPeriod(row.city_id, SUBLET_MONTH_MS);
+      updateOwnedHousing(row.id, {
+        sublet_from: now,
+        sublet_until: periodEnd,
+        sublet_income_rub: income,
+        sublet_retry_at: null,
+        sublet_retry_chance: null,
+      });
+      const pl = getPlayer(userId);
+      if (pl) updatePlayer(userId, { rubles: pl.rubles + income });
+    } else {
+      updateOwnedHousing(row.id, {
+        sublet_retry_at: row.sublet_retry_at + MS_DAY,
+        sublet_retry_chance: Math.min(1, chance + 0.05),
+      });
+    }
+    return true;
+  }
+
+  if (row.sublet_until != null && row.sublet_until <= now) {
+    if (Math.random() < 0.8) {
+      const periodEnd = now + SUBLET_MONTH_MS;
+      const income = subletIncomeForPeriod(row.city_id, SUBLET_MONTH_MS);
+      updateOwnedHousing(row.id, {
+        sublet_from: now,
+        sublet_until: periodEnd,
+        sublet_income_rub: income,
+        sublet_retry_at: null,
+        sublet_retry_chance: null,
+      });
+      const pl = getPlayer(userId);
+      if (pl) updatePlayer(userId, { rubles: pl.rubles + income });
+    } else {
+      updateOwnedHousing(row.id, {
+        sublet_from: null,
+        sublet_until: null,
+        sublet_income_rub: 0,
+        sublet_retry_at: now + MS_DAY,
+        sublet_retry_chance: 0.2,
+      });
+    }
+    return true;
+  }
+  return false;
+}
+
+function extendActiveSublets(player: PlayerRow, addMs: number, now: number): number {
+  let totalIncome = 0;
+  for (const row of listOwnedHousing(player.user_id)) {
+    if (!isSubletActive(row, now)) continue;
+    const newUntil = row.sublet_until! + addMs;
+    const extra = subletIncomeForPeriod(row.city_id, addMs);
+    updateOwnedHousing(row.id, {
+      sublet_until: newUntil,
+      sublet_income_rub: row.sublet_income_rub + extra,
+    });
+    totalIncome += extra;
+  }
+  if (totalIncome > 0) {
+    updatePlayer(player.user_id, { rubles: player.rubles + totalIncome });
+  }
+  return totalIncome;
+}
+
 export function syncPlayerHousing(player: PlayerRow, now = Date.now()): PlayerRow {
-  let p = player;
-  let changed = false;
+  let p = migrateLegacyHousingLast(player);
+  let residenceChanged = p !== player;
+  let rublesChanged = false;
 
   if (
     (p.housing_type === "dorm" || p.housing_type === "rent") &&
@@ -69,32 +143,67 @@ export function syncPlayerHousing(player: PlayerRow, now = Date.now()): PlayerRo
     p.housing_expires_at <= now
   ) {
     p = restoreLastResidence(p, now);
-    changed = true;
+    residenceChanged = true;
   }
 
-  const owned = listOwnedHousing(p.user_id);
-  for (const row of owned) {
-    if (row.sublet_until != null && row.sublet_until <= now) {
-      clearSublet(row.id);
-      changed = true;
+  for (const row of listOwnedHousing(p.user_id)) {
+    let guard = 0;
+    while (guard++ < 64) {
+      const cur = getOwnedHousing(row.id, p.user_id);
+      if (!cur) break;
+      if (!processOwnedSubletTick(cur, p.user_id, now)) break;
+      rublesChanged = true;
     }
   }
 
-  if (changed) {
+  const beforePending = p;
+  const afterPending = resolvePendingHousingBuyChoice(p, now);
+  if (afterPending !== beforePending) residenceChanged = true;
+  p = afterPending;
+
+  if (residenceChanged) {
+    return getPlayer(p.user_id) ?? p;
+  }
+  if (rublesChanged) {
     const fresh = getPlayer(p.user_id);
-    return fresh ?? p;
+    if (fresh) return { ...p, rubles: fresh.rubles };
   }
   return p;
 }
 
-function snapshotResidence(player: PlayerRow) {
-  return {
-    housing_last_type: player.housing_type,
-    housing_last_city_id: player.housing_city_id,
-    housing_last_expires_at: player.housing_expires_at,
-    housing_last_owned_id: player.housing_owned_id,
-    housing_last_property_id: player.housing_property_id,
-  };
+/** Если после покупки не выбрали «жить / сдавать» — сдаём автоматически. */
+function resolvePendingHousingBuyChoice(player: PlayerRow, now: number): PlayerRow {
+  const pendingId = player.housing_pending_owned_id;
+  if (pendingId == null) return player;
+
+  const row = getOwnedHousing(pendingId, player.user_id);
+  if (!row) {
+    updatePlayer(player.user_id, { housing_pending_owned_id: null });
+    return getPlayer(player.user_id) ?? player;
+  }
+
+  if (
+    (player.housing_type === "owned" && player.housing_owned_id === row.id) ||
+    isSubletActive(row, now)
+  ) {
+    updatePlayer(player.user_id, { housing_pending_owned_id: null });
+    return getPlayer(player.user_id) ?? player;
+  }
+
+  const periodEnd = now + SUBLET_MONTH_MS;
+  const income = subletIncomeForPeriod(row.city_id, SUBLET_MONTH_MS);
+  updateOwnedHousing(row.id, {
+    sublet_from: now,
+    sublet_until: periodEnd,
+    sublet_income_rub: income,
+    sublet_retry_at: null,
+    sublet_retry_chance: null,
+  });
+  updatePlayer(player.user_id, {
+    rubles: player.rubles + income,
+    housing_pending_owned_id: null,
+  });
+  return getPlayer(player.user_id) ?? player;
 }
 
 function applyOwnedResidence(player: PlayerRow, row: OwnedHousingRow): Partial<PlayerRow> {
@@ -120,60 +229,17 @@ function clearResidence(): Partial<PlayerRow> {
 }
 
 export function restoreLastResidence(player: PlayerRow, now = Date.now()): PlayerRow {
-  const lastType = player.housing_last_type as HousingType | null;
-  if (!lastType) {
-    updatePlayer(player.user_id, clearResidence());
+  const restored = restoreFromHousingStack(player, now);
+  if (!restored) {
+    updatePlayer(player.user_id, { ...clearResidence(), housing_stack: null });
     return getPlayer(player.user_id) ?? player;
   }
-
-  if (lastType === "owned" && player.housing_last_owned_id != null) {
-    const row = getOwnedHousing(player.housing_last_owned_id, player.user_id);
-    if (row) {
-      clearSublet(row.id);
-      updatePlayer(player.user_id, {
-        ...applyOwnedResidence(player, row),
-        housing_last_type: null,
-        housing_last_city_id: null,
-        housing_last_expires_at: null,
-        housing_last_owned_id: null,
-        housing_last_property_id: null,
-      });
-      const subletOthers = row.id;
-      const fresh = getPlayer(player.user_id)!;
-      subletOtherOwnedMonthly(fresh, subletOthers, now, false);
-      return getPlayer(player.user_id) ?? fresh;
-    }
+  updatePlayer(player.user_id, { ...restored.patch, housing_stack: null });
+  const fresh = getPlayer(player.user_id)!;
+  if (fresh.housing_owned_id != null) {
+    subletOtherOwnedMonthly(fresh, fresh.housing_owned_id, now, false);
   }
-
-  if (lastType === "dorm" || lastType === "rent") {
-    const expires = player.housing_last_expires_at;
-    if (expires != null && expires > now && player.housing_last_city_id) {
-      updatePlayer(player.user_id, {
-        housing_type: lastType,
-        housing_city_id: player.housing_last_city_id,
-        housing_expires_at: expires,
-        housing_owned_id: null,
-        housing_property_id: null,
-        housing_owned_at: null,
-        housing_last_type: null,
-        housing_last_city_id: null,
-        housing_last_expires_at: null,
-        housing_last_owned_id: null,
-        housing_last_property_id: null,
-      });
-      return getPlayer(player.user_id) ?? player;
-    }
-  }
-
-  updatePlayer(player.user_id, {
-    ...clearResidence(),
-    housing_last_type: null,
-    housing_last_city_id: null,
-    housing_last_expires_at: null,
-    housing_last_owned_id: null,
-    housing_last_property_id: null,
-  });
-  return getPlayer(player.user_id) ?? player;
+  return getPlayer(player.user_id) ?? fresh;
 }
 
 /** Доход за сдачу: месячная аренда города / 30 × число дней периода. */
@@ -235,8 +301,8 @@ function subletVacantOwnedForPeriod(
   return totalIncome;
 }
 
-/** Сдача остальных квартир на 30 дней при переезде в свою (правило «жить здесь»). */
-function subletOtherOwnedMonthly(
+/** Сдача остальных квартир на 30 дней при переезде в свою (первая сдача — 100%). */
+export function subletOtherOwnedMonthly(
   player: PlayerRow,
   exceptId: number,
   now: number,
@@ -378,6 +444,19 @@ export function getHousingInfo(player: PlayerRow, now = Date.now()) {
     subletPreviewRentIncomeRub: previewSubletIncomeForRent(p, now),
     sellAmountRub: null,
     sellCatalogPriceRub: null,
+    ownedForExchange: listOwnedHousing(p.user_id).map((row) => {
+      const prop = getHousingProperty(row.city_id, row.property_id);
+      const catalog = prop?.priceRub ?? getHousingPrices(row.city_id).buyRub;
+      const other = getCity(row.city_id);
+      return {
+        id: row.id,
+        cityId: row.city_id,
+        cityName: other?.name ?? row.city_id,
+        title: prop ? housingPropertyLabel(prop) : row.property_id,
+        tradeInRub: computeResaleValue(catalog, "housing", row.acquired_at, now, "trade_in"),
+        isSublet: isSubletActive(row, now),
+      };
+    }),
   };
 }
 
@@ -454,13 +533,15 @@ export function payLiveHere(player: PlayerRow, ownedId: number, now = Date.now()
     };
   }
 
-  const wasRent = p.housing_type === "dorm" || p.housing_type === "rent";
   const patch: Partial<PlayerRow> = {
     ...applyOwnedResidence(p, row),
     rubles: p.rubles - totalCost,
   };
-  if (wasRent || (p.housing_type === "owned" && p.housing_owned_id !== row.id)) {
-    Object.assign(patch, snapshotResidence(p));
+  if (
+    p.housing_type != null &&
+    (p.housing_type !== "owned" || p.housing_owned_id !== row.id)
+  ) {
+    pushCurrentResidenceToStack(p);
   }
 
   clearSublet(row.id);
@@ -487,15 +568,15 @@ function payDorm(player: PlayerRow, now: number): HousingPayResult {
 
   const addMs = config.dormHours * MS_HOUR;
   const sameCity = player.housing_city_id === player.city_id;
-  const extend =
-    sameCity && player.housing_type === "dorm" && player.housing_expires_at != null
-      ? extendExpiry(player.housing_expires_at, addMs, now)
-      : now + addMs;
+  const extending =
+    sameCity && player.housing_type === "dorm" && player.housing_expires_at != null && player.housing_expires_at > now;
+  const extend = extending
+    ? extendExpiry(player.housing_expires_at, addMs, now)
+    : now + addMs;
 
-  const snapshot =
-    player.housing_type === "owned" && player.housing_owned_id != null
-      ? snapshotResidence(player)
-      : {};
+  if (player.housing_type != null && !extending) {
+    pushCurrentResidenceToStack(player);
+  }
 
   updatePlayer(player.user_id, {
     rubles: player.rubles - prices.dormRub,
@@ -505,19 +586,20 @@ function payDorm(player: PlayerRow, now: number): HousingPayResult {
     housing_owned_id: null,
     housing_property_id: null,
     housing_owned_at: null,
-    ...snapshot,
   });
 
   const fresh = getPlayer(player.user_id)!;
-  const periodStart =
-    sameCity && player.housing_type === "dorm" && player.housing_expires_at != null && player.housing_expires_at > now
-      ? player.housing_expires_at
-      : now;
-  const income = subletVacantOwnedForPeriod(fresh, periodStart, extend, now, true);
-  const days = Math.round((extend - periodStart) / MS_DAY);
+  let income = 0;
+  if (extending) {
+    income = extendActiveSublets(fresh, addMs, now);
+  } else {
+    const periodStart = now;
+    income = subletVacantOwnedForPeriod(fresh, periodStart, extend, now, true);
+  }
+  const days = Math.round((extend - (extending ? player.housing_expires_at! : now)) / MS_DAY);
   const msg =
     income > 0
-      ? `Общежитие на ${config.dormHours} ч (−${prices.dormRub.toLocaleString("ru-RU")} ₽). Свободные квартиры сданы на ${days} дн. (+${income.toLocaleString("ru-RU")} ₽).`
+      ? `Общежитие на ${config.dormHours} ч (−${prices.dormRub.toLocaleString("ru-RU")} ₽). Квартиры сданы/продлены (+${income.toLocaleString("ru-RU")} ₽).`
       : `Общежитие оплачено на ${config.dormHours} ч (−${prices.dormRub.toLocaleString("ru-RU")} ₽)`;
   return { ok: true, message: msg };
 }
@@ -530,15 +612,15 @@ function payRent(player: PlayerRow, now: number): HousingPayResult {
 
   const addMs = config.rentDays * MS_DAY;
   const sameCity = player.housing_city_id === player.city_id;
-  const extend =
-    sameCity && player.housing_type === "rent" && player.housing_expires_at != null
-      ? extendExpiry(player.housing_expires_at, addMs, now)
-      : now + addMs;
+  const extending =
+    sameCity && player.housing_type === "rent" && player.housing_expires_at != null && player.housing_expires_at > now;
+  const extend = extending
+    ? extendExpiry(player.housing_expires_at, addMs, now)
+    : now + addMs;
 
-  const snapshot =
-    player.housing_type === "owned" && player.housing_owned_id != null
-      ? snapshotResidence(player)
-      : {};
+  if (player.housing_type != null && !extending) {
+    pushCurrentResidenceToStack(player);
+  }
 
   updatePlayer(player.user_id, {
     rubles: player.rubles - prices.rentRub,
@@ -548,18 +630,18 @@ function payRent(player: PlayerRow, now: number): HousingPayResult {
     housing_owned_id: null,
     housing_property_id: null,
     housing_owned_at: null,
-    ...snapshot,
   });
 
   const fresh = getPlayer(player.user_id)!;
-  const periodStart =
-    sameCity && player.housing_type === "rent" && player.housing_expires_at != null && player.housing_expires_at > now
-      ? player.housing_expires_at
-      : now;
-  const income = subletVacantOwnedForPeriod(fresh, periodStart, extend, now, true);
+  let income = 0;
+  if (extending) {
+    income = extendActiveSublets(fresh, addMs, now);
+  } else {
+    income = subletVacantOwnedForPeriod(fresh, now, extend, now, true);
+  }
   const msg =
     income > 0
-      ? `Аренда на ${config.rentDays} дн. (−${prices.rentRub.toLocaleString("ru-RU")} ₽). Свободные квартиры сданы (+${income.toLocaleString("ru-RU")} ₽).`
+      ? `Аренда на ${config.rentDays} дн. (−${prices.rentRub.toLocaleString("ru-RU")} ₽). Квартиры сданы/продлены (+${income.toLocaleString("ru-RU")} ₽).`
       : `Аренда на ${config.rentDays} дн. (−${prices.rentRub.toLocaleString("ru-RU")} ₽)`;
   return { ok: true, message: msg };
 }
@@ -645,45 +727,12 @@ export function quoteHousingBuyDetailed(
       subletNewIncomeRub += subletIncomeForPeriod(row.city_id, SUBLET_MONTH_MS);
     }
   }
-  return { ...base, willMoveIn: true, subletNewIncomeRub };
-}
-
-function payBuy(player: PlayerRow, propertyId: string, now = Date.now()): HousingPayResult {
-  const p = syncPlayerHousing(player, now);
-  const prop = getHousingProperty(p.city_id, propertyId);
-  if (!prop) return { ok: false, error: "Вариант не найден" };
-  const quote = quoteHousingBuy(p, propertyId, now);
-  if ("error" in quote) return { ok: false, error: quote.error };
-  if (p.rubles < quote.netPriceRub) {
-    return {
-      ok: false,
-      error: `Не хватает денег (нужно ${quote.netPriceRub.toLocaleString("ru-RU")} ₽)`,
-    };
-  }
-
-  const ownedId = insertOwnedHousing(p.user_id, p.city_id, propertyId, now);
-  const row = getOwnedHousing(ownedId, p.user_id)!;
-
-  const needsSnapshot =
-    p.housing_type === "dorm" ||
-    p.housing_type === "rent" ||
-    (p.housing_type === "owned" && p.housing_owned_id != null);
-  const patch: Partial<PlayerRow> = {
-    rubles: p.rubles - quote.netPriceRub,
-    ...applyOwnedResidence(p, row),
-    ...(needsSnapshot ? snapshotResidence(p) : {}),
+  const totalAfter = listOwnedHousing(p.user_id).length + 1;
+  return {
+    ...base,
+    willMoveIn: totalAfter <= 1,
+    subletNewIncomeRub,
   };
-
-  updatePlayer(p.user_id, patch);
-  let fresh = getPlayer(p.user_id)!;
-
-  const income = subletOtherOwnedMonthly(fresh, ownedId, now, true);
-
-  const msg =
-    income > 0
-      ? `${prop.title} куплена (−${quote.netPriceRub.toLocaleString("ru-RU")} ₽). Вы здесь. Остальные сданы (+${income.toLocaleString("ru-RU")} ₽).`
-      : `${prop.title} куплена (−${quote.netPriceRub.toLocaleString("ru-RU")} ₽). Вы здесь.`;
-  return { ok: true, message: msg };
 }
 
 export function sellOwnedHousing(
@@ -708,10 +757,19 @@ export function sellOwnedHousing(
   const sellQuote = quoteHousingSellById(p, row.id, now);
   if ("error" in sellQuote) return { ok: false, error: sellQuote.error };
 
+  const tenantPenalty = subletRepayAmount(row, now);
+  if (p.rubles < tenantPenalty) {
+    return {
+      ok: false,
+      error: `Не хватает на компенсацию жильцам (${tenantPenalty.toLocaleString("ru-RU")} ₽)`,
+    };
+  }
+
   const wasHome = p.housing_owned_id === row.id && p.housing_type === "owned";
+  clearSublet(row.id);
   deleteOwnedHousing(row.id, p.user_id);
 
-  const rublesAfterSale = p.rubles + sellQuote.amountRub;
+  const rublesAfterSale = p.rubles + sellQuote.amountRub - tenantPenalty;
   if (wasHome) {
     updatePlayer(p.user_id, {
       rubles: rublesAfterSale,
@@ -724,9 +782,11 @@ export function sellOwnedHousing(
   }
 
   const prop = getHousingProperty(row.city_id, row.property_id);
+  const penaltyNote =
+    tenantPenalty > 0 ? `, жильцам −${tenantPenalty.toLocaleString("ru-RU")} ₽` : "";
   return {
     ok: true,
-    message: `${prop?.title ?? "Квартира"} продана (+${sellQuote.amountRub.toLocaleString("ru-RU")} ₽)${
+    message: `${prop?.title ?? "Квартира"} продана (+${sellQuote.amountRub.toLocaleString("ru-RU")} ₽${penaltyNote})${
       wasHome ? ". Восстановлено прежнее жильё." : ""
     }`,
   };
@@ -742,14 +802,6 @@ export function payHousingRent(player: PlayerRow, now = Date.now()): HousingPayR
   return payRent(syncPlayerHousing(player, now), now);
 }
 
-export function payHousingBuy(
-  player: PlayerRow,
-  propertyId: string,
-  now = Date.now(),
-): HousingPayResult {
-  if (player.status === "traveling") return { ok: false, error: "Вы в пути" };
-  return payBuy(syncPlayerHousing(player, now), propertyId, now);
-}
 
 export const GUEST_WORK_ERROR =
   "Вы гость в этом городе. Оформите жильё в разделе «Недвижимость», чтобы работать.";

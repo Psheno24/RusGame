@@ -101,6 +101,14 @@ export type HousingInfo = {
   subletPreviewRentIncomeRub: number;
   sellAmountRub: number | null;
   sellCatalogPriceRub: number | null;
+  ownedForExchange: Array<{
+    id: number;
+    cityId: string;
+    cityName: string;
+    title: string;
+    tradeInRub: number;
+    isSublet: boolean;
+  }>;
 };
 
 export type HousingProperty = {
@@ -366,6 +374,14 @@ export async function fetchCity() {
     player: Player;
     housing: HousingInfo | { ok: false; error: string } | null;
     jobs: JobView[] | null;
+    activeEmployment: {
+      job: JobView;
+      workCityId: string;
+      workCityName: string;
+      physicallyHere: boolean;
+      residentHere: boolean;
+      workBlockedReason: string | null;
+    } | null;
     traveling: boolean;
     travelArrivesAt: number | null;
     feed: CityFeedEvent[];
@@ -389,6 +405,10 @@ export type JobView = {
   id: string;
   templateKey: string;
   title: string;
+  workCityId?: string;
+  workCityName?: string | null;
+  physicallyHere?: boolean;
+  residentHere?: boolean;
   description: string;
   kind: "duration" | "cooldown";
   shiftHoursMin: number | null;
@@ -802,6 +822,16 @@ export type HousingBuyQuote = {
   subletNewIncomeRub: number;
 };
 
+export type HousingPurchaseQuote = {
+  listPriceRub: number;
+  tradeInRub: number;
+  netPriceRub: number;
+  excessRub: number;
+  propertyId: string;
+  propertyTitle: string;
+  tradeInUnits: { id: number; title: string; amountRub: number }[];
+};
+
 export type LiveHereQuote = {
   ownedId: number;
   title: string;
@@ -815,10 +845,28 @@ export async function fetchHousingBuyQuote(propertyId: string) {
   return api<HousingBuyQuote>(`/api/housing/buy/quote?propertyId=${encodeURIComponent(propertyId)}`);
 }
 
-export async function payHousingBuy(propertyId: string) {
-  return api<{ message: string; user: User }>("/api/housing/buy", {
+export async function fetchHousingExchangeQuote(propertyId: string, sellOwnedIds: number[]) {
+  const qs = new URLSearchParams({ propertyId });
+  if (sellOwnedIds.length) qs.set("sellIds", sellOwnedIds.join(","));
+  return api<HousingPurchaseQuote>(`/api/housing/buy/exchange-quote?${qs}`);
+}
+
+export async function payHousingBuy(propertyId: string, sellOwnedIds: number[] = []) {
+  return api<{
+    message: string;
+    user: User;
+    needsPostChoice?: boolean;
+    ownedId?: number;
+  }>("/api/housing/buy", {
     method: "POST",
-    body: JSON.stringify({ propertyId }),
+    body: JSON.stringify({ propertyId, sellOwnedIds }),
+  });
+}
+
+export async function afterBuyHousingChoice(ownedId: number, mode: "live" | "sublet") {
+  return api<{ message: string; user: User }>("/api/housing/after-buy", {
+    method: "POST",
+    body: JSON.stringify({ ownedId, mode }),
   });
 }
 
