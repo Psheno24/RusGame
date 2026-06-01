@@ -96,6 +96,9 @@ export type HousingInfo = {
   canRent: boolean;
   properties: HousingProperty[];
   ownedPropertyId: string | null;
+  ownedCount: number;
+  subletPreviewIncomeRub: number;
+  subletPreviewRentIncomeRub: number;
   sellAmountRub: number | null;
   sellCatalogPriceRub: number | null;
 };
@@ -111,6 +114,12 @@ export type HousingProperty = {
   netPriceRub?: number | null;
   tradeInRub?: number;
   isOwned?: boolean;
+  ownedRecordId?: number;
+  isActiveResidence?: boolean;
+  isSublet?: boolean;
+  subletUntil?: number | null;
+  sellAmountRub?: number | null;
+  sellCatalogPriceRub?: number | null;
   canBuy?: boolean;
   quoteError?: string | null;
 };
@@ -208,6 +217,13 @@ export type PropertyCard = {
   rightSubtext: string | null;
   plate: VehiclePlateParts | null;
   accent: string;
+  housingOwnedId?: number;
+  cityId?: string;
+  cityName?: string;
+  isActiveResidence?: boolean;
+  isSublet?: boolean;
+  subletUntil?: number | null;
+  canLiveHere?: boolean;
 };
 
 export type User = {
@@ -468,14 +484,24 @@ export async function buyDriversLicense() {
   return api<{ user: User }>("/api/shop/drivers-license", { method: "POST" });
 }
 
+export type TravelMode = "train" | "plane";
+
+export type TravelQuoteOption = {
+  mode: TravelMode;
+  priceRub: number;
+  durationMs: number;
+};
+
 export async function travelQuote(to: string) {
-  return api<{ toName?: string; priceRub: number; durationMs: number }>(`/api/travel/quote?to=${encodeURIComponent(to)}`);
+  return api<{ toName?: string; options: TravelQuoteOption[] }>(
+    `/api/travel/quote?to=${encodeURIComponent(to)}`,
+  );
 }
 
-export async function travelStart(toCityId: string) {
+export async function travelStart(toCityId: string, mode: TravelMode = "train") {
   return api<{ arrivesAt: number; priceRub: number; user: User }>("/api/travel/start", {
     method: "POST",
-    body: JSON.stringify({ toCityId }),
+    body: JSON.stringify({ toCityId, mode }),
   });
 }
 
@@ -765,15 +791,28 @@ export async function payHousingRent() {
   return api<{ message: string; user: User }>("/api/housing/rent", { method: "POST" });
 }
 
+export type HousingBuyQuote = {
+  listPriceRub: number;
+  tradeInRub: number;
+  netPriceRub: number;
+  tradeInCatalogPriceRub: number | null;
+  propertyId: string;
+  propertyTitle: string;
+  willMoveIn: boolean;
+  subletNewIncomeRub: number;
+};
+
+export type LiveHereQuote = {
+  ownedId: number;
+  title: string;
+  cityName: string;
+  repayRub: number;
+  subletOthersIncomeRub: number;
+  subletOthersCount: number;
+};
+
 export async function fetchHousingBuyQuote(propertyId: string) {
-  return api<{
-    listPriceRub: number;
-    tradeInRub: number;
-    netPriceRub: number;
-    tradeInCatalogPriceRub: number | null;
-    propertyId: string;
-    propertyTitle: string;
-  }>(`/api/housing/buy/quote?propertyId=${encodeURIComponent(propertyId)}`);
+  return api<HousingBuyQuote>(`/api/housing/buy/quote?propertyId=${encodeURIComponent(propertyId)}`);
 }
 
 export async function payHousingBuy(propertyId: string) {
@@ -783,8 +822,28 @@ export async function payHousingBuy(propertyId: string) {
   });
 }
 
-export async function sellHousing() {
-  return api<{ message: string; user: User }>("/api/housing/sell", { method: "POST" });
+export async function fetchHousingSellQuote(ownedId: number) {
+  return api<{ amountRub: number; catalogPriceRub: number }>(
+    `/api/housing/sell/quote?ownedId=${encodeURIComponent(String(ownedId))}`,
+  );
+}
+
+export async function sellHousing(ownedId: number) {
+  return api<{ message: string; user: User }>("/api/housing/sell", {
+    method: "POST",
+    body: JSON.stringify({ ownedId }),
+  });
+}
+
+export async function fetchLiveHereQuote(ownedId: number) {
+  return api<LiveHereQuote>(`/api/housing/live/quote?ownedId=${encodeURIComponent(String(ownedId))}`);
+}
+
+export async function payLiveHere(ownedId: number) {
+  return api<{ message: string; user: User }>("/api/housing/live", {
+    method: "POST",
+    body: JSON.stringify({ ownedId }),
+  });
 }
 
 export function formatHousingExpiry(ts: number | null): string {

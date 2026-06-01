@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DATA_DIR } from "./config.js";
+import { computeTravelRoute, type TravelMode } from "./travelCalc.js";
 
 export type City = {
   id: string;
@@ -121,10 +122,6 @@ const carCategories = JSON.parse(
 const vehicleRentals = JSON.parse(
   readFileSync(join(DATA_DIR, "vehicleRentals.json"), "utf-8"),
 ) as VehicleRentalDef[];
-const travel = JSON.parse(readFileSync(join(DATA_DIR, "travel.json"), "utf-8")) as Record<
-  string,
-  { priceRub: number; durationMs: number }
->;
 const jobTemplates = JSON.parse(
   readFileSync(join(DATA_DIR, "jobTemplates.json"), "utf-8"),
 ) as Record<string, JobTemplate>;
@@ -158,13 +155,18 @@ export function findCityJob(cityId: string, jobId: string): JobDef | undefined {
   return getCityJobs(cityId).find((j) => j.id === jobId);
 }
 
-export function getTravel(from: string, to: string): { priceRub: number; durationMs: number } | undefined {
-  return travel[`${from}-${to}`];
+export function getTravel(
+  from: string,
+  to: string,
+  mode: TravelMode = "train",
+): { priceRub: number; durationMs: number; mode: TravelMode } | undefined {
+  const route = computeTravelRoute(from, to, mode);
+  if (!route) return undefined;
+  return { priceRub: route.priceRub, durationMs: route.durationMs, mode: route.mode };
 }
 
-export function travelKey(from: string, to: string): string {
-  return `${from}-${to}`;
-}
+export type { TravelMode } from "./travelCalc.js";
+export { getTravelOptions } from "./travelCalc.js";
 
 export function getPhones(): PhoneDevice[] {
   return [...phones].sort((a, b) => a.priceRub - b.priceRub);

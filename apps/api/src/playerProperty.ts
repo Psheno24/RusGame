@@ -1,11 +1,13 @@
 import type { PlayerRow } from "./db.js";
 import { parsePlatePartsFromRow, type VehiclePlateParts } from "./licensePlate.js";
 import { getCar, getPhone, getVehicleRental } from "./gameData.js";
+import { getCity } from "./gameData.js";
 import { getHousingProperty } from "./housingCatalog.js";
-import { housingStatusForPlayer } from "./housing.js";
+import { housingStatusForPlayer, syncPlayerHousing } from "./housing.js";
 import { listPlayerCars } from "./playerCars.js";
 import { formatLocaleDateRu } from "./formatLocaleDate.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
+import { isSubletActive, listOwnedHousing } from "./playerOwnedHousing.js";
 
 export type PropertyCard = {
   id: string;
@@ -15,15 +17,23 @@ export type PropertyCard = {
   rightSubtext: string | null;
   plate: VehiclePlateParts | null;
   accent: string;
+  housingOwnedId?: number;
+  cityId?: string;
+  cityName?: string;
+  isActiveResidence?: boolean;
+  isSublet?: boolean;
+  subletUntil?: number | null;
+  canLiveHere?: boolean;
 };
 
 export function buildPropertyCards(player: PlayerRow, now = Date.now()): PropertyCard[] {
   const cards: PropertyCard[] = [];
+  const p = syncPlayerHousing(player, now);
 
-  if (player.phone_device_id) {
-    const phone = getPhone(player.phone_device_id);
-    const number = playerHasSim(player) ? formatSimFromPlayer(player) : null;
-    const balance = Math.floor(player.sim_balance_rub ?? 0).toLocaleString("ru-RU");
+  if (p.phone_device_id) {
+    const phone = getPhone(p.phone_device_id);
+    const number = playerHasSim(p) ? formatSimFromPlayer(p) : null;
+    const balance = Math.floor(p.sim_balance_rub ?? 0).toLocaleString("ru-RU");
     cards.push({
       id: "phone",
       kind: "phone",
@@ -35,7 +45,7 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
     });
   }
 
-  for (const row of listPlayerCars(player.user_id)) {
+  for (const row of listPlayerCars(p.user_id)) {
     const car = getCar(row.car_model_id);
     const parts = parsePlatePartsFromRow(row);
     cards.push({
@@ -50,43 +60,62 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
   }
 
   if (
-    player.vehicle_rental_id &&
-    player.vehicle_rental_expires_at != null &&
-    player.vehicle_rental_expires_at > now
+    p.vehicle_rental_id &&
+    p.vehicle_rental_expires_at != null &&
+    p.vehicle_rental_expires_at > now
   ) {
-    const rental = getVehicleRental(player.vehicle_rental_id);
+    const rental = getVehicleRental(p.vehicle_rental_id);
     cards.push({
       id: "rental",
       kind: "rental",
       title: rental?.label ?? "Аренда транспорта",
-      rightText: `до ${formatLocaleDateRu(player.vehicle_rental_expires_at)}`,
+      rightText: `до ${formatLocaleDateRu(p.vehicle_rental_expires_at)}`,
       rightSubtext: null,
       plate: null,
       accent: rental?.accent ?? "#2d8f5c",
     });
   }
 
-  const housing = housingStatusForPlayer(player, now);
-  if (player.housing_type === "owned" && player.housing_property_id && player.housing_city_id) {
-    const prop = getHousingProperty(player.housing_city_id, player.housing_property_id);
+  for (const owned of listOwnedHousing(p.user_id)) {
+    const prop = getHousingProperty(owned.city_id, owned.property_id);
+    const city = getCity(owned.city_id);
+    const cityName = city?.name ?? owned.city_id;
+    const title = prop?.title ?? "Квартира";
+    const isActive =
+      p.housing_type === "owned" && p.housing_owned_id === owned.id && !isSubletActive(owned, now);
+    const sublet = isSubletActive(owned, now);
     cards.push({
-      id: "housing",
+      id: `housing-${owned.id}`,
       kind: "housing",
-      title: prop?.title ?? "Квартира",
-      rightText: null,
+      title: `${title} (${cityName})`,
+      rightText: sublet && owned.sublet_until ? `сдана до ${formatLocaleDateRu(owned.sublet_until)}` : null,
       rightSubtext: null,
       plate: null,
       accent: "#5a4a7a",
+      housingOwnedId: owned.id,
+      cityId: owned.city_id,
+      cityName,
+      isActiveResidence: isActive,
+      isSublet: sublet,
+      subletUntil: owned.sublet_until,
+      canLiveHere: !isActive,
     });
-  } else if (housing.isResident && player.housing_type !== "owned") {
+  }
+
+  const housing = housingStatusForPlayer(p, now);
+  if (housing.isResident && p.housing_type !== "owned") {
+    const city = p.housing_city_id ? getCity(p.housing_city_id) : null;
+    const cityLabel = city?.name ?? p.housing_city_id ?? "";
     cards.push({
-      id: "housing",
+      id: "housing-rent",
       kind: "housing",
-      title: player.housing_type === "rent" ? "Аренда квартиры" : "Общежитие",
+      title: `${p.housing_type === "rent" ? "Аренда" : "Общежитие"} (${cityLabel})`,
       rightText: housing.expiresAt ? `до ${formatLocaleDateRu(housing.expiresAt)}` : null,
       rightSubtext: null,
       plate: null,
       accent: "#4a6fa5",
+      isActiveResidence: true,
+      canLiveHere: false,
     });
   }
 

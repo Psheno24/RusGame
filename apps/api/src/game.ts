@@ -33,6 +33,7 @@ import {
   jobRequiresSim,
   type JobDef,
 } from "./gameData.js";
+import type { TravelMode } from "./travelCalc.js";
 import { applyWorkStatCosts } from "./actions.js";
 import { requireCityResident } from "./housing.js";
 import {
@@ -454,7 +455,12 @@ export type TravelResult =
   | { ok: true; arrivesAt: number; priceRub: number }
   | { ok: false; error: string };
 
-export function startTravel(userId: number, toCityId: string, now = Date.now()): TravelResult {
+export function startTravel(
+  userId: number,
+  toCityId: string,
+  mode: TravelMode = "train",
+  now = Date.now(),
+): TravelResult {
   let player = getPlayer(userId);
   if (!player) return { ok: false, error: "Игрок не найден" };
   player = resolveTravel(player, now);
@@ -464,8 +470,12 @@ export function startTravel(userId: number, toCityId: string, now = Date.now()):
   const dest = getCity(toCityId);
   if (!dest) return { ok: false, error: "Город не найден" };
 
-  const route = getTravel(player.city_id, toCityId);
-  if (!route) return { ok: false, error: "Маршрут пока не открыт (скоро добавим)" };
+  const route = getTravel(player.city_id, toCityId, mode);
+  if (!route) {
+    return mode === "plane"
+      ? { ok: false, error: "Прямых рейсов между этими городами нет" }
+      : { ok: false, error: "Маршрут недоступен" };
+  }
 
   if (player.rubles < route.priceRub) {
     return { ok: false, error: `Не хватает денег (нужно ${route.priceRub.toLocaleString("ru-RU")} ₽)` };
@@ -476,7 +486,7 @@ export function startTravel(userId: number, toCityId: string, now = Date.now()):
   appendCityFeed(
     player.city_id,
     "travel:depart",
-    `${name} уехал в ${dest.name} (−${route.priceRub.toLocaleString("ru-RU")} ₽)`,
+    `${name} ${route.mode === "plane" ? "улетел" : "уехал"} в ${dest.name} (−${route.priceRub.toLocaleString("ru-RU")} ₽)`,
     userId,
   );
   updatePlayer(userId, {

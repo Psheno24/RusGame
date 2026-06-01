@@ -392,9 +392,6 @@ export function CityPage() {
             Местное время — <strong>{liveLocalTime.label}</strong>
           </p>
         )}
-        {!playable && (
-          <p>Контент города скоро. Сейчас полностью доступны <strong>Омск</strong> и <strong>Казань</strong>.</p>
-        )}
       </div>
 
       <div className="city-grid">

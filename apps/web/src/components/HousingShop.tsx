@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import {
   fetchHousing,
+  fetchHousingBuyQuote,
   formatHousingExpiry,
   payHousingBuy,
   payHousingDorm,
   payHousingRent,
   sellHousing,
+  type HousingBuyQuote,
   type HousingInfo,
   type HousingProperty,
   type User,
@@ -15,10 +17,10 @@ import { ConfirmDialog } from "./ConfirmDialog";
 type HousingNav = "hub" | "buy" | "buyDetail" | "rent";
 
 type Pending =
-  | { kind: "buy"; propertyId: string; title: string; quote: { netPriceRub: number; tradeInRub: number; tradeInCatalogPriceRub: number | null } }
-  | { kind: "sell"; amountRub: number; catalogPriceRub: number }
-  | { kind: "dorm" }
-  | { kind: "rent" };
+  | { kind: "buy"; propertyId: string; title: string; quote: HousingBuyQuote }
+  | { kind: "sell"; ownedId: number; amountRub: number; catalogPriceRub: number; title: string }
+  | { kind: "dorm"; subletIncomeRub: number }
+  | { kind: "rent"; subletIncomeRub: number };
 
 type Props = {
   initialInfo: HousingInfo | null;
@@ -110,7 +112,7 @@ export function HousingShop({
         setUser(r.user);
         onToast(r.message);
       } else if (pending.kind === "sell") {
-        const r = await sellHousing();
+        const r = await sellHousing(pending.ownedId);
         setUser(r.user);
         onToast(r.message);
       } else if (pending.kind === "dorm") {
@@ -135,37 +137,49 @@ export function HousingShop({
   const pendingCopy = (() => {
     if (!pending) return null;
     if (pending.kind === "dorm") {
+      const sub =
+        pending.subletIncomeRub > 0
+          ? ` Свободные квартиры сдадутся на ${info?.prices.dormHours ?? 24} ч (доход ~${rub(pending.subletIncomeRub)}, аренда/30 за каждый день).`
+          : "";
       return {
         title: "Оплатить общежитие?",
-        text: `Сутки в общежитии — ${rub(info?.prices.dormRub ?? 0)}.`,
-        confirmLabel: "Оплатить",
+        text: `Сутки в общежитии — ${rub(info?.prices.dormRub ?? 0)}.${sub}`,
+        confirmLabel: "Подтвердить",
         confirmClassName: "btn-primary",
       };
     }
     if (pending.kind === "rent") {
+      const sub =
+        pending.subletIncomeRub > 0
+          ? ` Свободные квартиры сдадутся на ${info?.prices.rentDays ?? 30} дн. (+${rub(pending.subletIncomeRub)}).`
+          : "";
       return {
         title: "Оплатить аренду?",
-        text: `Квартира на ${info?.prices.rentDays ?? 30} дн. — ${rub(info?.prices.rentRub ?? 0)}.`,
-        confirmLabel: "Оплатить",
+        text: `Квартира на ${info?.prices.rentDays ?? 30} дн. — ${rub(info?.prices.rentRub ?? 0)}.${sub}`,
+        confirmLabel: "Подтвердить",
         confirmClassName: "btn-primary",
       };
     }
     if (pending.kind === "sell") {
+      const home =
+        selected?.isActiveResidence
+          ? " Это ваше текущее жильё — после продажи вернётесь к прежнему варианту."
+          : "";
       return {
         title: "Продать квартиру?",
-        text: `Вы получите ${rub(pending.amountRub)} (60% от ${rub(pending.catalogPriceRub)} в магазине).`,
-        confirmLabel: "Продать",
+        text: `«${pending.title}»: вы получите ${rub(pending.amountRub)} (60% от ${rub(pending.catalogPriceRub)}).${home}`,
+        confirmLabel: "Подтвердить",
         confirmClassName: "btn-danger",
       };
     }
-    const t =
-      pending.quote.tradeInRub > 0 && pending.quote.tradeInCatalogPriceRub != null
-        ? ` Зачёт ${rub(pending.quote.tradeInRub)}.`
+    const sub =
+      pending.quote.subletNewIncomeRub > 0
+        ? ` Остальные квартиры сдадутся на 30 дн. (+${rub(pending.quote.subletNewIncomeRub)}).`
         : "";
     return {
-      title: "Купить жильё?",
-      text: `${pending.title} за ${rub(pending.quote.netPriceRub)}?${t}`,
-      confirmLabel: "Купить",
+      title: "Купить квартиру?",
+      text: `«${pending.title}» за ${rub(pending.quote.netPriceRub)}. Вы переедете сюда.${sub}`,
+      confirmLabel: "Подтвердить",
       confirmClassName: "btn-success",
     };
   })();
@@ -235,7 +249,11 @@ export function HousingShop({
                       {prop.isOwned ? prop.district : `${rub(prop.priceRub)} · ${prop.district}`}
                     </span>
                   </span>
-                  {prop.isOwned && <span className="phone-list-badge">ваша</span>}
+                  {prop.isOwned && (
+                    <span className="phone-list-badge">
+                      {prop.isActiveResidence ? "живёте здесь" : prop.isSublet ? "сдаётся" : "ваша"}
+                    </span>
+                  )}
                 </button>
               </li>
             ))}
@@ -261,7 +279,9 @@ export function HousingShop({
               </p>
             )}
             {selected.isOwned ? (
-              info.sellAmountRub != null && info.sellCatalogPriceRub != null ? (
+              selected.sellAmountRub != null &&
+              selected.sellCatalogPriceRub != null &&
+              selected.ownedRecordId != null ? (
                 <button
                   type="button"
                   className="btn btn-danger"
@@ -269,12 +289,14 @@ export function HousingShop({
                   onClick={() =>
                     setPending({
                       kind: "sell",
-                      amountRub: info.sellAmountRub!,
-                      catalogPriceRub: info.sellCatalogPriceRub!,
+                      ownedId: selected.ownedRecordId!,
+                      amountRub: selected.sellAmountRub!,
+                      catalogPriceRub: selected.sellCatalogPriceRub!,
+                      title: selected.title,
                     })
                   }
                 >
-                  Продать (+{rub(info.sellAmountRub)})
+                  Продать (+{rub(selected.sellAmountRub)})
                 </button>
               ) : (
                 <p className="shop-owned">Продажа недоступна</p>
@@ -286,18 +308,18 @@ export function HousingShop({
                 type="button"
                 className="btn btn-success"
                 disabled={busy || user.player.rubles < selected.netPriceRub}
-                onClick={() => {
-                  const net = selected.netPriceRub!;
-                  setPending({
-                    kind: "buy",
-                    propertyId: selected.id,
-                    title: selected.title,
-                    quote: {
-                      netPriceRub: net,
-                      tradeInRub: selected.tradeInRub ?? 0,
-                      tradeInCatalogPriceRub: null,
-                    },
-                  });
+                onClick={async () => {
+                  try {
+                    const quote = await fetchHousingBuyQuote(selected.id);
+                    setPending({
+                      kind: "buy",
+                      propertyId: selected.id,
+                      title: selected.title,
+                      quote,
+                    });
+                  } catch (e) {
+                    onToast(e instanceof Error ? e.message : "Ошибка", true);
+                  }
                 }}
               >
                 Купить за {rub(selected.netPriceRub)}
@@ -317,7 +339,9 @@ export function HousingShop({
               type="button"
               className="btn btn-primary"
               disabled={busy || !info.canRent || user.player.rubles < info.prices.dormRub}
-              onClick={() => setPending({ kind: "dorm" })}
+              onClick={() =>
+                setPending({ kind: "dorm", subletIncomeRub: info.subletPreviewIncomeRub })
+              }
             >
               Оплатить сутки
             </button>
@@ -330,13 +354,15 @@ export function HousingShop({
               type="button"
               className="btn btn-primary"
               disabled={busy || !info.canRent || user.player.rubles < info.prices.rentRub}
-              onClick={() => setPending({ kind: "rent" })}
+              onClick={() =>
+                setPending({ kind: "rent", subletIncomeRub: info.subletPreviewRentIncomeRub })
+              }
             >
               Оплатить аренду
             </button>
           </div>
           {!info.canRent && (
-            <p className="shop-owned">При своей квартире аренда и общежитие недоступны.</p>
+            <p className="shop-owned">У вас уже есть жильё в этом городе.</p>
           )}
         </div>
       )}

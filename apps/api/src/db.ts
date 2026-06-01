@@ -44,6 +44,12 @@ export type PlayerRow = {
   housing_expires_at: number | null;
   housing_owned_at: number | null;
   housing_property_id: string | null;
+  housing_owned_id: number | null;
+  housing_last_type: string | null;
+  housing_last_city_id: string | null;
+  housing_last_expires_at: number | null;
+  housing_last_owned_id: number | null;
+  housing_last_property_id: string | null;
   energy: number;
   hunger: number;
   mood: number;
@@ -248,6 +254,65 @@ function migrate(database: Database.Database) {
   for (const row of migrated) {
     ins.run(now, row.user_id);
   }
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS player_owned_housing (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      city_id TEXT NOT NULL,
+      property_id TEXT NOT NULL,
+      acquired_at INTEGER NOT NULL,
+      sublet_until INTEGER,
+      sublet_income_rub REAL NOT NULL DEFAULT 0,
+      UNIQUE(user_id, city_id, property_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_owned_housing_user ON player_owned_housing(user_id);
+  `);
+
+  const ownedCols = database.prepare("PRAGMA table_info(player_owned_housing)").all() as {
+    name: string;
+  }[];
+  if (ownedCols.length > 0 && !ownedCols.some((c) => c.name === "sublet_from")) {
+    database.exec("ALTER TABLE player_owned_housing ADD COLUMN sublet_from INTEGER");
+  }
+
+  const colsH = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!colsH.some((c) => c.name === "housing_owned_id")) {
+    database.exec("ALTER TABLE players ADD COLUMN housing_owned_id INTEGER");
+    database.exec("ALTER TABLE players ADD COLUMN housing_last_type TEXT");
+    database.exec("ALTER TABLE players ADD COLUMN housing_last_city_id TEXT");
+    database.exec("ALTER TABLE players ADD COLUMN housing_last_expires_at INTEGER");
+    database.exec("ALTER TABLE players ADD COLUMN housing_last_owned_id INTEGER");
+    database.exec("ALTER TABLE players ADD COLUMN housing_last_property_id TEXT");
+
+    const ownedPlayers = database
+      .prepare(
+        `SELECT user_id, housing_city_id, housing_property_id, housing_owned_at
+         FROM players WHERE housing_type = 'owned' AND housing_city_id IS NOT NULL AND housing_property_id IS NOT NULL`,
+      )
+      .all() as {
+      user_id: number;
+      housing_city_id: string;
+      housing_property_id: string;
+      housing_owned_at: number | null;
+    }[];
+
+    const insOwned = database.prepare(
+      `INSERT INTO player_owned_housing (user_id, city_id, property_id, acquired_at, sublet_from, sublet_until, sublet_income_rub)
+       VALUES (?, ?, ?, ?, NULL, NULL, 0)`,
+    );
+    const setOwnedId = database.prepare("UPDATE players SET housing_owned_id = ? WHERE user_id = ?");
+
+    for (const p of ownedPlayers) {
+      const r = insOwned.run(
+        p.user_id,
+        p.housing_city_id,
+        p.housing_property_id,
+        p.housing_owned_at ?? Date.now(),
+      );
+      setOwnedId.run(Number(r.lastInsertRowid), p.user_id);
+    }
+  }
 }
 
 export function getUserByLogin(login: string): UserRow | undefined {
@@ -308,6 +373,8 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
         vehicle_rental_id = ?, vehicle_rental_expires_at = ?,
         drivers_license = ?, driver_licenses = ?,
         housing_type = ?, housing_city_id = ?, housing_expires_at = ?, housing_owned_at = ?, housing_property_id = ?,
+        housing_owned_id = ?, housing_last_type = ?, housing_last_city_id = ?, housing_last_expires_at = ?,
+        housing_last_owned_id = ?, housing_last_property_id = ?,
         energy = ?, hunger = ?, mood = ?, health = ?, reputation = ?, education = ?
       WHERE user_id = ?`,
     )
@@ -353,6 +420,12 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
       next.housing_expires_at ?? null,
       next.housing_owned_at ?? null,
       next.housing_property_id ?? null,
+      next.housing_owned_id ?? null,
+      next.housing_last_type ?? null,
+      next.housing_last_city_id ?? null,
+      next.housing_last_expires_at ?? null,
+      next.housing_last_owned_id ?? null,
+      next.housing_last_property_id ?? null,
       next.energy ?? 80,
       next.hunger ?? 80,
       next.mood ?? 70,

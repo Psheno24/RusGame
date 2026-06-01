@@ -1,23 +1,55 @@
-import { useEffect, useState } from "react";
-import { fetchPropertyCards, type PropertyCard } from "../api";
+import { useCallback, useEffect, useState } from "react";
+import {
+  fetchLiveHereQuote,
+  fetchPropertyCards,
+  payLiveHere,
+  type LiveHereQuote,
+  type PropertyCard,
+} from "../api";
+import { useApp } from "../context";
+import { useNotice } from "../noticeContext";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { VehiclePlate } from "./VehiclePlate";
 
-const PROPERTY_GROUPS: { key: string; label: string; kinds: PropertyCard["kind"][] }[] = [
-  { key: "phone", label: "Телефон", kinds: ["phone"] },
-  { key: "auto", label: "Автомобили", kinds: ["car", "rental"] },
-  { key: "housing", label: "Жильё", kinds: ["housing"] },
-];
-
-function groupPropertyCards(cards: PropertyCard[]) {
-  return PROPERTY_GROUPS.map((g) => ({
-    ...g,
-    items: cards.filter((c) => g.kinds.includes(c.kind)),
-  })).filter((g) => g.items.length > 0);
+function rub(n: number) {
+  return `${n.toLocaleString("ru-RU")} ₽`;
 }
 
-function PropertyCardRow({ c }: { c: PropertyCard }) {
-  const hasPhoneRight = c.rightText || c.rightSubtext;
+function HousingPropertyRow({
+  c,
+  onLiveHere,
+  busy,
+}: {
+  c: PropertyCard;
+  onLiveHere: (ownedId: number) => void;
+  busy: boolean;
+}) {
+  return (
+    <article className="property-card property-card--housing" style={{ borderLeftColor: c.accent }}>
+      <div className="property-card-main">
+        <span className="property-card-title">{c.title}</span>
+        {c.rightText && <span className="property-card-meta">{c.rightText}</span>}
+      </div>
+      <div className="property-card-actions">
+        {c.isActiveResidence ? (
+          <span className="property-badge property-badge--here">Живёте здесь</span>
+        ) : c.canLiveHere && c.housingOwnedId != null ? (
+          <button
+            type="button"
+            className="btn btn-sm btn-primary"
+            disabled={busy}
+            onClick={() => onLiveHere(c.housingOwnedId!)}
+          >
+            Жить здесь
+          </button>
+        ) : null}
+      </div>
+    </article>
+  );
+}
 
+function OtherPropertyCard({ c }: { c: PropertyCard }) {
+  const hasPhoneRight = c.rightText || c.rightSubtext;
   return (
     <article className="property-card" style={{ borderLeftColor: c.accent }}>
       <span className="property-card-title">{c.title}</span>
@@ -40,15 +72,64 @@ function PropertyCardRow({ c }: { c: PropertyCard }) {
 }
 
 export function ProfilePropertyCards() {
+  const { setUser } = useApp();
+  const { showNotice } = useNotice();
   const [cards, setCards] = useState<PropertyCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [liveQuote, setLiveQuote] = useState<LiveHereQuote | null>(null);
+
+  const reload = useCallback(() => {
+    return fetchPropertyCards()
+      .then((r) => setCards(r.cards))
+      .catch(() => setCards([]));
+  }, []);
 
   useEffect(() => {
-    fetchPropertyCards()
-      .then((r) => setCards(r.cards))
-      .catch(() => setCards([]))
-      .finally(() => setLoading(false));
-  }, []);
+    reload().finally(() => setLoading(false));
+  }, [reload]);
+
+  const housingCards = cards.filter((c) => c.kind === "housing");
+  const otherCards = cards.filter((c) => c.kind !== "housing");
+
+  const onLiveHere = async (ownedId: number) => {
+    try {
+      const q = await fetchLiveHereQuote(ownedId);
+      setLiveQuote(q);
+    } catch (e) {
+      showNotice(e instanceof Error ? e.message : "Ошибка", "error");
+    }
+  };
+
+  const confirmLiveHere = async () => {
+    if (!liveQuote) return;
+    setBusy(true);
+    try {
+      const r = await payLiveHere(liveQuote.ownedId);
+      setUser(r.user);
+      showNotice(r.message, "success");
+      setLiveQuote(null);
+      await reload();
+    } catch (e) {
+      showNotice(e instanceof Error ? e.message : "Ошибка", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const liveConfirmText = (() => {
+    if (!liveQuote) return "";
+    const parts: string[] = [`Вы переедете в «${liveQuote.title}» (${liveQuote.cityName}).`];
+    if (liveQuote.repayRub > 0) {
+      parts.push(`Вернуть жильцам неиспользованную часть сдачи: ${rub(liveQuote.repayRub)}.`);
+    }
+    if (liveQuote.subletOthersCount > 0) {
+      parts.push(
+        `Остальные квартиры (${liveQuote.subletOthersCount}) сдадутся на 30 дн. (+${rub(liveQuote.subletOthersIncomeRub)}).`,
+      );
+    }
+    return parts.join(" ");
+  })();
 
   if (loading) {
     return <p style={{ color: "var(--text-muted)" }}>Загрузка имущества…</p>;
@@ -58,20 +139,76 @@ export function ProfilePropertyCards() {
     return <p style={{ color: "var(--text-muted)" }}>Пока нет имущества — загляните в магазин и недвижимость.</p>;
   }
 
-  const groups = groupPropertyCards(cards);
-
   return (
-    <div className="property-cards">
-      {groups.map((g) => (
-        <section key={g.key} className="property-group" aria-label={g.label}>
-          <h3 className="property-group-title">{g.label}</h3>
-          <div className="property-group-list">
-            {g.items.map((c) => (
-              <PropertyCardRow key={c.id} c={c} />
-            ))}
-          </div>
-        </section>
-      ))}
-    </div>
+    <>
+      {liveQuote && (
+        <ConfirmDialog
+          title="Переехать в эту квартиру?"
+          text={liveConfirmText}
+          confirmLabel="Подтвердить"
+          confirmClassName="btn-primary"
+          onCancel={() => setLiveQuote(null)}
+          onConfirm={() => void confirmLiveHere()}
+        />
+      )}
+
+      <div className="property-cards">
+        {housingCards.length > 0 && (
+          <section className="property-group" aria-label="Жильё">
+            <h3 className="property-group-title">Жильё</h3>
+            <div className="property-group-list">
+              {housingCards.map((c) =>
+                c.housingOwnedId != null ? (
+                  <HousingPropertyRow
+                    key={c.id}
+                    c={c}
+                    onLiveHere={onLiveHere}
+                    busy={busy}
+                  />
+                ) : (
+                  <article
+                    key={c.id}
+                    className="property-card property-card--housing"
+                    style={{ borderLeftColor: c.accent }}
+                  >
+                    <span className="property-card-title">{c.title}</span>
+                    {c.isActiveResidence && (
+                      <span className="property-badge property-badge--here">Живёте здесь</span>
+                    )}
+                    {c.rightText && !c.isActiveResidence && (
+                      <span className="property-card-meta">{c.rightText}</span>
+                    )}
+                  </article>
+                ),
+              )}
+            </div>
+          </section>
+        )}
+
+        {otherCards.some((c) => c.kind === "phone") && (
+          <section className="property-group" aria-label="Телефон">
+            <h3 className="property-group-title">Телефон</h3>
+            <div className="property-group-list">
+              {otherCards.filter((c) => c.kind === "phone").map((c) => (
+                <OtherPropertyCard key={c.id} c={c} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {otherCards.some((c) => c.kind === "car" || c.kind === "rental") && (
+          <section className="property-group" aria-label="Автомобили">
+            <h3 className="property-group-title">Автомобили</h3>
+            <div className="property-group-list">
+              {otherCards
+                .filter((c) => c.kind === "car" || c.kind === "rental")
+                .map((c) => (
+                  <OtherPropertyCard key={c.id} c={c} />
+                ))}
+            </div>
+          </section>
+        )}
+      </div>
+    </>
   );
 }

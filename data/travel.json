@@ -1,8 +1,0 @@
-{
-  "omsk-kazan": { "priceRub": 2800, "durationMs": 10800000 },
-  "kazan-omsk": { "priceRub": 2800, "durationMs": 10800000 },
-  "omsk-ekb": { "priceRub": 3200, "durationMs": 12600000 },
-  "ekb-omsk": { "priceRub": 3200, "durationMs": 12600000 },
-  "kazan-ekb": { "priceRub": 2400, "durationMs": 9000000 },
-  "ekb-kazan": { "priceRub": 2400, "durationMs": 9000000 }
-}

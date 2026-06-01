@@ -5,6 +5,8 @@ import {
   travelQuote,
   travelStart,
   type CityPin,
+  type TravelMode,
+  type TravelQuoteOption,
 } from "../api";
 import { MapActionPanel } from "../components/MapActionPanel";
 import { useApp } from "../context";
@@ -15,7 +17,7 @@ import { viewBoxToString } from "../mapViewBox";
 import { chainToPoints, CITY_NODES, MAP_VB, ROUTE_CHAINS } from "../mapMetroLayout";
 import { staticMapCities } from "../mapStaticCities";
 
-const ROUTE_UNAVAILABLE = "Маршрут пока только между Омском и Казанью";
+const ROUTE_UNAVAILABLE = "Маршрут на карте не найден";
 
 function CityListButton({
   c,
@@ -57,7 +59,8 @@ export function MapPage() {
   const [traveling, setTraveling] = useState(false);
   const [arrivesAt, setArrivesAt] = useState<number | null>(null);
   const [selected, setSelected] = useState<CityPin | null>(null);
-  const [quote, setQuote] = useState<{ priceRub: number; durationMs: number; toName?: string } | null>(null);
+  const [quoteOptions, setQuoteOptions] = useState<TravelQuoteOption[] | null>(null);
+  const [travelMode, setTravelMode] = useState<TravelMode>("train");
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [view, setView] = useState<"list" | "map">("map");
 
@@ -91,13 +94,13 @@ export function MapPage() {
 
   const dismissSelected = useCallback(() => {
     setSelected(null);
-    setQuote(null);
+    setQuoteOptions(null);
     setQuoteLoading(false);
   }, []);
 
   const pickCity = async (c: CityPin) => {
     setSelected(c);
-    setQuote(null);
+    setQuoteOptions(null);
     if (c.id === currentId) {
       setQuoteLoading(false);
       return;
@@ -105,9 +108,10 @@ export function MapPage() {
     setQuoteLoading(true);
     try {
       const q = await travelQuote(c.id);
-      setQuote(q);
+      setQuoteOptions(q.options);
+      setTravelMode(q.options[0]?.mode ?? "train");
     } catch {
-      setQuote(null);
+      setQuoteOptions(null);
     } finally {
       setQuoteLoading(false);
     }
@@ -116,7 +120,7 @@ export function MapPage() {
   const goTravel = async () => {
     if (!selected) return;
     try {
-      const r = await travelStart(selected.id);
+      const r = await travelStart(selected.id, travelMode);
       setUser(r.user);
       showNotice(`Билет куплен. Прибытие через ${formatDuration(r.arrivesAt - Date.now())}`, "success");
       dismissSelected();
@@ -131,8 +135,11 @@ export function MapPage() {
 
   const mapCities = cities.filter((c) => CITY_NODES[c.id]);
 
+  const selectedQuote =
+    quoteOptions?.find((o) => o.mode === travelMode) ?? quoteOptions?.[0] ?? null;
+
   const showRouteUnavailable =
-    selected != null && selected.id !== currentId && !quoteLoading && quote == null;
+    selected != null && selected.id !== currentId && !quoteLoading && quoteOptions == null;
 
   return (
     <>
@@ -255,17 +262,32 @@ export function MapPage() {
       </MapActionPanel>
 
       <MapActionPanel
-        open={Boolean(selected && !quoteLoading && selected.id !== currentId && quote)}
+        open={Boolean(selected && !quoteLoading && selected.id !== currentId && selectedQuote)}
         onDismiss={dismissSelected}
         persistent
         resetKey={`quote-${selected?.id}`}
       >
         <h2>{selected?.name}</h2>
-        {quote && (
+        {quoteOptions && quoteOptions.length > 1 && (
+          <div className="tabs-inline map-travel-modes">
+            {quoteOptions.map((o) => (
+              <button
+                key={o.mode}
+                type="button"
+                className={travelMode === o.mode ? "active" : ""}
+                onClick={() => setTravelMode(o.mode)}
+              >
+                {o.mode === "plane" ? "Самолёт" : "Поезд"}
+              </button>
+            ))}
+          </div>
+        )}
+        {selectedQuote && (
           <>
             <p>
-              Поезд: <strong>{quote.priceRub.toLocaleString("ru-RU")} ₽</strong>, в пути{" "}
-              <strong>{formatDuration(quote.durationMs)}</strong>
+              {travelMode === "plane" ? "Самолёт" : "Поезд"}:{" "}
+              <strong>{selectedQuote.priceRub.toLocaleString("ru-RU")} ₽</strong>, в пути{" "}
+              <strong>{formatDuration(selectedQuote.durationMs)}</strong>
             </p>
             <button className="btn btn-primary" type="button" onClick={goTravel} disabled={traveling}>
               Купить билет

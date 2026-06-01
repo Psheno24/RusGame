@@ -34,6 +34,7 @@ import {
   getCityJobs,
   getPhones,
   getTravel,
+  getTravelOptions,
   getVehicleRentals,
   type JobDef,
 } from "./gameData.js";
@@ -78,7 +79,11 @@ import {
   payHousingBuy,
   payHousingDorm,
   payHousingRent,
+  payLiveHere,
   quoteHousingBuy,
+  quoteHousingBuyDetailed,
+  quoteHousingSellById,
+  quoteLiveHere,
   sellOwnedHousing,
 } from "./housing.js";
 import {
@@ -348,9 +353,36 @@ export async function registerRoutes(app: FastifyInstance) {
     player = resolveTravel(player);
     const propertyId = req.query.propertyId ?? "";
     if (!propertyId) return reply.code(400).send({ error: "Укажите propertyId" });
-    const quote = quoteHousingBuy(player, propertyId);
+    const quote = quoteHousingBuyDetailed(player, propertyId);
     if ("error" in quote) return reply.code(400).send({ error: quote.error });
     return quote;
+  });
+
+  app.get<{ Querystring: { ownedId?: string } }>("/api/housing/live/quote", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    let player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    player = resolveTravel(player);
+    const ownedId = Number(req.query.ownedId);
+    if (!Number.isFinite(ownedId)) return reply.code(400).send({ error: "Укажите ownedId" });
+    const quote = quoteLiveHere(player, ownedId);
+    if ("error" in quote) return reply.code(400).send({ error: quote.error });
+    return quote;
+  });
+
+  app.post<{ Body: { ownedId?: number } }>("/api/housing/live", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    let player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    player = resolveTravel(player);
+    const ownedId = Number(req.body?.ownedId);
+    if (!Number.isFinite(ownedId)) return reply.code(400).send({ error: "Укажите ownedId" });
+    const result = payLiveHere(player, ownedId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
   });
 
   app.post<{ Body: { propertyId?: string } }>("/api/housing/buy", async (req, reply) => {
@@ -367,13 +399,27 @@ export async function registerRoutes(app: FastifyInstance) {
     return { message: result.message, user };
   });
 
-  app.post("/api/housing/sell", async (req, reply) => {
+  app.get<{ Querystring: { ownedId?: string } }>("/api/housing/sell/quote", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
     let player = getPlayer(userId);
     if (!player) return reply.code(404).send({ error: "Игрок не найден" });
     player = resolveTravel(player);
-    const result = sellOwnedHousing(player);
+    const ownedId = Number(req.query.ownedId);
+    if (!Number.isFinite(ownedId)) return reply.code(400).send({ error: "Укажите ownedId" });
+    const quote = quoteHousingSellById(player, ownedId);
+    if ("error" in quote) return reply.code(400).send({ error: quote.error });
+    return quote;
+  });
+
+  app.post<{ Body: { ownedId?: number } }>("/api/housing/sell", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    let player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    player = resolveTravel(player);
+    const ownedId = req.body?.ownedId != null ? Number(req.body.ownedId) : undefined;
+    const result = sellOwnedHousing(player, ownedId);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
     return { message: result.message, user };
@@ -449,23 +495,27 @@ export async function registerRoutes(app: FastifyInstance) {
     const player = getPlayer(userId);
     if (!player) return reply.code(404).send({ error: "Игрок не найден" });
     const to = req.query.to ?? "";
-    const route = getTravel(player.city_id, to);
-    if (!route) return reply.code(400).send({ error: "Маршрут недоступен" });
+    const options = getTravelOptions(player.city_id, to);
+    if (options.length === 0) return reply.code(400).send({ error: "Маршрут недоступен" });
     const dest = getCity(to);
     return {
       from: player.city_id,
       to,
       toName: dest?.name,
-      priceRub: route.priceRub,
-      durationMs: scaleTravelMs(route.durationMs, userId),
+      options: options.map((o) => ({
+        mode: o.mode,
+        priceRub: o.priceRub,
+        durationMs: scaleTravelMs(o.durationMs, userId),
+      })),
     };
   });
 
-  app.post<{ Body: { toCityId?: string } }>("/api/travel/start", async (req, reply) => {
+  app.post<{ Body: { toCityId?: string; mode?: string } }>("/api/travel/start", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
     const to = req.body?.toCityId ?? "";
-    const result = startTravel(userId, to);
+    const mode = req.body?.mode === "plane" ? "plane" : "train";
+    const result = startTravel(userId, to, mode);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
     return { arrivesAt: result.arrivesAt, priceRub: result.priceRub, user };
