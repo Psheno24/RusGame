@@ -10,6 +10,7 @@
     "dev:api": "npm run dev -w @russia-game/api",
     "dev:web": "npm run dev -w @russia-game/web",
     "build": "npm run build -w @russia-game/web && npm run build -w @russia-game/api",
+    "generate:housing": "node scripts/generate-housing-catalog.mjs",
     "start": "npm run start -w @russia-game/api",
     "docker:up": "docker compose up -d --build",
     "docker:logs": "docker compose logs -f app"

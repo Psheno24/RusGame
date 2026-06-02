@@ -119,6 +119,13 @@ export type HousingProperty = {
   priceRub: number;
   rooms: string;
   areaSqm: number;
+  prestige?: number;
+  moodBonus?: number;
+  description?: string;
+  monthlyRentRub?: number;
+  monthlyExpensesRub?: number;
+  monthlyNetIncomeRub?: number;
+  expenseRatePct?: number;
   listPriceRub?: number;
   netPriceRub?: number | null;
   tradeInRub?: number;
