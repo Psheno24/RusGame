@@ -2768,10 +2768,28 @@ button.property-badge--live:not(:disabled):active {
   justify-content: flex-start;
 }
 
-.taxi-line {
+.taxi-line-setup {
+  margin-top: 12px;
+}
+
+.taxi-car-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.taxi-car-actions .btn {
+  flex: 1 1 auto;
+  min-width: 8rem;
+  margin-top: 0;
+}
+
+.taxi-line-panels {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-top: 12px;
 }
 
 .taxi-orders-panel {
@@ -2790,6 +2808,9 @@ button.property-badge--live:not(:disabled):active {
 .taxi-order-item {
   margin: 0;
   padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-elevated, var(--card-bg));
 }
 
 .taxi-order-meta {
