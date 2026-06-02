@@ -9,7 +9,31 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Check deploy secrets
+        id: deploy_cfg
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          missing=""
+          for name in SSH_HOST SSH_USER SSH_PRIVATE_KEY DEPLOY_PATH; do
+            val="${!name}"
+            if [ -z "$val" ]; then
+              missing="$missing $name"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Deploy skipped — not set in GitHub Secrets:$missing"
+            echo "Add them: Settings → Secrets and variables → Actions (see deploy/DEPLOY.md)"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy over SSH
+        if: steps.deploy_cfg.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -21,3 +45,10 @@ jobs:
             cd "${{ secrets.DEPLOY_PATH }}"
             bash deploy/update.sh
             docker image prune -f
+
+      - name: Deploy skipped (secrets not configured)
+        if: steps.deploy_cfg.outputs.configured != 'true'
+        run: |
+          echo "Deploy did not run. Merge and CI are unaffected."
+          echo "To enable auto-deploy after push to main, add repository secrets:"
+          echo "  SSH_HOST, SSH_USER, SSH_PRIVATE_KEY, DEPLOY_PATH"
