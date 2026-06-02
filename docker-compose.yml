@@ -18,8 +18,9 @@ services:
     image: caddy:2-alpine
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      # Если на сервере несколько IP (Xray на одном, игра на другом) — задайте SITE_BIND_IP в .env
+      - "${SITE_BIND_IP:-0.0.0.0}:80:80"
+      - "${SITE_BIND_IP:-0.0.0.0}:443:443"
     env_file: .env
     environment:
       # Явно пробрасываем домен — иначе Caddy может подхватить мусор из окружения
