@@ -9,15 +9,13 @@ function OrderCard({
   order,
   busy,
   onAccept,
-  onDecline,
 }: {
   order: TaxiOrderView;
   busy: boolean;
   onAccept: () => void;
-  onDecline: () => void;
 }) {
   return (
-    <li className="taxi-order-item">
+    <li className="taxi-order-card">
       <p className="taxi-order-meta">
         {order.tripMinutes} мин в пути · пассажир {order.passengerRating.toFixed(1)} ★ ·{" "}
         {order.payment === "cash" ? "наличные" : "карта"}
@@ -28,14 +26,9 @@ function OrderCard({
       <p className="taxi-order-pay">
         Выплата: <strong>{order.payoutRub.toLocaleString("ru-RU")} ₽</strong> · {order.tariffTitle}
       </p>
-      <div className="modal-actions">
-        <button type="button" className="btn btn-secondary" disabled={busy} onClick={onDecline}>
-          Отклонить
-        </button>
-        <button type="button" className="btn btn-primary" disabled={busy} onClick={onAccept}>
-          Принять
-        </button>
-      </div>
+      <button type="button" className="btn btn-primary taxi-order-select" disabled={busy} onClick={onAccept}>
+        Выбрать
+      </button>
     </li>
   );
 }
@@ -142,7 +135,7 @@ export function TaxiLineSetup({ taxi, targetIncomeRub, payoutMin, payoutMax }: S
 
 /** Поездка и заказы — отдельные карточки под карточкой работы */
 export function TaxiLinePanels({ taxi }: { taxi: TaxiLineHandle }) {
-  const { status, busy, onLine, inTrip, acceptOrder, declineOrder } = taxi;
+  const { status, busy, onLine, inTrip, acceptOrder } = taxi;
 
   if (!status) return null;
 
@@ -188,7 +181,6 @@ export function TaxiLinePanels({ taxi }: { taxi: TaxiLineHandle }) {
                   order={order}
                   busy={busy}
                   onAccept={() => void acceptOrder(order.id)}
-                  onDecline={() => void declineOrder(order.id)}
                 />
               ))}
             </ul>
