@@ -7,6 +7,7 @@ import { appendPlayerFeed } from "./playerFeed.js";
 import { DATA_DIR } from "./config.js";
 import { getCity } from "./gameData.js";
 import {
+  getCityHousingMultiplier,
   getHousingPropertiesForCity,
   getHousingProperty,
   housingPropertyLabel,
@@ -44,13 +45,16 @@ export function getHousingPrices(cityId: string) {
   const city = getCity(cityId);
   const tier = String(city?.tier ?? 2);
   const prices = config.byTier[tier] ?? config.byTier["2"]!;
+  const mult = getCityHousingMultiplier(cityId);
+  const cheapest = getHousingPropertiesForCity(cityId)[0];
   return {
     tier: city?.tier ?? 2,
-    dormRub: prices.dormRub,
-    rentRub: prices.rentRub,
-    buyRub: prices.buyRub,
+    dormRub: Math.round(prices.dormRub * mult),
+    rentRub: Math.round(prices.rentRub * mult),
+    buyRub: cheapest?.priceRub ?? Math.round(prices.buyRub * mult),
     dormHours: config.dormHours,
     rentDays: config.rentDays,
+    cityMultiplier: mult,
   };
 }
 
@@ -69,7 +73,7 @@ function processOwnedSubletTick(row: OwnedHousingRow, userId: number, now: numbe
     const chance = row.sublet_retry_chance ?? 0.2;
     if (Math.random() < chance) {
       const periodEnd = now + SUBLET_MONTH_MS;
-      const income = subletIncomeForPeriod(row.city_id, SUBLET_MONTH_MS);
+      const income = subletIncomeForOwned(row, SUBLET_MONTH_MS);
       updateOwnedHousing(row.id, {
         sublet_from: now,
         sublet_until: periodEnd,
@@ -91,7 +95,7 @@ function processOwnedSubletTick(row: OwnedHousingRow, userId: number, now: numbe
   if (row.sublet_until != null && row.sublet_until <= now) {
     if (Math.random() < 0.8) {
       const periodEnd = now + SUBLET_MONTH_MS;
-      const income = subletIncomeForPeriod(row.city_id, SUBLET_MONTH_MS);
+      const income = subletIncomeForOwned(row, SUBLET_MONTH_MS);
       updateOwnedHousing(row.id, {
         sublet_from: now,
         sublet_until: periodEnd,
@@ -120,7 +124,7 @@ function extendActiveSublets(player: PlayerRow, addMs: number, now: number): num
   for (const row of listOwnedHousing(player.user_id)) {
     if (!isSubletActive(row, now)) continue;
     const newUntil = row.sublet_until! + addMs;
-    const extra = subletIncomeForPeriod(row.city_id, addMs);
+    const extra = subletIncomeForOwned(row, addMs);
     updateOwnedHousing(row.id, {
       sublet_until: newUntil,
       sublet_income_rub: row.sublet_income_rub + extra,
@@ -192,7 +196,7 @@ function resolvePendingHousingBuyChoice(player: PlayerRow, now: number): PlayerR
   }
 
   const periodEnd = now + SUBLET_MONTH_MS;
-  const income = subletIncomeForPeriod(row.city_id, SUBLET_MONTH_MS);
+  const income = subletIncomeForOwned(row, SUBLET_MONTH_MS);
   updateOwnedHousing(row.id, {
     sublet_from: now,
     sublet_until: periodEnd,
@@ -243,12 +247,29 @@ export function restoreLastResidence(player: PlayerRow, now = Date.now()): Playe
   return getPlayer(player.user_id) ?? fresh;
 }
 
-/** Доход за сдачу: месячная аренда города / 30 × число дней периода. */
-export function subletIncomeForPeriod(cityId: string, periodMs: number): number {
+/** Чистый доход за сдачу объекта: месячный чистый доход / 30 × дни периода. */
+export function subletIncomeForProperty(
+  cityId: string,
+  propertyId: string,
+  periodMs: number,
+): number {
   if (periodMs <= 0) return 0;
-  const { rentRub, rentDays } = getHousingPrices(cityId);
-  const perDay = rentRub / rentDays;
-  return Math.max(0, Math.round(perDay * (periodMs / MS_DAY)));
+  const prop = getHousingProperty(cityId, propertyId);
+  if (!prop) return 0;
+  const days = periodMs / MS_DAY;
+  return Math.max(0, Math.round((prop.monthlyNetIncomeRub * days) / 30));
+}
+
+/** @deprecated Используйте subletIncomeForProperty — оставлено для обратной совместимости тестов. */
+export function subletIncomeForPeriod(cityId: string, periodMs: number): number {
+  const props = getHousingPropertiesForCity(cityId);
+  const studio = props.find((p) => p.typeKey === "studio") ?? props[0];
+  if (!studio) return 0;
+  return subletIncomeForProperty(cityId, studio.id, periodMs);
+}
+
+export function subletIncomeForOwned(row: OwnedHousingRow, periodMs: number): number {
+  return subletIncomeForProperty(row.city_id, row.property_id, periodMs);
 }
 
 /** Возврат жильцам при досрочном выезде (неиспользованная часть сдачи). */
@@ -272,7 +293,7 @@ function startSubletPeriod(
     return { incomeRub: 0, skipped: true };
   }
   const periodMs = periodEnd - periodStart;
-  const income = subletIncomeForPeriod(row.city_id, periodMs);
+  const income = subletIncomeForOwned(row, periodMs);
   updateOwnedHousing(row.id, {
     sublet_from: periodStart,
     sublet_until: periodEnd,
@@ -398,10 +419,20 @@ export function getHousingInfo(player: PlayerRow, now = Date.now()) {
     canRent: !status.isResident,
     properties: getHousingPropertiesForCity(p.city_id).map((prop) => {
       const owned = findOwnedHousing(p.user_id, p.city_id, prop.id);
+      const economy = {
+        monthlyRentRub: prop.monthlyRentRub,
+        monthlyExpensesRub: prop.monthlyExpensesRub,
+        monthlyNetIncomeRub: prop.monthlyNetIncomeRub,
+        expenseRatePct: prop.expenseRatePct,
+        prestige: prop.prestige,
+        moodBonus: prop.moodBonus,
+        description: prop.description,
+      };
       if (owned) {
         const sellQ = quoteHousingSellById(p, owned.id, now);
         return {
           ...prop,
+          ...economy,
           listPriceRub: prop.priceRub,
           netPriceRub: null,
           tradeInRub: 0,
@@ -420,6 +451,7 @@ export function getHousingInfo(player: PlayerRow, now = Date.now()) {
       if ("error" in q) {
         return {
           ...prop,
+          ...economy,
           listPriceRub: prop.priceRub,
           netPriceRub: null,
           tradeInRub: 0,
@@ -430,6 +462,7 @@ export function getHousingInfo(player: PlayerRow, now = Date.now()) {
       }
       return {
         ...prop,
+        ...economy,
         listPriceRub: q.listPriceRub,
         netPriceRub: q.netPriceRub,
         tradeInRub: q.tradeInRub,
@@ -506,7 +539,7 @@ export function quoteLiveHere(
     if (other.id === row.id) continue;
     if (!isSubletActive(other, now)) {
       subletOthersCount++;
-      subletOthersIncomeRub += subletIncomeForPeriod(other.city_id, SUBLET_MONTH_MS);
+      subletOthersIncomeRub += subletIncomeForOwned(other, SUBLET_MONTH_MS);
     }
   }
 
@@ -656,7 +689,7 @@ function previewSubletIncomeForPeriod(player: PlayerRow, periodMs: number, now: 
   let sum = 0;
   for (const row of listOwnedHousing(player.user_id)) {
     if (isSubletActive(row, now)) continue;
-    sum += subletIncomeForPeriod(row.city_id, periodMs);
+    sum += subletIncomeForOwned(row, periodMs);
   }
   return sum;
 }
@@ -730,7 +763,7 @@ export function quoteHousingBuyDetailed(
   let subletNewIncomeRub = 0;
   for (const row of listOwnedHousing(p.user_id)) {
     if (!isSubletActive(row, now)) {
-      subletNewIncomeRub += subletIncomeForPeriod(row.city_id, SUBLET_MONTH_MS);
+      subletNewIncomeRub += subletIncomeForOwned(row, SUBLET_MONTH_MS);
     }
   }
   const totalAfter = listOwnedHousing(p.user_id).length + 1;

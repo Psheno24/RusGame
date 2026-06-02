@@ -7,7 +7,7 @@ import {
   getHousingPrices,
   payLiveHere,
   quoteHousingBuy,
-  subletIncomeForPeriod,
+  subletIncomeForOwned,
   subletOtherOwnedMonthly,
   syncPlayerHousing,
 } from "./housing.js";
@@ -229,7 +229,7 @@ export function afterBuyHousingChoice(
     return { ok: false, error: "Квартира уже сдаётся" };
   }
   const periodEnd = now + 30 * MS_DAY;
-  const income = subletIncomeForPeriod(row.city_id, 30 * MS_DAY);
+  const income = subletIncomeForOwned(row, 30 * MS_DAY);
   updateOwnedHousing(row.id, {
     sublet_from: now,
     sublet_until: periodEnd,

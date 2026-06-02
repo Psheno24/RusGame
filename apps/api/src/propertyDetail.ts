@@ -265,8 +265,11 @@ export function getPropertyDetail(
       });
     }
     status.push({
-      label: "Доход за период",
+      label: "Чистый доход за период",
       value: `${row.sublet_income_rub.toLocaleString("ru-RU")} ₽`,
+      hint: prop
+        ? `Гросс ${prop.monthlyRentRub.toLocaleString("ru-RU")} ₽/мес − расходы ${prop.monthlyExpensesRub.toLocaleString("ru-RU")} ₽/мес`
+        : undefined,
     });
   } else {
     status.push({ label: "Сдача", value: "Не сдаётся" });
@@ -288,12 +291,28 @@ export function getPropertyDetail(
     title: prop?.title ?? "Квартира",
     subtitle: `${cityName} · ${prop?.district ?? ""}`,
     accent: "#5a4a7a",
-    specs: [{ label: "Состояние", value: pct(100) }],
+    specs: [
+      { label: "Состояние", value: pct(100) },
+      ...(prop?.description ? [{ label: "Описание", value: prop.description }] : []),
+    ],
     features: prop
       ? [
+          { label: "Престиж", value: `${prop.prestige}/100` },
           { label: "Комнаты", value: prop.rooms },
           { label: "Площадь", value: `${prop.areaSqm} м²` },
-          { label: "Каталог", value: `${prop.priceRub.toLocaleString("ru-RU")} ₽` },
+          { label: "Стоимость", value: `${prop.priceRub.toLocaleString("ru-RU")} ₽` },
+          {
+            label: "Аренда / мес.",
+            value: `${prop.monthlyRentRub.toLocaleString("ru-RU")} ₽`,
+          },
+          {
+            label: "Расходы / мес.",
+            value: `${prop.monthlyExpensesRub.toLocaleString("ru-RU")} ₽ (${prop.expenseRatePct}%)`,
+          },
+          {
+            label: "Чистый доход / мес.",
+            value: `${prop.monthlyNetIncomeRub.toLocaleString("ru-RU")} ₽`,
+          },
         ]
       : [],
     status,

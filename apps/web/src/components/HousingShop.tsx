@@ -344,7 +344,9 @@ export function HousingShop({
                   <span className="phone-list-info">
                     <span className="phone-list-name">{prop.title}</span>
                     <span className="phone-list-price">
-                      {prop.isOwned ? prop.district : `${rub(prop.priceRub)} · ${prop.district}`}
+                      {prop.isOwned
+                        ? prop.district
+                        : `${rub(prop.priceRub)} · ${prop.district}${prop.prestige != null ? ` · ⭐${prop.prestige}` : ""}`}
                     </span>
                   </span>
                   {prop.isOwned && (
@@ -364,7 +366,18 @@ export function HousingShop({
           <h3>{selected.title}</h3>
           <p className="shop-owned">
             {selected.district} · {selected.rooms} · {selected.areaSqm} м²
+            {selected.prestige != null && ` · престиж ${selected.prestige}`}
           </p>
+          {selected.description && (
+            <p className="housing-property-desc">{selected.description}</p>
+          )}
+          {selected.monthlyNetIncomeRub != null && (
+            <p className="shop-owned">
+              Аренда {rub(selected.monthlyRentRub ?? 0)}/мес · расходы{" "}
+              {rub(selected.monthlyExpensesRub ?? 0)} · чистый доход{" "}
+              <strong>{rub(selected.monthlyNetIncomeRub)}</strong>/мес
+            </p>
+          )}
           <div className="phone-detail-buy">
             {!selected.isOwned && selected.netPriceRub != null && (
               <p className="shop-price">

@@ -1,5 +1,6 @@
 import type { PlayerRow } from "./db.js";
 import type { SkillKey } from "./auth.js";
+import { effectiveMood } from "./housingMood.js";
 
 export type VitalKey = "energy" | "hunger" | "mood" | "health";
 
@@ -55,7 +56,7 @@ export function canAffordCosts(player: PlayerRow, costs?: StatCosts): string | n
   if (costs.hunger != null && v.hunger < costs.hunger) {
     return `Слишком голодны для этого действия`;
   }
-  if (costs.mood != null && v.mood < costs.mood) {
+  if (costs.mood != null && effectiveMood(player) < costs.mood) {
     return `Слишком плохое настроение`;
   }
   if (costs.health != null && v.health < costs.health) {
@@ -122,6 +123,7 @@ export function workPayoutMultiplier(player: PlayerRow): number {
   let mult = 1;
   if (v.energy < 20) mult *= 0.85;
   if (v.hunger < 10) mult *= 0.7;
+  if (effectiveMood(player) < 25) mult *= 0.9;
   return mult;
 }
 

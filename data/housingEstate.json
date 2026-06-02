@@ -1,0 +1,477 @@
+{
+  "propertyTypes": [
+    {
+      "key": "dorm_room",
+      "title": "Комната в общежитии",
+      "prestige": 5,
+      "moodBonus": -10,
+      "expenseTypePct": 0,
+      "rooms": "1",
+      "areaSqm": 12
+    },
+    {
+      "key": "communal_room",
+      "title": "Комната в коммуналке",
+      "prestige": 10,
+      "moodBonus": -5,
+      "expenseTypePct": 0,
+      "rooms": "1",
+      "areaSqm": 14
+    },
+    {
+      "key": "studio",
+      "title": "Студия",
+      "prestige": 15,
+      "moodBonus": 0,
+      "expenseTypePct": 1,
+      "rooms": "студия",
+      "areaSqm": 28
+    },
+    {
+      "key": "one_room",
+      "title": "Однокомнатная квартира",
+      "prestige": 20,
+      "moodBonus": 2,
+      "expenseTypePct": 2,
+      "rooms": "1",
+      "areaSqm": 38
+    },
+    {
+      "key": "one_room_plus",
+      "title": "Улучшенная однокомнатная квартира",
+      "prestige": 25,
+      "moodBonus": 4,
+      "expenseTypePct": 3,
+      "rooms": "1",
+      "areaSqm": 42
+    },
+    {
+      "key": "two_room",
+      "title": "Двухкомнатная квартира",
+      "prestige": 35,
+      "moodBonus": 6,
+      "expenseTypePct": 4,
+      "rooms": "2",
+      "areaSqm": 54
+    },
+    {
+      "key": "three_room",
+      "title": "Трёхкомнатная квартира",
+      "prestige": 45,
+      "moodBonus": 8,
+      "expenseTypePct": 5,
+      "rooms": "3",
+      "areaSqm": 72
+    },
+    {
+      "key": "business",
+      "title": "Квартира бизнес-класса",
+      "prestige": 60,
+      "moodBonus": 12,
+      "expenseTypePct": 8,
+      "rooms": "2",
+      "areaSqm": 85
+    },
+    {
+      "key": "view",
+      "title": "Видовая квартира",
+      "prestige": 70,
+      "moodBonus": 16,
+      "expenseTypePct": 10,
+      "rooms": "3",
+      "areaSqm": 95
+    },
+    {
+      "key": "penthouse",
+      "title": "Пентхаус",
+      "prestige": 80,
+      "moodBonus": 20,
+      "expenseTypePct": 15,
+      "rooms": "4+",
+      "areaSqm": 140
+    },
+    {
+      "key": "dacha",
+      "title": "Дача",
+      "prestige": 30,
+      "moodBonus": 5,
+      "expenseTypePct": 3,
+      "rooms": "2",
+      "areaSqm": 60
+    },
+    {
+      "key": "country_house",
+      "title": "Загородный дом",
+      "prestige": 50,
+      "moodBonus": 10,
+      "expenseTypePct": 6,
+      "rooms": "3",
+      "areaSqm": 120
+    },
+    {
+      "key": "cottage",
+      "title": "Коттедж",
+      "prestige": 70,
+      "moodBonus": 15,
+      "expenseTypePct": 10,
+      "rooms": "4",
+      "areaSqm": 180
+    },
+    {
+      "key": "mansion",
+      "title": "Особняк",
+      "prestige": 90,
+      "moodBonus": 25,
+      "expenseTypePct": 15,
+      "rooms": "5+",
+      "areaSqm": 350
+    },
+    {
+      "key": "residence",
+      "title": "Резиденция",
+      "prestige": 100,
+      "moodBonus": 35,
+      "expenseTypePct": 20,
+      "rooms": "6+",
+      "areaSqm": 500
+    }
+  ],
+  "cities": [
+  {
+    "id": "omsk",
+    "multiplier": 1,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Московка", "priceRub": 300000, "nameSuffix": "на Московке" },
+      { "typeKey": "communal_room", "district": "Амурский посёлок", "priceRub": 800000, "nameSuffix": "в Амурском посёлке" },
+      { "typeKey": "studio", "district": "Чкаловский", "priceRub": 1800000, "nameSuffix": "в Чкаловском" },
+      { "typeKey": "one_room", "district": "Советский округ", "priceRub": 3000000, "nameSuffix": "в Нефтяниках" },
+      { "typeKey": "one_room_plus", "district": "Кировский округ", "priceRub": 4500000, "nameSuffix": "у Парка Победы" },
+      { "typeKey": "two_room", "district": "Левобережье", "priceRub": 7000000, "nameSuffix": "на Левом берегу" },
+      { "typeKey": "three_room", "district": "Центральный округ", "priceRub": 11000000, "nameSuffix": "в центре Омска" },
+      { "typeKey": "business", "district": "Центр", "priceRub": 20000000, "nameSuffix": "на Иртышской набережной" },
+      { "typeKey": "view", "district": "Центр", "priceRub": 35000000, "nameSuffix": "у Иртыша" },
+      { "typeKey": "penthouse", "district": "Центр", "priceRub": 60000000, "nameSuffix": "в центре Омска" },
+      { "typeKey": "dacha", "district": "Осташково", "priceRub": 5000000, "nameSuffix": "в Осташково" },
+      { "typeKey": "country_house", "district": "Пушкино", "priceRub": 15000000, "nameSuffix": "в Пушкино" },
+      { "typeKey": "cottage", "district": "Чукреевка", "priceRub": 40000000, "nameSuffix": "в Чукреевке" },
+      { "typeKey": "mansion", "district": "Чукреевка", "priceRub": 80000000, "nameSuffix": "в Чукреевке" },
+      { "typeKey": "residence", "district": "Омский район", "priceRub": 150000000, "nameSuffix": "на берегу Иртыша" }
+    ]
+  },
+  {
+    "id": "volgograd",
+    "multiplier": 1.2,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Краснооктябрьский", "nameSuffix": "у Волгоград-1" },
+      { "typeKey": "communal_room", "district": "Красноармейский", "nameSuffix": "на проспекте Ленина" },
+      { "typeKey": "studio", "district": "Дзержинский", "nameSuffix": "у Мамаева кургана" },
+      { "typeKey": "one_room", "district": "Советский", "nameSuffix": "в Сталинграде" },
+      { "typeKey": "one_room_plus", "district": "Ворошиловский", "nameSuffix": "у набережной" },
+      { "typeKey": "two_room", "district": "Центральный", "nameSuffix": "в центре" },
+      { "typeKey": "three_room", "district": "Кировский", "nameSuffix": "у площади Павших" },
+      { "typeKey": "business", "district": "Центр", "nameSuffix": "на Аллее Героев" },
+      { "typeKey": "view", "district": "Набережная", "nameSuffix": "с видом на Волгу" },
+      { "typeKey": "penthouse", "district": "Центр", "nameSuffix": "в деловом квартале" },
+      { "typeKey": "dacha", "district": "Волжский", "nameSuffix": "в Волжском" },
+      { "typeKey": "country_house", "district": "Краснослободск", "nameSuffix": "в Краснослободске" },
+      { "typeKey": "cottage", "district": "Городище", "nameSuffix": "в Городище" },
+      { "typeKey": "mansion", "district": "Кумылженский", "nameSuffix": "в пригороде" },
+      { "typeKey": "residence", "district": "Волгоградский район", "nameSuffix": "на берегу Волги" }
+    ]
+  },
+  {
+    "id": "voronezh",
+    "multiplier": 1.4,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Коминтерновский", "nameSuffix": "у вокзала" },
+      { "typeKey": "communal_room", "district": "Левобережный", "nameSuffix": "на Левом берегу" },
+      { "typeKey": "studio", "district": "Железнодорожный", "nameSuffix": "у парка Алый парус" },
+      { "typeKey": "one_room", "district": "Советский", "nameSuffix": "в Сомово" },
+      { "typeKey": "one_room_plus", "district": "Центральный", "nameSuffix": "у площади Ленина" },
+      { "typeKey": "two_room", "district": "Центральный", "nameSuffix": "в историческом центре" },
+      { "typeKey": "three_room", "district": "Центральный", "nameSuffix": "на проспекте Революции" },
+      { "typeKey": "business", "district": "Центр", "nameSuffix": "на набережной" },
+      { "typeKey": "view", "district": "Адмиралтейская", "nameSuffix": "с видом на Воронеж" },
+      { "typeKey": "penthouse", "district": "Центр", "nameSuffix": "в деловом центре" },
+      { "typeKey": "dacha", "district": "Рамонь", "nameSuffix": "в Рамони" },
+      { "typeKey": "country_house", "district": "Семилуки", "nameSuffix": "в Семилуках" },
+      { "typeKey": "cottage", "district": "Отрадное", "nameSuffix": "в Отрадном" },
+      { "typeKey": "mansion", "district": "Подгоренский", "nameSuffix": "в пригороде" },
+      { "typeKey": "residence", "district": "Воронежский район", "nameSuffix": "на берегу Воронежа" }
+    ]
+  },
+  {
+    "id": "perm",
+    "multiplier": 1.7,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Индустриальный", "nameSuffix": "у Гознака" },
+      { "typeKey": "communal_room", "district": "Мотовилихинский", "nameSuffix": "в Мотовилихе" },
+      { "typeKey": "studio", "district": "Свердловский", "nameSuffix": "у Камы" },
+      { "typeKey": "one_room", "district": "Дзержинский", "nameSuffix": "в Гайве" },
+      { "typeKey": "one_room_plus", "district": "Ленинский", "nameSuffix": "у парка Горького" },
+      { "typeKey": "two_room", "district": "Пермский", "nameSuffix": "на Комсомольском" },
+      { "typeKey": "three_room", "district": "Центральный", "nameSuffix": "в центре Перми" },
+      { "typeKey": "business", "district": "Центр", "nameSuffix": "на набережной Камы" },
+      { "typeKey": "view", "district": "Камская долина", "nameSuffix": "с видом на Каму" },
+      { "typeKey": "penthouse", "district": "Центр", "nameSuffix": "в бизнес-квартале" },
+      { "typeKey": "dacha", "district": "Горный", "nameSuffix": "в Горном" },
+      { "typeKey": "country_house", "district": "Краснокамск", "nameSuffix": "в Краснокамске" },
+      { "typeKey": "cottage", "district": "Протасы", "nameSuffix": "в Протасах" },
+      { "typeKey": "mansion", "district": "Закамск", "nameSuffix": "в Закамске" },
+      { "typeKey": "residence", "district": "Пермский край", "nameSuffix": "на берегу Камы" }
+    ]
+  },
+  {
+    "id": "krasnoyarsk",
+    "multiplier": 2.1,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Свердловский", "nameSuffix": "у вокзала" },
+      { "typeKey": "communal_room", "district": "Кировский", "nameSuffix": "в Пашенном" },
+      { "typeKey": "studio", "district": "Октябрьский", "nameSuffix": "у Театральной" },
+      { "typeKey": "one_room", "district": "Советский", "nameSuffix": "в Академгородке" },
+      { "typeKey": "one_room_plus", "district": "Центральный", "nameSuffix": "у площади Мира" },
+      { "typeKey": "two_room", "district": "Центральный", "nameSuffix": "на проспекте Мира" },
+      { "typeKey": "three_room", "district": "Центральный", "nameSuffix": "в историческом центре" },
+      { "typeKey": "business", "district": "Центр", "nameSuffix": "на набережной Енисея" },
+      { "typeKey": "view", "district": "Стрелка", "nameSuffix": "с видом на Енисей" },
+      { "typeKey": "penthouse", "district": "Центр", "nameSuffix": "в деловом квартале" },
+      { "typeKey": "dacha", "district": "Сосновоборск", "nameSuffix": "в Сосновоборске" },
+      { "typeKey": "country_house", "district": "Дивногорск", "nameSuffix": "в Дивногорске" },
+      { "typeKey": "cottage", "district": "Берёзовка", "nameSuffix": "в Берёзовке" },
+      { "typeKey": "mansion", "district": "Емельяново", "nameSuffix": "в пригороде" },
+      { "typeKey": "residence", "district": "Енисейский берег", "nameSuffix": "на берегу Енисея" }
+    ]
+  },
+  {
+    "id": "ufa",
+    "multiplier": 2.5,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Орджоникидзевский", "nameSuffix": "у вокзала" },
+      { "typeKey": "communal_room", "district": "Калининский", "nameSuffix": "в Черниковке" },
+      { "typeKey": "studio", "district": "Советский", "nameSuffix": "у Салавата Юлаева" },
+      { "typeKey": "one_room", "district": "Дёмский", "nameSuffix": "в Дёмке" },
+      { "typeKey": "one_room_plus", "district": "Ленинский", "nameSuffix": "у парка Победы" },
+      { "typeKey": "two_room", "district": "Кировский", "nameSuffix": "на проспекте Октября" },
+      { "typeKey": "three_room", "district": "Центральный", "nameSuffix": "в центре Уфы" },
+      { "typeKey": "business", "district": "Центр", "nameSuffix": "на набережной Белой" },
+      { "typeKey": "view", "district": "Агидель", "nameSuffix": "с видом на реку" },
+      { "typeKey": "penthouse", "district": "Центр", "nameSuffix": "в деловом центре" },
+      { "typeKey": "dacha", "district": "Нагаево", "nameSuffix": "в Нагаево" },
+      { "typeKey": "country_house", "district": "Зубово", "nameSuffix": "в Зубово" },
+      { "typeKey": "cottage", "district": "Иглино", "nameSuffix": "в Иглино" },
+      { "typeKey": "mansion", "district": "Чишмы", "nameSuffix": "в Чишмах" },
+      { "typeKey": "residence", "district": "Башкирия", "nameSuffix": "на берегу Белой" }
+    ]
+  },
+  {
+    "id": "rostov",
+    "multiplier": 3,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Северный", "nameSuffix": "у Нахичевани" },
+      { "typeKey": "communal_room", "district": "Пролетарский", "nameSuffix": "на Будённовском" },
+      { "typeKey": "studio", "district": "Ворошиловский", "nameSuffix": "у Горизонта" },
+      { "typeKey": "one_room", "district": "Советский", "nameSuffix": "в Суворовском" },
+      { "typeKey": "one_room_plus", "district": "Кировский", "nameSuffix": "у парка Горького" },
+      { "typeKey": "two_room", "district": "Ленинский", "nameSuffix": "на проспекте Стачки" },
+      { "typeKey": "three_room", "district": "Центральный", "nameSuffix": "в центре Ростова" },
+      { "typeKey": "business", "district": "Центр", "nameSuffix": "на набережной Дона" },
+      { "typeKey": "view", "district": "Набережная", "nameSuffix": "с видом на Дон" },
+      { "typeKey": "penthouse", "district": "Центр", "nameSuffix": "в деловом квартале" },
+      { "typeKey": "dacha", "district": "Батайск", "nameSuffix": "в Батайске" },
+      { "typeKey": "country_house", "district": "Аксай", "nameSuffix": "в Аксае" },
+      { "typeKey": "cottage", "district": "Таганрогская", "nameSuffix": "в пригороде" },
+      { "typeKey": "mansion", "district": "Семикаракорск", "nameSuffix": "в Семикаракорске" },
+      { "typeKey": "residence", "district": "Донской берег", "nameSuffix": "на берегу Дона" }
+    ]
+  },
+  {
+    "id": "samara",
+    "multiplier": 3.6,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Железнодорожный", "nameSuffix": "у вокзала" },
+      { "typeKey": "communal_room", "district": "Кировский", "nameSuffix": "в Безымянке" },
+      { "typeKey": "studio", "district": "Советский", "nameSuffix": "у набережной Волги" },
+      { "typeKey": "one_room", "district": "Промышленный", "nameSuffix": "в Красной Глинке" },
+      { "typeKey": "one_room_plus", "district": "Ленинский", "nameSuffix": "у площади Куйбышева" },
+      { "typeKey": "two_room", "district": "Самарский", "nameSuffix": "на Московском шоссе" },
+      { "typeKey": "three_room", "district": "Центральный", "nameSuffix": "в центре Самары" },
+      { "typeKey": "business", "district": "Центр", "nameSuffix": "на набережной Волги" },
+      { "typeKey": "view", "district": "Стрелка", "nameSuffix": "с видом на Волгу" },
+      { "typeKey": "penthouse", "district": "Центр", "nameSuffix": "в деловом центре" },
+      { "typeKey": "dacha", "district": "Кинель", "nameSuffix": "в Кинеле" },
+      { "typeKey": "country_house", "district": "Жигулёвск", "nameSuffix": "в Жигулёвске" },
+      { "typeKey": "cottage", "district": "Управленческий", "nameSuffix": "в Управленческом" },
+      { "typeKey": "mansion", "district": "Красноярский", "nameSuffix": "в пригороде" },
+      { "typeKey": "residence", "district": "Волжский берег", "nameSuffix": "на берегу Волги" }
+    ]
+  },
+  {
+    "id": "chelyabinsk",
+    "multiplier": 4.3,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Металлургический", "nameSuffix": "у вокзала" },
+      { "typeKey": "communal_room", "district": "Курчатовский", "nameSuffix": "в Курчатовском" },
+      { "typeKey": "studio", "district": "Советский", "nameSuffix": "у парка Победы" },
+      { "typeKey": "one_room", "district": "Ленинский", "nameSuffix": "в ЧМЗ" },
+      { "typeKey": "one_room_plus", "district": "Калининский", "nameSuffix": "у площади Революции" },
+      { "typeKey": "two_room", "district": "Центральный", "nameSuffix": "на проспекте Ленина" },
+      { "typeKey": "three_room", "district": "Центральный", "nameSuffix": "в центре Челябинска" },
+      { "typeKey": "business", "district": "Центр", "nameSuffix": "на набережной Миасса" },
+      { "typeKey": "view", "district": "Агаповка", "nameSuffix": "с видом на город" },
+      { "typeKey": "penthouse", "district": "Центр", "nameSuffix": "в деловом квартале" },
+      { "typeKey": "dacha", "district": "Миасс", "nameSuffix": "в Миассе" },
+      { "typeKey": "country_house", "district": "Златоуст", "nameSuffix": "в Златоусте" },
+      { "typeKey": "cottage", "district": "Копейск", "nameSuffix": "в Копейске" },
+      { "typeKey": "mansion", "district": "Снежинск", "nameSuffix": "в Снежинске" },
+      { "typeKey": "residence", "district": "Уральский", "nameSuffix": "на берегу озера" }
+    ]
+  },
+  {
+    "id": "nn",
+    "multiplier": 5.2,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Автозаводский", "nameSuffix": "у ГАЗа" },
+      { "typeKey": "communal_room", "district": "Сормовский", "nameSuffix": "в Сормово" },
+      { "typeKey": "studio", "district": "Ленинский", "nameSuffix": "у Кремля" },
+      { "typeKey": "one_room", "district": "Советский", "nameSuffix": "в Щербинках" },
+      { "typeKey": "one_room_plus", "district": "Нижегородский", "nameSuffix": "на Рождественской" },
+      { "typeKey": "two_room", "district": "Приокский", "nameSuffix": "на Оке" },
+      { "typeKey": "three_room", "district": "Центральный", "nameSuffix": "в центре Нижнего" },
+      { "typeKey": "business", "district": "Центр", "nameSuffix": "на набережной Волги" },
+      { "typeKey": "view", "district": "Стрелка", "nameSuffix": "с видом на слияние рек" },
+      { "typeKey": "penthouse", "district": "Центр", "nameSuffix": "в деловом центре" },
+      { "typeKey": "dacha", "district": "Бор", "nameSuffix": "в Бору" },
+      { "typeKey": "country_house", "district": "Дзержинск", "nameSuffix": "в Дзержинске" },
+      { "typeKey": "cottage", "district": "Кстово", "nameSuffix": "в Кстово" },
+      { "typeKey": "mansion", "district": "Городец", "nameSuffix": "в Городце" },
+      { "typeKey": "residence", "district": "Волжский берег", "nameSuffix": "на берегу Волги" }
+    ]
+  },
+  {
+    "id": "krasnodar",
+    "multiplier": 6.5,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Прикубанский", "nameSuffix": "у вокзала" },
+      { "typeKey": "communal_room", "district": "Западный", "nameSuffix": "в Западном" },
+      { "typeKey": "studio", "district": "Центральный", "nameSuffix": "у парка Галицкого" },
+      { "typeKey": "one_room", "district": "Карасунский", "nameSuffix": "в Карасунском" },
+      { "typeKey": "one_room_plus", "district": "Центральный", "nameSuffix": "на Красной" },
+      { "typeKey": "two_room", "district": "Центральный", "nameSuffix": "в центре Краснодара" },
+      { "typeKey": "three_room", "district": "Центральный", "nameSuffix": "на улице Красной" },
+      { "typeKey": "business", "district": "Центр", "nameSuffix": "на набережной Кубани" },
+      { "typeKey": "view", "district": "Юбилейный", "nameSuffix": "с панорамой города" },
+      { "typeKey": "penthouse", "district": "Центр", "nameSuffix": "в деловом квартале" },
+      { "typeKey": "dacha", "district": "Динская", "nameSuffix": "в Динской" },
+      { "typeKey": "country_house", "district": "Анапа", "nameSuffix": "в Анапе" },
+      { "typeKey": "cottage", "district": "Геленджик", "nameSuffix": "в Геленджике" },
+      { "typeKey": "mansion", "district": "Сочи", "nameSuffix": "в Сочи" },
+      { "typeKey": "residence", "district": "Кубань", "nameSuffix": "на берегу Кубани" }
+    ]
+  },
+  {
+    "id": "novosibirsk",
+    "multiplier": 8,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Калининский", "nameSuffix": "у вокзала" },
+      { "typeKey": "communal_room", "district": "Дзержинский", "nameSuffix": "в Дзержинском" },
+      { "typeKey": "studio", "district": "Центральный", "nameSuffix": "у площади Ленина" },
+      { "typeKey": "one_room", "district": "Советский", "nameSuffix": "в Академгородке" },
+      { "typeKey": "one_room_plus", "district": "Железнодорожный", "nameSuffix": "у Заельцовского" },
+      { "typeKey": "two_room", "district": "Центральный", "nameSuffix": "на Красном проспекте" },
+      { "typeKey": "three_room", "district": "Центральный", "nameSuffix": "в центре Новосибирска" },
+      { "typeKey": "business", "district": "Центр", "nameSuffix": "на набережной Оби" },
+      { "typeKey": "view", "district": "Бердск", "nameSuffix": "с видом на Обь" },
+      { "typeKey": "penthouse", "district": "Центр", "nameSuffix": "в деловом центре" },
+      { "typeKey": "dacha", "district": "Искитим", "nameSuffix": "в Искитиме" },
+      { "typeKey": "country_house", "district": "Обь", "nameSuffix": "в Обе" },
+      { "typeKey": "cottage", "district": "Кольцово", "nameSuffix": "в Кольцово" },
+      { "typeKey": "mansion", "district": "Толмачёво", "nameSuffix": "в пригороде" },
+      { "typeKey": "residence", "district": "Обской берег", "nameSuffix": "на берегу Оби" }
+    ]
+  },
+  {
+    "id": "ekb",
+    "multiplier": 11,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Уралмаш", "nameSuffix": "у Уралмаша" },
+      { "typeKey": "communal_room", "district": "Эльмаш", "nameSuffix": "в Эльмаше" },
+      { "typeKey": "studio", "district": "ВИЗ", "nameSuffix": "у ВИЗа" },
+      { "typeKey": "one_room", "district": "Ботаника", "nameSuffix": "в Ботанике" },
+      { "typeKey": "one_room_plus", "district": "Академический", "nameSuffix": "в Академическом" },
+      { "typeKey": "two_room", "district": "Центр", "nameSuffix": "на улице Малышева" },
+      { "typeKey": "three_room", "district": "Центр", "nameSuffix": "в центре Екатеринбурга" },
+      { "typeKey": "business", "district": "Центр", "nameSuffix": "на набережной Исети" },
+      { "typeKey": "view", "district": "Плотинка", "nameSuffix": "с видом на городской пруд" },
+      { "typeKey": "penthouse", "district": "Центр", "nameSuffix": "в деловом квартале" },
+      { "typeKey": "dacha", "district": "Сысерть", "nameSuffix": "в Сысерти" },
+      { "typeKey": "country_house", "district": "Первоуральск", "nameSuffix": "в Первоуральске" },
+      { "typeKey": "cottage", "district": "Верхняя Пышма", "nameSuffix": "в Верхней Пышме" },
+      { "typeKey": "mansion", "district": "Берёзовский", "nameSuffix": "в Берёзовском" },
+      { "typeKey": "residence", "district": "Уральский", "nameSuffix": "на берегу Исети" }
+    ]
+  },
+  {
+    "id": "kazan",
+    "multiplier": 15,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Авиастроительный", "nameSuffix": "у Казанского вокзала" },
+      { "typeKey": "communal_room", "district": "Ново-Савиновский", "nameSuffix": "в Ново-Савиновском" },
+      { "typeKey": "studio", "district": "Вахитовский", "nameSuffix": "у Кремля" },
+      { "typeKey": "one_room", "district": "Советский", "nameSuffix": "в Горках" },
+      { "typeKey": "one_room_plus", "district": "Приволжский", "nameSuffix": "у Казанки" },
+      { "typeKey": "two_room", "district": "Московский", "nameSuffix": "на Московской" },
+      { "typeKey": "three_room", "district": "Вахитовский", "nameSuffix": "в центре Казани" },
+      { "typeKey": "business", "district": "Центр", "nameSuffix": "на набережной Казанки" },
+      { "typeKey": "view", "district": "Кремлёвская", "nameSuffix": "с видом на Кремль" },
+      { "typeKey": "penthouse", "district": "Центр", "nameSuffix": "в деловом центре" },
+      { "typeKey": "dacha", "district": "Васильево", "nameSuffix": "в Васильево" },
+      { "typeKey": "country_house", "district": "Зеленодольск", "nameSuffix": "в Зеленодольске" },
+      { "typeKey": "cottage", "district": "Иннополис", "nameSuffix": "в Иннополисе" },
+      { "typeKey": "mansion", "district": "Свияжск", "nameSuffix": "в Свияжске" },
+      { "typeKey": "residence", "district": "Волжский берег", "nameSuffix": "на берегу Волги" }
+    ]
+  },
+  {
+    "id": "spb",
+    "multiplier": 30,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Купчино", "nameSuffix": "у Купчино" },
+      { "typeKey": "communal_room", "district": "Невский", "nameSuffix": "на Невском" },
+      { "typeKey": "studio", "district": "Василеостровский", "nameSuffix": "на Васильевском" },
+      { "typeKey": "one_room", "district": "Московский", "nameSuffix": "у Московских ворот" },
+      { "typeKey": "one_room_plus", "district": "Петроградский", "nameSuffix": "на Петроградке" },
+      { "typeKey": "two_room", "district": "Центральный", "nameSuffix": "на Невском проспекте" },
+      { "typeKey": "three_room", "district": "Центральный", "nameSuffix": "в историческом центре" },
+      { "typeKey": "business", "district": "Центр", "nameSuffix": "на набережной Невы" },
+      { "typeKey": "view", "district": "Адмиралтейская", "nameSuffix": "с видом на Неву" },
+      { "typeKey": "penthouse", "district": "Центр", "nameSuffix": "в деловом квартале" },
+      { "typeKey": "dacha", "district": "Петергоф", "nameSuffix": "в Петергофе" },
+      { "typeKey": "country_house", "district": "Пушкин", "nameSuffix": "в Пушкине" },
+      { "typeKey": "cottage", "district": "Павловск", "nameSuffix": "в Павловске" },
+      { "typeKey": "mansion", "district": "Кронштадт", "nameSuffix": "в Кронштадте" },
+      { "typeKey": "residence", "district": "Курортный", "nameSuffix": "на Финском заливе" }
+    ]
+  },
+  {
+    "id": "moscow",
+    "multiplier": 70,
+    "listings": [
+      { "typeKey": "dorm_room", "district": "Бутово", "nameSuffix": "в Бутово" },
+      { "typeKey": "communal_room", "district": "Марьино", "nameSuffix": "в Марьино" },
+      { "typeKey": "studio", "district": "Митино", "nameSuffix": "в Митино" },
+      { "typeKey": "one_room", "district": "Бибирево", "nameSuffix": "в Бибирево" },
+      { "typeKey": "one_room_plus", "district": "Хорошёво-Мнёвники", "nameSuffix": "у Москва-Сити" },
+      { "typeKey": "two_room", "district": "Арбат", "nameSuffix": "на Арбате" },
+      { "typeKey": "three_room", "district": "Тверской", "nameSuffix": "в Тверском" },
+      { "typeKey": "business", "district": "Пресненский", "nameSuffix": "в Москва-Сити" },
+      { "typeKey": "view", "district": "Хамовники", "nameSuffix": "с видом на Москву-реку" },
+      { "typeKey": "penthouse", "district": "Замоскворечье", "nameSuffix": "в Замоскворечье" },
+      { "typeKey": "dacha", "district": "Истра", "nameSuffix": "в Истре" },
+      { "typeKey": "country_house", "district": "Одинцово", "nameSuffix": "в Одинцово" },
+      { "typeKey": "cottage", "district": "Рублёво", "nameSuffix": "на Рублёво" },
+      { "typeKey": "mansion", "district": "Барвиха", "nameSuffix": "в Барвихе" },
+      { "typeKey": "residence", "district": "Рублёво-Успенское", "nameSuffix": "на Рублёво-Успенском" }
+    ]
+  }
+  ]
+}
