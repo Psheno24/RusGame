@@ -1,0 +1,52 @@
+{
+  "idleOfflineMs": 3600000,
+  "orderWaitMsMin": 15000,
+  "orderWaitMsMax": 45000,
+  "ratingDefault": 4.85,
+  "ratingMin": 3.5,
+  "ratingMax": 5,
+  "ratingDeclinePenalty": 0.02,
+  "ratingIgnorePenalty": 0.01,
+  "ratingGoodTripBonus": 0.01,
+  "ratingBadTripPenalty": 0.03,
+  "cashPartialPayChance": 0.12,
+  "cashNoPayChance": 0.04,
+  "cashPartialPayFraction": 0.6,
+  "parkCompensationFraction": 0.5,
+  "energyPerOrderBase": 8,
+  "energyConflictExtra": 6,
+  "energyLongTripExtra": 4,
+  "longTripMinutes": 25,
+  "tariffs": {
+    "economy": { "title": "Эконом", "orderMult": 1, "minCityMultiplier": 1 },
+    "comfort": { "title": "Комфорт", "orderMult": 1.25, "minCityMultiplier": 1.05 },
+    "comfort_plus": { "title": "Комфорт+", "orderMult": 1.45, "minCityMultiplier": 1.2 },
+    "business": { "title": "Бизнес", "orderMult": 1.8, "minCityMultiplier": 1.5 }
+  },
+  "carClassByPrice": [
+    { "maxPriceRub": 400000, "class": "economy" },
+    { "maxPriceRub": 700000, "class": "comfort" },
+    { "maxPriceRub": 1100000, "class": "comfort_plus" },
+    { "maxPriceRub": null, "class": "business" }
+  ],
+  "cityTariffs": {
+    "omsk": ["economy", "comfort", "comfort_plus"],
+    "volgograd": ["economy", "comfort", "comfort_plus"],
+    "voronezh": ["economy", "comfort", "comfort_plus"],
+    "perm": ["economy", "comfort", "comfort_plus"],
+    "krasnoyarsk": ["economy", "comfort", "comfort_plus"],
+    "ufa": ["economy", "comfort", "comfort_plus"],
+    "rostov": ["economy", "comfort", "comfort_plus"],
+    "samara": ["economy", "comfort", "comfort_plus"],
+    "chelyabinsk": ["economy", "comfort", "comfort_plus"],
+    "nn": ["economy", "comfort", "comfort_plus"],
+    "krasnodar": ["economy", "comfort", "comfort_plus"],
+    "novosibirsk": ["economy", "comfort", "comfort_plus"],
+    "ekb": ["economy", "comfort", "comfort_plus", "business"],
+    "kazan": ["economy", "comfort", "comfort_plus", "business"],
+    "spb": ["economy", "comfort", "comfort_plus", "business"],
+    "moscow": ["economy", "comfort", "comfort_plus", "business"]
+  },
+  "ordersPerSessionTarget": 10,
+  "orderBaseRubOmsk": 1000
+}

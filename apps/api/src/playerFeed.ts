@@ -6,6 +6,7 @@ export type PlayerFeedType =
   | "shop:rent"
   | "work:side"
   | "work:shift"
+  | "work:taxi"
   | "travel:depart"
   | "travel:arrive"
   | "shop:car"
