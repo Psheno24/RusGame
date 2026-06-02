@@ -147,8 +147,6 @@ export function TaxiLinePanels({ taxi }: { taxi: TaxiLineHandle }) {
   if (!status) return null;
 
   const carSelected = status.carSelected;
-  const onLine = status.onLine;
-  const inTrip = status.activeTrip != null;
 
   return (
     <div className="taxi-line-panels">
