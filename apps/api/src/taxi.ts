@@ -7,6 +7,7 @@ import { appendPlayerFeed } from "./playerFeed.js";
 import { DATA_DIR } from "./config.js";
 import { randInt } from "./random.js";
 import { findCityJob, getCar, getVehicleRental, type JobDef } from "./gameData.js";
+import { taxiClassForCarModel } from "./carStats.js";
 import { getCitySalaryMultiplier, skillPayoutMultiplier } from "./jobSalaries.js";
 import { listPlayerCars, playerHasAnyCar } from "./playerCars.js";
 import {
@@ -57,11 +58,8 @@ function clampRating(r: number): number {
 
 export function taxiCarClassForModel(carModelId: string): string {
   const car = getCar(carModelId);
-  const price = car?.priceRub ?? 0;
-  for (const row of taxiConfig.carClassByPrice) {
-    if (row.maxPriceRub == null || price <= row.maxPriceRub) return row.class;
-  }
-  return "economy";
+  if (!car) return "economy";
+  return taxiClassForCarModel(car);
 }
 
 export function availableTariffsForCity(cityId: string): string[] {

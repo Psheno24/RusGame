@@ -88,17 +88,34 @@ export type PhoneDevice = {
 
 const JOB_TEMPLATE_KEYS = ["delivery", "taxi", "cashier", "night_guard"] as const;
 
+export type CarClassId =
+  | "economy"
+  | "comfort"
+  | "comfort_plus"
+  | "business"
+  | "premium"
+  | "luxury"
+  | "hypercar";
+
 export type CarModel = {
   id: string;
   brand: string;
   model: string;
+  /** Базовая цена (Москва / уровень рынка 7). */
   priceRub: number;
+  carClass: CarClassId;
   accent: string;
   year: number;
   body: string;
   category: string;
   licenseCategory: string;
-  cooldownReducePct: number;
+  speed: number;
+  comfort: number;
+  reliability: number;
+  prestige: number;
+  fuelConsumption: number;
+  /** @deprecated вычисляется из speed */
+  cooldownReducePct?: number;
 };
 
 export type CarCategoryDef = {
@@ -120,7 +137,16 @@ export type VehicleRentalDef = {
 
 const cities = JSON.parse(readFileSync(join(DATA_DIR, "cities.json"), "utf-8")) as City[];
 const phones = JSON.parse(readFileSync(join(DATA_DIR, "phones.json"), "utf-8")) as PhoneDevice[];
-const cars = JSON.parse(readFileSync(join(DATA_DIR, "cars.json"), "utf-8")) as CarModel[];
+const carsRaw = JSON.parse(readFileSync(join(DATA_DIR, "cars.json"), "utf-8")) as CarModel[];
+const cars: CarModel[] = carsRaw.map((c) => ({
+  ...c,
+  carClass: c.carClass ?? "economy",
+  speed: c.speed ?? (c.cooldownReducePct != null ? c.cooldownReducePct * 4 : 20),
+  comfort: c.comfort ?? 20,
+  reliability: c.reliability ?? 50,
+  prestige: c.prestige ?? 10,
+  fuelConsumption: c.fuelConsumption ?? 50,
+}));
 const carCategories = JSON.parse(
   readFileSync(join(DATA_DIR, "carCategories.json"), "utf-8"),
 ) as CarCategoryDef[];

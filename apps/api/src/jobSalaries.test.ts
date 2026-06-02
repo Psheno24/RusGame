@@ -61,6 +61,7 @@ function player(partial: Partial<PlayerRow>): PlayerRow {
     housing_stack: null,
     housing_pending_owned_id: null,
     taxi_state: null,
+    last_car_maintenance_at: null,
     energy: 80,
     hunger: 80,
     mood: 70,

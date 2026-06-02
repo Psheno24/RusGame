@@ -407,24 +407,31 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
             <p className="shop-stub">В этой категории пока нет моделей.</p>
           ) : (
             <ul className="phone-list">
-              {cars.map((c) => (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    className="phone-list-item"
-                    onClick={() => go("buyDetail", { car: c.id })}
-                  >
-                    <span className="phone-list-thumb" style={{ background: c.accent }} aria-hidden />
-                    <span className="phone-list-info">
-                      <span className="phone-list-name">
-                        {c.brand} {c.model}
+              {cars
+                .filter((c) => c.marketAvailable !== false)
+                .map((c) => (
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      className="phone-list-item"
+                      onClick={() => go("buyDetail", { car: c.id })}
+                    >
+                      <span className="phone-list-thumb" style={{ background: c.accent }} aria-hidden />
+                      <span className="phone-list-info">
+                        <span className="phone-list-name">
+                          {c.brand} {c.model}
+                          {c.carClassLabel ? (
+                            <span className="phone-list-meta"> · {c.carClassLabel}</span>
+                          ) : null}
+                        </span>
+                        <span className="phone-list-price">
+                          {rub(c.listPriceRub ?? c.priceRub)}
+                        </span>
                       </span>
-                      <span className="phone-list-price">{rub(c.priceRub)}</span>
-                    </span>
-                    {c.isOwned && <span className="phone-list-badge">куплено</span>}
-                  </button>
-                </li>
-              ))}
+                      {c.isOwned && <span className="phone-list-badge">куплено</span>}
+                    </button>
+                  </li>
+                ))}
             </ul>
           )}
         </div>
@@ -455,10 +462,34 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
                 </span>
               </dd>
             </div>
+            {selected.carClassLabel && (
+              <div>
+                <dt>Класс</dt>
+                <dd>{selected.carClassLabel}</dd>
+              </div>
+            )}
             <div>
-              <dt>Кулдаун доставки</dt>
-              <dd>−{selected.cooldownReducePct}%</dd>
+              <dt>Скорость / доставка</dt>
+              <dd>−{selected.cooldownReducePct}% к КД</dd>
             </div>
+            {selected.comfort != null && (
+              <div>
+                <dt>Комфорт (такси)</dt>
+                <dd>{selected.comfort}</dd>
+              </div>
+            )}
+            {selected.prestige != null && (
+              <div>
+                <dt>Престиж</dt>
+                <dd>{selected.prestige}</dd>
+              </div>
+            )}
+            {selected.maintenanceMonthlyRub != null && (
+              <div>
+                <dt>Обслуживание</dt>
+                <dd>{rub(selected.maintenanceMonthlyRub)} / мес</dd>
+              </div>
+            )}
             {selected.isOwned && (
               <>
                 <div>
@@ -480,7 +511,15 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
           </dl>
           <div className="phone-detail-buy car-detail-actions">
             <p className="shop-price">
-              Цена: <strong>{rub(selected.priceRub)}</strong>
+              Цена: <strong>{rub(selected.listPriceRub ?? selected.priceRub)}</strong>
+              {selected.basePriceRub != null &&
+                selected.listPriceRub != null &&
+                selected.basePriceRub !== selected.listPriceRub && (
+                  <span className="shop-owned">
+                    {" "}
+                    (база {rub(selected.basePriceRub)})
+                  </span>
+                )}
             </p>
             {!selected.isOwned && tradeInPriceHint(selected) && (
               <p className="shop-trade-in">{tradeInPriceHint(selected)}</p>

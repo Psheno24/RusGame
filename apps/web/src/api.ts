@@ -153,6 +153,17 @@ export type CarModel = {
   brand: string;
   model: string;
   priceRub: number;
+  basePriceRub?: number;
+  listPriceRub?: number;
+  marketAvailable?: boolean;
+  carClass?: string;
+  carClassLabel?: string;
+  speed?: number;
+  comfort?: number;
+  reliability?: number;
+  prestige?: number;
+  fuelConsumption?: number;
+  maintenanceMonthlyRub?: number;
   accent: string;
   year: number;
   body: string;

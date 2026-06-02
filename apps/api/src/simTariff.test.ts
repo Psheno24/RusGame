@@ -69,6 +69,7 @@ function player(partial: Partial<PlayerRow>): PlayerRow {
     reputation: 100,
     education: "none",
     taxi_state: null,
+    last_car_maintenance_at: null,
     ...partial,
   };
 }

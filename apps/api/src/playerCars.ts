@@ -3,12 +3,14 @@ import { getDb, getPlayer, updatePlayer } from "./db.js";
 import { getCar, getCars } from "./gameData.js";
 import { computeResaleValue } from "./assetTrade.js";
 import { getCarShopPriceRub } from "./shopCatalog.js";
+import { getCarCooldownReducePct, getCarSpeed } from "./carStats.js";
 
 export type PlayerCarRow = {
   id: number;
   user_id: number;
   car_model_id: string;
   acquired_at: number;
+  purchase_price_rub: number | null;
   plate_text: string | null;
   plate_l1: string | null;
   plate_digits: string | null;
@@ -19,7 +21,7 @@ export type PlayerCarRow = {
 export function listPlayerCars(userId: number): PlayerCarRow[] {
   return getDb()
     .prepare(
-      `SELECT id, user_id, car_model_id, acquired_at, plate_text, plate_l1, plate_digits, plate_l2, plate_region
+      `SELECT id, user_id, car_model_id, acquired_at, purchase_price_rub, plate_text, plate_l1, plate_digits, plate_l2, plate_region
        FROM player_cars WHERE user_id = ? ORDER BY acquired_at ASC`,
     )
     .all(userId) as PlayerCarRow[];
@@ -28,7 +30,7 @@ export function listPlayerCars(userId: number): PlayerCarRow[] {
 export function getPlayerCarById(userId: number, playerCarId: number): PlayerCarRow | undefined {
   return getDb()
     .prepare(
-      `SELECT id, user_id, car_model_id, acquired_at, plate_text, plate_l1, plate_digits, plate_l2, plate_region
+      `SELECT id, user_id, car_model_id, acquired_at, purchase_price_rub, plate_text, plate_l1, plate_digits, plate_l2, plate_region
        FROM player_cars WHERE user_id = ? AND id = ?`,
     )
     .get(userId, playerCarId) as PlayerCarRow | undefined;
@@ -38,19 +40,21 @@ export function insertPlayerCar(
   userId: number,
   carModelId: string,
   acquiredAt: number,
+  purchasePriceRub: number,
   plate?: Partial<
     Pick<PlayerCarRow, "plate_text" | "plate_l1" | "plate_digits" | "plate_l2" | "plate_region">
   >,
 ): number {
   const r = getDb()
     .prepare(
-      `INSERT INTO player_cars (user_id, car_model_id, acquired_at, plate_text, plate_l1, plate_digits, plate_l2, plate_region)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO player_cars (user_id, car_model_id, acquired_at, purchase_price_rub, plate_text, plate_l1, plate_digits, plate_l2, plate_region)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       userId,
       carModelId,
       acquiredAt,
+      purchasePriceRub,
       plate?.plate_text ?? null,
       plate?.plate_l1 ?? null,
       plate?.plate_digits ?? null,
@@ -111,7 +115,8 @@ export function getBestCarCooldownReducePct(userId: number): number {
   let best = 0;
   for (const row of listPlayerCars(userId)) {
     const car = getCar(row.car_model_id);
-    const pct = car?.cooldownReducePct ?? 0;
+    if (!car) continue;
+    const pct = getCarCooldownReducePct(car);
     if (pct > best) best = pct;
   }
   return best;
@@ -141,12 +146,13 @@ export function syncPlayerCarSummary(userId: number) {
     return;
   }
   let best = cars[0];
-  let bestPct = getCar(best.car_model_id)?.cooldownReducePct ?? 0;
+  let bestSpeed = getCarSpeed(getCar(best.car_model_id) ?? { speed: 0 } as never);
   for (const c of cars) {
-    const pct = getCar(c.car_model_id)?.cooldownReducePct ?? 0;
-    if (pct > bestPct) {
+    const car = getCar(c.car_model_id);
+    const spd = car ? getCarSpeed(car) : 0;
+    if (spd > bestSpeed) {
       best = c;
-      bestPct = pct;
+      bestSpeed = spd;
     }
   }
   const withPlate = cars.find((c) => c.plate_text) ?? best;
@@ -162,8 +168,13 @@ export function syncPlayerCarSummary(userId: number) {
   });
 }
 
-export function tradeInValueForPlayerCar(row: PlayerCarRow, now = Date.now()): number | null {
-  const catalogPriceRub = getCarShopPriceRub(row.car_model_id);
+export function tradeInValueForPlayerCar(
+  row: PlayerCarRow,
+  cityId: string,
+  now = Date.now(),
+): number | null {
+  const catalogPriceRub =
+    row.purchase_price_rub ?? getCarShopPriceRub(row.car_model_id, cityId);
   if (catalogPriceRub == null) return null;
   return computeResaleValue(catalogPriceRub, "car", row.acquired_at, now, "trade_in");
 }
