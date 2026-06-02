@@ -11,7 +11,7 @@ import {
   type User,
 } from "../api";
 import { applyLiveJobSchedule, getCityLocalTime } from "../cityTime";
-import { getJobCooldownLabel, nightGuardStaminaHint } from "../jobShift";
+import { getShiftDurationLabel, nightGuardStaminaHint } from "../jobShift";
 import { ConfirmDialog } from "./ConfirmDialog";
 
 type JobCard = JobView;
@@ -184,11 +184,7 @@ export function JobsSection({
       const cooldown = resolveJobCooldown(job.cooldown, user.isTest);
       return {
         ...applyLiveJobSchedule(cityTimezone, job),
-        shiftDurationLabel: getJobCooldownLabel(job, {
-          remainingMs: cooldown.remainingMs > 0 ? cooldown.remainingMs : undefined,
-          lastShiftHours: job.lastShiftHours,
-          local,
-        }),
+        shiftDurationLabel: getShiftDurationLabel(job, cooldown.ready ? local : undefined),
       };
     });
   }, [jobs, cityTimezone, scheduleTick, user.isTest]);
@@ -208,11 +204,7 @@ export function JobsSection({
     const local = getCityLocalTime(cityTimezone);
     return {
       ...applyLiveJobSchedule(cityTimezone, job),
-      shiftDurationLabel: getJobCooldownLabel(job, {
-        remainingMs: cooldown.remainingMs > 0 ? cooldown.remainingMs : undefined,
-        lastShiftHours: job.lastShiftHours,
-        local,
-      }),
+      shiftDurationLabel: getShiftDurationLabel(job, cooldown.ready ? local : undefined),
     };
   }, [selectedId, allJobs, activeEmployment, cityTimezone, user.isTest]);
   const employedCooldownRaw = employedJob?.cooldown ?? {
@@ -378,7 +370,7 @@ export function JobsSection({
       };
     }
     const local = getCityLocalTime(cityTimezone);
-    const shiftLabel = getJobCooldownLabel(job, { local });
+    const shiftLabel = getShiftDurationLabel(job, local);
     const staminaNote =
       job.templateKey === "night_guard" && job.skill
         ? `\nОпыт: +${job.skillGain ?? 1} ${SKILL_LABELS[job.skill] ?? job.skill} (${nightGuardStaminaHint()})`
@@ -411,13 +403,10 @@ export function JobsSection({
     const canQuit = employed && !busy && !employmentBlocked;
 
     const local = getCityLocalTime(cityTimezone);
-    const shiftCooldownLabel = getJobCooldownLabel(selected, {
-      remainingMs: !selectedCooldown.ready ? selectedCooldown.remainingMs : undefined,
-      lastShiftHours: selected.lastShiftHours,
-      selectedShiftHours:
-        employed && selected.kind === "duration" && selectedCooldown.ready ? shiftHours : undefined,
-      local,
-    });
+    const shiftDurationLabel = getShiftDurationLabel(
+      selected,
+      selectedCooldown.ready ? local : undefined,
+    );
 
     const minH = selected.shiftHoursMin ?? 4;
     const maxH = selected.shiftHoursMax ?? 12;
@@ -520,7 +509,7 @@ export function JobsSection({
               </div>
               <div>
                 <dt>Длительность смены</dt>
-                <dd>{shiftCooldownLabel}</dd>
+                <dd>{shiftDurationLabel}</dd>
               </div>
               <div className="job-requirements">
                 <dt>Требования</dt>

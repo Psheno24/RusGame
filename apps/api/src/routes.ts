@@ -26,7 +26,7 @@ import {
 } from "./auth.js";
 import { countPlayersInCity, getDb, getPlayer, getUserById, getUserByLogin, listPlayersForAdmin, updatePlayer } from "./db.js";
 import { getCityLocalTime, getCityTimezone } from "./cityTime.js";
-import { getJobCooldownLabel, isNightGuardJob, jobNominalCooldownMs, scaleNightGuardPayoutRange } from "./jobShift.js";
+import { getShiftDurationLabel, isNightGuardJob, jobNominalCooldownMs, scaleNightGuardPayoutRange } from "./jobShift.js";
 import {
   findCityJob,
   getCars,
@@ -274,11 +274,7 @@ export async function registerRoutes(app: FastifyInstance) {
         shiftHoursMax: job.shiftHoursMax ?? null,
         shiftHours: job.shiftHours ?? null,
         shiftEndsAtHour: job.shiftEndsAtHour ?? null,
-        shiftDurationLabel: getJobCooldownLabel(job, {
-          remainingMs: cooldown.ready ? undefined : cooldown.remainingMs,
-          lastShiftHours: job.kind === "duration" && record ? Math.round(record.cooldownMs / 3600000) : null,
-          local: work.localTime,
-        }),
+        shiftDurationLabel: getShiftDurationLabel(job, cooldown.ready ? work.localTime : undefined),
         payoutPerHourMin: job.payoutPerHourMin ?? null,
         payoutPerHourMax: job.payoutPerHourMax ?? null,
         payoutMin,
