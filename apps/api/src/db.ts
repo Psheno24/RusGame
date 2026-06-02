@@ -58,6 +58,7 @@ export type PlayerRow = {
   health: number;
   reputation: number;
   education: string;
+  taxi_state: string | null;
 };
 
 export type HousingType = "dorm" | "rent" | "owned";
@@ -344,6 +345,11 @@ function migrate(database: Database.Database) {
     database.exec("ALTER TABLE players ADD COLUMN housing_pending_owned_id INTEGER");
   }
 
+  const colsTaxi = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!colsTaxi.some((c) => c.name === "taxi_state")) {
+    database.exec("ALTER TABLE players ADD COLUMN taxi_state TEXT");
+  }
+
   database.exec(`
     CREATE TABLE IF NOT EXISTS player_feed (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -417,6 +423,7 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
         housing_owned_id = ?, housing_last_type = ?, housing_last_city_id = ?, housing_last_expires_at = ?,
         housing_last_owned_id = ?, housing_last_property_id = ?, housing_stack = ?,
         housing_pending_owned_id = ?,
+        taxi_state = ?,
         energy = ?, hunger = ?, mood = ?, health = ?, reputation = ?, education = ?
       WHERE user_id = ?`,
     )
@@ -470,6 +477,7 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
       next.housing_last_property_id ?? null,
       next.housing_stack ?? null,
       next.housing_pending_owned_id ?? null,
+      next.taxi_state ?? null,
       next.energy ?? 80,
       next.hunger ?? 80,
       next.mood ?? 70,

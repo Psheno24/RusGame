@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DATA_DIR } from "./config.js";
+import { applyCitySalaryToTemplate } from "./jobSalaries.js";
 import { computeTravelRoute, type TravelMode } from "./travelCalc.js";
 
 export type City = {
@@ -25,7 +26,7 @@ export type PayoutPeriod = {
   multiplier: number;
 };
 
-export type JobKind = "duration" | "cooldown";
+export type JobKind = "duration" | "cooldown" | "taxi_line";
 
 export type JobTemplate = {
   title: string;
@@ -42,6 +43,9 @@ export type JobTemplate = {
   cooldownMs?: number;
   payoutMin?: number;
   payoutMax?: number;
+  /** Целевой средний доход за сессию на линии (такси). */
+  taxiTargetIncomeRub?: number;
+  requiresCar?: boolean;
   skill?: "agility" | "stamina" | "charisma" | "wit" | null;
   skillMin?: number;
   skillGain?: number;
@@ -128,8 +132,9 @@ const jobTemplates = JSON.parse(
 ) as Record<string, JobTemplate>;
 
 function buildJob(cityId: string, templateKey: string, template: JobTemplate): JobDef {
+  const scaled = applyCitySalaryToTemplate(templateKey, template, cityId);
   return {
-    ...template,
+    ...scaled,
     id: `${cityId}_${templateKey}`,
     templateKey,
   };

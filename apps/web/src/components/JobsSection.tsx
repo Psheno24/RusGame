@@ -13,6 +13,7 @@ import {
 import { applyLiveJobSchedule, getCityLocalTime } from "../cityTime";
 import { getShiftDurationLabel, nightGuardStaminaHint } from "../jobShift";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { TaxiLineSection } from "./TaxiLineSection";
 
 type JobCard = JobView;
 
@@ -442,6 +443,20 @@ export function JobsSection({
     if (selected.requiresDriversLicense) {
       jobRequirements.push({ label: "В/у категории B", ok: hasLicenseB });
     }
+    if (selected.requiresCar) {
+      const hasCar =
+        (player.ownedCars?.length ?? 0) > 0 ||
+        Boolean(
+          player.vehicleRentalId &&
+            player.vehicleRentalExpiresAt != null &&
+            player.vehicleRentalExpiresAt > Date.now(),
+        );
+      jobRequirements.push({
+        label: "Автомобиль",
+        ok: hasCar,
+        status: hasCar ? "есть" : "нет (свой или аренда)",
+      });
+    }
     if (selected.skill && selected.skillMin != null) {
       const skillVal = player.skills[selected.skill as keyof typeof player.skills] ?? 0;
       jobRequirements.push({
@@ -476,7 +491,10 @@ export function JobsSection({
 
     const quitRemainingMs = employmentBlocked && employed ? employedCooldown.remainingMs : undefined;
 
+    const isTaxiEmployed = employed && selected.templateKey === "taxi" && selected.kind === "taxi_line";
+
     const onLeftClick = () => {
+      if (isTaxiEmployed) return;
       if (employed) {
         if (!selectedCooldown.ready || scheduleBlocked) return;
         if (selected.kind === "duration") {
@@ -502,9 +520,11 @@ export function JobsSection({
               <div>
                 <dt>Зарплата</dt>
                 <dd>
-                  {selected.kind === "duration" && selected.payoutPerHourMin != null
-                    ? `${selected.payoutPerHourMin.toLocaleString("ru-RU")}–${(selected.payoutPerHourMax ?? selected.payoutPerHourMin).toLocaleString("ru-RU")} ₽/ч`
-                    : `${selected.payoutMin.toLocaleString("ru-RU")}–${selected.payoutMax.toLocaleString("ru-RU")} ₽`}
+                  {selected.kind === "taxi_line"
+                    ? `~${(selected.taxiTargetIncomeRub ?? selected.payoutMax).toLocaleString("ru-RU")} ₽ за активную сессию (${selected.payoutMin.toLocaleString("ru-RU")}–${selected.payoutMax.toLocaleString("ru-RU")} ₽)`
+                    : selected.kind === "duration" && selected.payoutPerHourMin != null
+                      ? `${selected.payoutPerHourMin.toLocaleString("ru-RU")}–${(selected.payoutPerHourMax ?? selected.payoutPerHourMin).toLocaleString("ru-RU")} ₽/ч`
+                      : `${selected.payoutMin.toLocaleString("ru-RU")}–${selected.payoutMax.toLocaleString("ru-RU")} ₽ за смену`}
                 </dd>
               </div>
               <div>
@@ -567,17 +587,29 @@ export function JobsSection({
                 </div>
               )}
             </dl>
+            {isTaxiEmployed && (
+              <TaxiLineSection
+                user={user}
+                setUser={setUser}
+                onToast={onToast}
+                targetIncomeRub={selected.taxiTargetIncomeRub ?? selected.payoutMax}
+                payoutMin={selected.payoutMin}
+                payoutMax={selected.payoutMax}
+              />
+            )}
             <div className="job-detail-actions">
               <button
                 className={`btn ${employed ? "btn-primary" : "btn-success"}`}
                 type="button"
-                disabled={employed ? !canWork : !canHire}
+                disabled={isTaxiEmployed ? true : employed ? !canWork : !canHire}
                 onClick={onLeftClick}
               >
                 <JobActionButtonLabel
-                  base={leftBase}
+                  base={isTaxiEmployed ? "Работа на линии" : leftBase}
                   remainingMs={leftRemainingMs}
-                  disabledReason={!employed ? hireReason : undefined}
+                  disabledReason={
+                    isTaxiEmployed ? "управление ниже" : !employed ? hireReason : undefined
+                  }
                 />
               </button>
               <button

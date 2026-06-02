@@ -57,14 +57,14 @@ import {
   withLastWork,
 } from "./workCooldown.js";
 import { scaleTravelMs } from "./testAccount.js";
+import { finalShiftPayout, skillPayoutMultiplier } from "./jobSalaries.js";
+import { playerMeetsCarRequirement, taxiBlocksShift } from "./taxi.js";
 
 export { canWorkJobNow, formatCooldown } from "./workCooldown.js";
+import { randInt } from "./random.js";
+export { randInt } from "./random.js";
 
 const CYR = "АВЕКМНОРСТУХ";
-
-export function randInt(min: number, max: number): number {
-  return Math.floor(min + Math.random() * (max - min + 1));
-}
 
 export function resolveTravel(player: PlayerRow, now = Date.now()): PlayerRow {
   if (player.status !== "traveling" || !player.travel_arrives_at) return player;
@@ -99,6 +99,9 @@ function cooldownBlockedMessage(remainingMs: number): string {
 function checkJobRequirements(player: PlayerRow, job: JobDef): string | null {
   if (job.requiresDriversLicense && !hasDriverLicense(player, "B")) {
     return "Нужны права категории B — оформите в полиции";
+  }
+  if (job.requiresCar && !playerMeetsCarRequirement(player, Date.now())) {
+    return "Нужен автомобиль (свой или аренда)";
   }
   if (jobRequiresPhone(job) && !player.phone_device_id) {
     return "Нужен телефон — купите в магазине (город → телефон → устройства)";
@@ -157,10 +160,12 @@ function calculateCooldownJobPayout(
   job: JobDef,
   localTime: CityLocalTime,
 ): { payout: number; multiplier: number } {
-  const base = randInt(job.payoutMin ?? 0, job.payoutMax ?? 0);
+  const mid = Math.floor(((job.payoutMin ?? 0) + (job.payoutMax ?? 0)) / 2);
+  const base = randInt(job.payoutMin ?? mid, job.payoutMax ?? mid);
   const timeMult = getPayoutMultiplier(localTime.hour, job.payoutPeriods);
+  const skillMult = skillPayoutMultiplier(player, job.templateKey);
   const vitalMult = workPayoutMultiplier(player);
-  const multiplier = timeMult * vitalMult;
+  const multiplier = timeMult * skillMult * vitalMult;
   return { payout: Math.floor(base * multiplier), multiplier };
 }
 
@@ -170,12 +175,14 @@ function calculateNightGuardPayout(
   localTime: CityLocalTime,
   shiftHours: number,
 ): { payout: number; multiplier: number } {
-  const base = randInt(job.payoutMin ?? 0, job.payoutMax ?? 0);
+  const mid = Math.floor(((job.payoutMin ?? 0) + (job.payoutMax ?? 0)) / 2);
   const proportion = Math.min(1, shiftHours / NIGHT_GUARD_MAX_SHIFT_HOURS);
   const timeMult = getPayoutMultiplier(localTime.hour, job.payoutPeriods);
+  const skillMult = skillPayoutMultiplier(player, job.templateKey);
   const vitalMult = workPayoutMultiplier(player);
-  const multiplier = timeMult * vitalMult;
-  return { payout: Math.floor(base * proportion * multiplier), multiplier };
+  const multiplier = timeMult * skillMult * vitalMult;
+  const payout = finalShiftPayout(player, job.templateKey, player.city_id, mid, proportion);
+  return { payout: Math.floor(payout * timeMult * vitalMult), multiplier };
 }
 
 function calculateDurationJobPayout(
@@ -261,6 +268,9 @@ export function applyJob(
   if (player.job_id) {
     const workCity = jobCityId(player.job_id);
     const curJob = workCity ? findCityJob(workCity, player.job_id) : null;
+    if (taxiBlocksShift(player)) {
+      return { ok: false, error: "Сначала сойдите с линии такси" };
+    }
     const st = canWorkJobNow(player, player.job_id, now);
     if (!st.ok) {
       return {
@@ -302,6 +312,10 @@ export function quitJob(
 
   if (player.job_id !== jobId) return { ok: false, error: "Вы не устроены на эту работу" };
 
+  if (taxiBlocksShift(player)) {
+    return { ok: false, error: "Сначала сойдите с линии такси" };
+  }
+
   const st = canWorkJobNow(player, jobId, now);
   if (!st.ok) {
     return {
@@ -341,6 +355,10 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
 
   if (player.job_id !== job.id) {
     return { ok: false, error: "Сначала устройтесь на эту работу" };
+  }
+
+  if (job.kind === "taxi_line") {
+    return { ok: false, error: "Таксист работает на линии — используйте раздел заказов" };
   }
 
   const reqErr = checkJobRequirements(player, job);

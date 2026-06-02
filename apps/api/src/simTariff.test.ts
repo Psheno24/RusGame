@@ -68,6 +68,7 @@ function player(partial: Partial<PlayerRow>): PlayerRow {
     health: 100,
     reputation: 100,
     education: "none",
+    taxi_state: null,
     ...partial,
   };
 }
