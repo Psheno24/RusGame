@@ -1,12 +1,11 @@
 {
   "idleOfflineMs": 3600000,
-  "orderWaitMsMin": 15000,
-  "orderWaitMsMax": 45000,
+  "ordersRefreshMs": 300000,
+  "ordersPerPool": 4,
   "ratingDefault": 4.85,
   "ratingMin": 3.5,
   "ratingMax": 5,
   "ratingDeclinePenalty": 0.02,
-  "ratingIgnorePenalty": 0.01,
   "ratingGoodTripBonus": 0.01,
   "ratingBadTripPenalty": 0.03,
   "cashPartialPayChance": 0.12,
@@ -47,6 +46,5 @@
     "spb": ["economy", "comfort", "comfort_plus", "business"],
     "moscow": ["economy", "comfort", "comfort_plus", "business"]
   },
-  "ordersPerSessionTarget": 10,
   "orderBaseRubOmsk": 1000
 }

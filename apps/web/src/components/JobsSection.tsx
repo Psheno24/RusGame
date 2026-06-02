@@ -597,30 +597,42 @@ export function JobsSection({
                 payoutMax={selected.payoutMax}
               />
             )}
-            <div className="job-detail-actions">
-              <button
-                className={`btn ${employed ? "btn-primary" : "btn-success"}`}
-                type="button"
-                disabled={isTaxiEmployed ? true : employed ? !canWork : !canHire}
-                onClick={onLeftClick}
-              >
-                <JobActionButtonLabel
-                  base={isTaxiEmployed ? "Работа на линии" : leftBase}
-                  remainingMs={leftRemainingMs}
-                  disabledReason={
-                    isTaxiEmployed ? "управление ниже" : !employed ? hireReason : undefined
-                  }
-                />
-              </button>
-              <button
-                className="btn btn-danger"
-                type="button"
-                disabled={!canQuit}
-                onClick={() => requestQuit(selected)}
-              >
-                <JobActionButtonLabel base="Уволиться" remainingMs={quitRemainingMs} />
-              </button>
-            </div>
+            {!isTaxiEmployed && (
+              <div className="job-detail-actions">
+                <button
+                  className={`btn ${employed ? "btn-primary" : "btn-success"}`}
+                  type="button"
+                  disabled={employed ? !canWork : !canHire}
+                  onClick={onLeftClick}
+                >
+                  <JobActionButtonLabel
+                    base={leftBase}
+                    remainingMs={leftRemainingMs}
+                    disabledReason={!employed ? hireReason : undefined}
+                  />
+                </button>
+                <button
+                  className="btn btn-danger"
+                  type="button"
+                  disabled={!canQuit}
+                  onClick={() => requestQuit(selected)}
+                >
+                  <JobActionButtonLabel base="Уволиться" remainingMs={quitRemainingMs} />
+                </button>
+              </div>
+            )}
+            {isTaxiEmployed && (
+              <div className="job-detail-actions">
+                <button
+                  className="btn btn-danger"
+                  type="button"
+                  disabled={!canQuit || busy}
+                  onClick={() => requestQuit(selected)}
+                >
+                  <JobActionButtonLabel base="Уволиться" remainingMs={quitRemainingMs} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
         {pendingCopy && (
