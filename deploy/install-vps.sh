@@ -35,7 +35,9 @@ if [ ! -f .env ]; then
   exit 0
 fi
 
+chmod +x deploy/update.sh deploy/caddy-entrypoint.sh 2>/dev/null || true
 docker compose up -d --build
 echo ""
 echo "Готово. Откройте https://\$(grep SITE_DOMAIN .env | cut -d= -f2)"
+echo "Обновление позже: cd $DEPLOY_PATH && bash deploy/update.sh"
 echo "PWA: «Добавить на главный экран» в браузере телефона."

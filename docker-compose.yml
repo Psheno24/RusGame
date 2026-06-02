@@ -17,16 +17,16 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    entrypoint: ["/bin/sh", "/etc/caddy/entrypoint.sh"]
     ports:
       # Если на сервере несколько IP (Xray на одном, игра на другом) — задайте SITE_BIND_IP в .env
       - "${SITE_BIND_IP:-0.0.0.0}:80:80"
       - "${SITE_BIND_IP:-0.0.0.0}:443:443"
     env_file: .env
     environment:
-      # Явно пробрасываем домен — иначе Caddy может подхватить мусор из окружения
       SITE_DOMAIN: ${SITE_DOMAIN:?Задайте SITE_DOMAIN в .env}
     volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/caddy-entrypoint.sh:/etc/caddy/entrypoint.sh:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:

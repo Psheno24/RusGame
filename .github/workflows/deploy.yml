@@ -19,8 +19,5 @@ jobs:
           script: |
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
-            git fetch origin main
-            git reset --hard origin/main
-            docker compose pull --ignore-buildable || true
-            docker compose up -d --build
+            bash deploy/update.sh
             docker image prune -f

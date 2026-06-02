@@ -1,6 +1,6 @@
-# Домен из .env → SITE_DOMAIN=game.ваш-домен.ru (без https://)
-# Переменная SITE_DOMAIN должна быть в окружении контейнера caddy (см. docker-compose.yml).
-{$SITE_DOMAIN} {
-	encode gzip
-	reverse_proxy app:3001
-}
+# Не используется напрямую: Caddyfile создаётся из SITE_DOMAIN в deploy/caddy-entrypoint.sh
+# Оставлено для справки.
+# game.ваш-домен.ru {
+# 	encode gzip
+# 	reverse_proxy app:3001
+# }
