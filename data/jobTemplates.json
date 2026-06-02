@@ -1,26 +1,26 @@
 {
   "delivery": {
     "title": "Доставка",
-    "description": "Развоз заказов по городу. Выберите смену от 4 до 12 часов. Нужна сим-карта.",
+    "description": "Развоз заказов по городу. Выберите смену от 4 до 12 часов. Нужен телефон и тариф «Полный безлимит».",
     "kind": "duration",
     "shiftHoursMin": 4,
     "shiftHoursMax": 12,
     "payoutPerHourMin": 380,
     "payoutPerHourMax": 620,
-    "requiresSim": true,
+    "requiresPhone": true,
     "requiresSimTariff": "unlimited",
     "workCosts": { "energy": 18, "hunger": 10, "mood": 3 }
   },
   "taxi": {
     "title": "Такси",
-    "description": "Пассажирские заказы. Смена 4–12 ч. Нужны водительские права и сим-карта.",
+    "description": "Пассажирские заказы. Смена 4–12 ч. Нужны права, телефон и тариф «Полный безлимит».",
     "kind": "duration",
     "shiftHoursMin": 4,
     "shiftHoursMax": 12,
     "payoutPerHourMin": 450,
     "payoutPerHourMax": 780,
     "requiresDriversLicense": true,
-    "requiresSim": true,
+    "requiresPhone": true,
     "requiresSimTariff": "unlimited",
     "workCosts": { "energy": 16, "hunger": 8, "mood": 4 },
     "payoutPeriods": [

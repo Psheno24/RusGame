@@ -287,7 +287,7 @@ export async function registerRoutes(app: FastifyInstance) {
         skill: job.skill,
         skillMin: job.skillMin,
         skillGain: job.skillGain,
-        requiresSim: job.requiresSim ?? false,
+        requiresPhone: job.requiresPhone === true || job.requiresSim === true,
         requiresSimTariff: job.requiresSimTariff ?? null,
         requiresDriversLicense: job.requiresDriversLicense ?? false,
         schedule: job.schedule,

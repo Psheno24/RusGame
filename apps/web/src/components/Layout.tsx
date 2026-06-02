@@ -1,8 +1,15 @@
-import { useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useCityNav } from "../cityNav";
 import { useApp } from "../context";
-import { PlayerActivityPanel } from "./PlayerActivityPanel";
+import { useWorkNav } from "../workNav";
+
+const PAGE_TITLES: { path: string; title: string }[] = [
+  { path: "/map", title: "Карта" },
+  { path: "/work", title: "Моя работа" },
+  { path: "/city", title: "Город" },
+  { path: "/activity", title: "Активность" },
+  { path: "/profile", title: "Профиль" },
+];
 
 const NAV_ITEMS = [
   {
@@ -22,6 +29,31 @@ const NAV_ITEMS = [
     ),
   },
   {
+    to: "/work",
+    label: "Моя работа",
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden>
+        <rect
+          x="4"
+          y="8"
+          width="16"
+          height="11"
+          rx="2"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+        />
+        <path
+          d="M9 8V6.5a3 3 0 0 1 6 0V8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
+  {
     to: "/city",
     label: "Город",
     icon: (
@@ -34,6 +66,22 @@ const NAV_ITEMS = [
           strokeLinejoin="round"
         />
         <path d="M9 20v-5h6v5" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    to: "/activity",
+    label: "Активность",
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden>
+        <path
+          d="M6 5h12M6 9h12M6 13h8M6 17h5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+        />
+        <circle cx="17" cy="17" r="3" fill="none" stroke="currentColor" strokeWidth="1.75" />
       </svg>
     ),
   },
@@ -55,12 +103,18 @@ const NAV_ITEMS = [
   },
 ] as const;
 
+function pageTitle(pathname: string): string | null {
+  const match = PAGE_TITLES.find(({ path }) => pathname === path || pathname.startsWith(`${path}/`));
+  return match?.title ?? null;
+}
+
 export function Layout() {
   const { user } = useApp();
   const p = user?.player;
   const location = useLocation();
   const cityNav = useCityNav();
-  const [activityOpen, setActivityOpen] = useState(false);
+  const workNav = useWorkNav();
+  const headerTitle = pageTitle(location.pathname);
 
   const onCityNavClick = (e: React.MouseEvent) => {
     if (location.pathname === "/city") {
@@ -69,24 +123,22 @@ export function Layout() {
     }
   };
 
+  const onWorkNavClick = (e: React.MouseEvent) => {
+    if (location.pathname === "/work") {
+      e.preventDefault();
+      workNav?.resetToCurrentJob();
+    }
+  };
+
   return (
     <div className="app-shell">
       {p && (
         <header className="app-header">
           <div className="money-bar">
-            <div className="money-bar-left">
-              <span className="money-bar-name">{p.displayName}</span>
-              <button
-                type="button"
-                className="player-activity-btn"
-                onClick={() => setActivityOpen(true)}
-              >
-                Моя активность
-              </button>
-            </div>
+            <span className="money-bar-name">{p.displayName}</span>
+            {headerTitle && <span className="money-bar-title">{headerTitle}</span>}
             <span className="money-bar-rubles">{p.rubles.toLocaleString("ru-RU")} ₽</span>
           </div>
-          <PlayerActivityPanel open={activityOpen} onClose={() => setActivityOpen(false)} />
         </header>
       )}
       <main className="app-main">
@@ -98,11 +150,14 @@ export function Layout() {
             <NavLink
               key={to}
               to={to}
-              onClick={to === "/city" ? onCityNavClick : undefined}
+              title={label}
+              aria-label={label}
+              onClick={
+                to === "/city" ? onCityNavClick : to === "/work" ? onWorkNavClick : undefined
+              }
               className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
             >
               <span className="nav-item-icon">{icon}</span>
-              <span className="nav-item-label">{label}</span>
             </NavLink>
           ))}
         </div>

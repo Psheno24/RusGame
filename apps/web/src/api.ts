@@ -436,7 +436,7 @@ export type JobView = {
   skill: string | null;
   skillMin?: number;
   skillGain?: number;
-  requiresSim?: boolean;
+  requiresPhone?: boolean;
   requiresSimTariff?: string | null;
   requiresDriversLicense?: boolean;
   schedule?: JobScheduleView;

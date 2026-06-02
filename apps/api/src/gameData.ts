@@ -63,8 +63,9 @@ export type JobDef = JobTemplate & {
   templateKey: string;
 };
 
-export function jobRequiresSim(job: JobDef): boolean {
-  return job.requiresSim === true || job.requiresPhone === true;
+/** Телефон (устройство) — для старых шаблонов с requiresSim считаем то же самое. */
+export function jobRequiresPhone(job: JobDef): boolean {
+  return job.requiresPhone === true || job.requiresSim === true;
 }
 
 export type PhoneDevice = {

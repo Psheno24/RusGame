@@ -31,7 +31,7 @@ import {
   getPhone,
   getPhones,
   getTravel,
-  jobRequiresSim,
+  jobRequiresPhone,
   type JobDef,
 } from "./gameData.js";
 import type { TravelMode } from "./travelCalc.js";
@@ -47,7 +47,6 @@ import {
   workPayoutMultiplier,
 } from "./playerStats.js";
 import { applyCarCooldownReduction, hasDriverLicense } from "./playerCars.js";
-import { playerHasSim } from "./simNumber.js";
 import { playerMeetsSimTariff, syncPlayerSimTariffBilling, type SimTariffId } from "./simTariff.js";
 import {
   activeJobShiftBlock,
@@ -101,8 +100,8 @@ function checkJobRequirements(player: PlayerRow, job: JobDef): string | null {
   if (job.requiresDriversLicense && !hasDriverLicense(player, "B")) {
     return "Нужны права категории B — оформите в полиции";
   }
-  if (jobRequiresSim(job) && !playerHasSim(player)) {
-    return "Нужна сим-карта — оформите в магазине (телефон → сим-карта)";
+  if (jobRequiresPhone(job) && !player.phone_device_id) {
+    return "Нужен телефон — купите в магазине (город → телефон → устройства)";
   }
   if (job.requiresSimTariff && !playerMeetsSimTariff(player, job.requiresSimTariff)) {
     const titles: Record<SimTariffId, string> = {
@@ -112,7 +111,7 @@ function checkJobRequirements(player: PlayerRow, job: JobDef): string | null {
       unlimited: "Полный безлимит",
     };
     const need = titles[job.requiresSimTariff];
-    return `Нужен тариф «${need}» — подключите в магазине (телефон → сим-карта)`;
+    return `Нужен тариф «${need}» — подключите в магазине (телефон → сим-карта → тарифы)`;
   }
   if (job.skill && job.skillMin != null) {
     const v = getSkill(player, job.skill as SkillKey);
