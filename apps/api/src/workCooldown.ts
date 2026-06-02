@@ -8,6 +8,7 @@ import {
 } from "./jobShift.js";
 import { scaleCooldownMs } from "./testAccount.js";
 import { taxiBlocksShift } from "./taxi.js";
+// taxiBlocksShift also true during active trip
 
 export function formatCooldown(readyAt: number, now = Date.now()): { ready: boolean; remainingMs: number } {
   const remainingMs = Math.max(0, readyAt - now);

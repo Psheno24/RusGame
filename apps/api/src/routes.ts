@@ -612,10 +612,31 @@ export async function registerRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "Вы не устроены таксистом" });
     }
     const { getTaxiStatus } = await import("./taxi.js");
-    return { ok: true, status: getTaxiStatus(player, job) };
+    const status = getTaxiStatus(player, job);
+    const user =
+      status.completedPayout != null ? await getPublicUser(userId) : undefined;
+    return {
+      ok: true,
+      status,
+      completedMessage: status.completedMessage,
+      completedPayout: status.completedPayout,
+      user,
+    };
   });
 
-  app.post<{ Body: { carSource?: string; carRefId?: number } }>("/api/taxi/go-online", async (req, reply) => {
+  app.post("/api/taxi/clear-car", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    let player = refreshPlayerState(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const { taxiClearCar } = await import("./taxi.js");
+    const result = taxiClearCar(player);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
+  });
+
+  app.post<{ Body: { carSource?: string; carRefId?: number } }>("/api/taxi/select-car", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
     let player = refreshPlayerState(userId);
@@ -627,8 +648,24 @@ export async function registerRoutes(app: FastifyInstance) {
     const source = req.body?.carSource === "rental" ? "rental" : "owned";
     const refId = Number(req.body?.carRefId);
     if (!Number.isFinite(refId)) return reply.code(400).send({ error: "Укажите автомобиль" });
+    const { taxiSelectCar } = await import("./taxi.js");
+    const result = taxiSelectCar(player, source, refId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
+  });
+
+  app.post("/api/taxi/go-online", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    let player = refreshPlayerState(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const job = player.job_id ? findCityJob(jobCityId(player.job_id) ?? player.city_id, player.job_id) : null;
+    if (!job || job.kind !== "taxi_line") {
+      return reply.code(400).send({ error: "Вы не устроены таксистом" });
+    }
     const { taxiGoOnline } = await import("./taxi.js");
-    const result = taxiGoOnline(player, source, refId);
+    const result = taxiGoOnline(player);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
     return { message: result.message, user };
@@ -646,29 +683,33 @@ export async function registerRoutes(app: FastifyInstance) {
     return { message: result.message, user };
   });
 
-  app.post("/api/taxi/accept", async (req, reply) => {
+  app.post<{ Body: { orderId?: string } }>("/api/taxi/accept", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
     let player = refreshPlayerState(userId);
     if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const orderId = req.body?.orderId ?? "";
+    if (!orderId) return reply.code(400).send({ error: "Укажите заказ" });
     const job = player.job_id ? findCityJob(jobCityId(player.job_id) ?? player.city_id, player.job_id) : null;
     if (!job || job.kind !== "taxi_line") {
       return reply.code(400).send({ error: "Вы не устроены таксистом" });
     }
     const { taxiAcceptOrder } = await import("./taxi.js");
-    const result = taxiAcceptOrder(player, job);
+    const result = taxiAcceptOrder(player, job, orderId);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
-    return { message: result.message, payout: result.payout, user };
+    return { message: result.message, user };
   });
 
-  app.post("/api/taxi/decline", async (req, reply) => {
+  app.post<{ Body: { orderId?: string } }>("/api/taxi/decline", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
     let player = refreshPlayerState(userId);
     if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const orderId = req.body?.orderId ?? "";
+    if (!orderId) return reply.code(400).send({ error: "Укажите заказ" });
     const { taxiDeclineOrder } = await import("./taxi.js");
-    const result = taxiDeclineOrder(player);
+    const result = taxiDeclineOrder(player, orderId);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
     return { message: result.message, user };

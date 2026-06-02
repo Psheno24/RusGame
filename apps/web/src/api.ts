@@ -526,13 +526,22 @@ export type TaxiOrderView = {
   tripMinutes: number;
   passengerRating: number;
   payment: "card" | "cash";
-  expectedPayoutRub: number;
+  payoutRub: number;
   tariff: string;
   tariffTitle: string;
   offeredAt: number;
 };
 
+export type TaxiActiveTripView = {
+  orderId: string;
+  startedAt: number;
+  endsAt: number;
+  remainingMs: number;
+  order: TaxiOrderView;
+};
+
 export type TaxiStatus = {
+  carSelected: boolean;
   onLine: boolean;
   rating: number;
   sessionIncomeRub: number;
@@ -540,7 +549,11 @@ export type TaxiStatus = {
   ordersDeclined: number;
   carLabel: string | null;
   taxiClass: string | null;
-  currentOrder: TaxiOrderView | null;
+  selectedCarKey: string | null;
+  availableOrders: TaxiOrderView[];
+  activeTrip: TaxiActiveTripView | null;
+  ordersRefreshAt: number;
+  ordersRefreshInMs: number;
   targetIncomeRub: number;
   payoutMin: number;
   payoutMax: number;
@@ -556,28 +569,46 @@ export type TaxiStatus = {
 };
 
 export async function fetchTaxiStatus() {
-  return api<{ ok: true; status: TaxiStatus }>("/api/taxi/status");
+  return api<{
+    ok: true;
+    status: TaxiStatus;
+    completedMessage?: string;
+    completedPayout?: number;
+    user?: User;
+  }>("/api/taxi/status");
 }
 
-export async function taxiGoOnline(carSource: "owned" | "rental", carRefId: number) {
-  return api<{ message: string; user: User }>("/api/taxi/go-online", {
+export async function taxiClearCar() {
+  return api<{ message: string; user: User }>("/api/taxi/clear-car", { method: "POST" });
+}
+
+export async function taxiSelectCar(carSource: "owned" | "rental", carRefId: number) {
+  return api<{ message: string; user: User }>("/api/taxi/select-car", {
     method: "POST",
     body: JSON.stringify({ carSource, carRefId }),
   });
+}
+
+export async function taxiGoOnline() {
+  return api<{ message: string; user: User }>("/api/taxi/go-online", { method: "POST" });
 }
 
 export async function taxiGoOffline() {
   return api<{ message: string; user: User }>("/api/taxi/go-offline", { method: "POST" });
 }
 
-export async function taxiAcceptOrder() {
-  return api<{ message: string; payout: number; user: User }>("/api/taxi/accept", {
+export async function taxiAcceptOrder(orderId: string) {
+  return api<{ message: string; user: User }>("/api/taxi/accept", {
     method: "POST",
+    body: JSON.stringify({ orderId }),
   });
 }
 
-export async function taxiDeclineOrder() {
-  return api<{ message: string; user: User }>("/api/taxi/decline", { method: "POST" });
+export async function taxiDeclineOrder(orderId: string) {
+  return api<{ message: string; user: User }>("/api/taxi/decline", {
+    method: "POST",
+    body: JSON.stringify({ orderId }),
+  });
 }
 
 export async function buyDriversLicense() {

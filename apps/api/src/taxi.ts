@@ -10,9 +10,11 @@ import { findCityJob, getCar, getVehicleRental, type JobDef } from "./gameData.j
 import { getCitySalaryMultiplier, skillPayoutMultiplier } from "./jobSalaries.js";
 import { listPlayerCars, playerHasAnyCar } from "./playerCars.js";
 import {
-  isTaxiOnLine,
+  hasActiveTaxiTrip,
   parseTaxiState,
   saveTaxiState,
+  taxiBlocksWork,
+  type TaxiActiveTrip,
   type TaxiOrder,
   type TaxiState,
 } from "./playerTaxi.js";
@@ -21,13 +23,12 @@ import { jobCityId } from "./jobLocation.js";
 
 type TaxiConfig = {
   idleOfflineMs: number;
-  orderWaitMsMin: number;
-  orderWaitMsMax: number;
+  ordersRefreshMs: number;
+  ordersPerPool: number;
   ratingDefault: number;
   ratingMin: number;
   ratingMax: number;
   ratingDeclinePenalty: number;
-  ratingIgnorePenalty: number;
   ratingGoodTripBonus: number;
   ratingBadTripPenalty: number;
   cashPartialPayChance: number;
@@ -48,6 +49,8 @@ const taxiConfig = JSON.parse(
   readFileSync(join(DATA_DIR, "taxiConfig.json"), "utf-8"),
 ) as TaxiConfig;
 
+const MS_MIN = 60_000;
+
 function clampRating(r: number): number {
   return Math.max(taxiConfig.ratingMin, Math.min(taxiConfig.ratingMax, Math.round(r * 100) / 100));
 }
@@ -67,8 +70,7 @@ export function availableTariffsForCity(cityId: string): string[] {
 
 function tariffAllowedInCity(cityId: string, taxiClass: string): boolean {
   const list = availableTariffsForCity(cityId);
-  const idx = list.indexOf(taxiClass);
-  if (idx >= 0) return true;
+  if (list.includes(taxiClass)) return true;
   const order = ["economy", "comfort", "comfort_plus", "business"];
   const maxIdx = Math.max(...list.map((t) => order.indexOf(t)));
   return order.indexOf(taxiClass) <= maxIdx;
@@ -118,14 +120,6 @@ export function listTaxiCarOptions(player: PlayerRow, now = Date.now()): TaxiCar
   return options;
 }
 
-function syncIdleOffline(state: TaxiState, now: number): TaxiState {
-  if (!state.onLine) return state;
-  if (now - state.lastActivityAt >= taxiConfig.idleOfflineMs) {
-    return { ...state, onLine: false, currentOrder: null };
-  }
-  return state;
-}
-
 function generateOrder(player: PlayerRow, state: TaxiState): TaxiOrder {
   const cityMult = getCitySalaryMultiplier(player.city_id);
   const tariffDef = taxiConfig.tariffs[state.taxiClass] ?? taxiConfig.tariffs.economy!;
@@ -139,169 +133,77 @@ function generateOrder(player: PlayerRow, state: TaxiState): TaxiOrder {
         : randInt(30, 34) / 10;
   const payment: "card" | "cash" = Math.random() < 0.38 ? "cash" : "card";
   const tripFactor = 0.75 + tripMinutes / 40;
-  const variance = 0.85 + Math.random() * 0.35;
-  const expectedPayoutRub = Math.max(
-    150,
-    Math.round(
-      taxiConfig.orderBaseRubOmsk *
-        cityMult *
-        tariffDef.orderMult *
-        ratingMult *
-        tripFactor *
-        variance,
-    ),
+  const variance = 0.88 + Math.random() * 0.24;
+  const baseRub = Math.round(
+    taxiConfig.orderBaseRubOmsk * cityMult * tariffDef.orderMult * ratingMult * tripFactor * variance,
   );
+  const skillMult = skillPayoutMultiplier(player, "taxi");
+  const payoutRub = Math.max(150, Math.round(baseRub * skillMult));
+
   return {
     id: `o-${Date.now()}-${randInt(1000, 9999)}`,
     tripMinutes,
     passengerRating,
     payment,
-    expectedPayoutRub,
+    payoutRub,
     tariff: state.taxiClass,
     tariffTitle: tariffDef.title,
     offeredAt: Date.now(),
   };
 }
 
-function ensureOrder(player: PlayerRow, state: TaxiState, now: number): TaxiState {
-  if (!state.onLine || state.currentOrder) return state;
-  const waitMs =
-    state.lastOrderOfferAt > 0
-      ? randInt(taxiConfig.orderWaitMsMin, taxiConfig.orderWaitMsMax)
-      : 0;
-  if (state.lastOrderOfferAt > 0 && now - state.lastOrderOfferAt < waitMs) return state;
-  const order = generateOrder(player, state);
+function generateOrderPool(player: PlayerRow, state: TaxiState): TaxiOrder[] {
+  const count = taxiConfig.ordersPerPool;
+  const orders: TaxiOrder[] = [];
+  const usedIds = new Set<string>();
+  while (orders.length < count) {
+    const o = generateOrder(player, state);
+    if (!usedIds.has(o.id)) {
+      usedIds.add(o.id);
+      orders.push(o);
+    }
+  }
+  return orders;
+}
+
+function refreshOrderPool(player: PlayerRow, state: TaxiState, now: number): TaxiState {
   return {
     ...state,
-    currentOrder: order,
-    lastOrderOfferAt: now,
+    availableOrders: generateOrderPool(player, state),
+    ordersRefreshAt: now + taxiConfig.ordersRefreshMs,
     lastActivityAt: now,
   };
 }
 
-export type TaxiStatus = {
-  onLine: boolean;
-  rating: number;
-  sessionIncomeRub: number;
-  ordersCompleted: number;
-  ordersDeclined: number;
-  carLabel: string | null;
-  taxiClass: string | null;
-  currentOrder: TaxiOrder | null;
-  targetIncomeRub: number;
-  payoutMin: number;
-  payoutMax: number;
-  availableCars: TaxiCarOption[];
-  cityTariffs: string[];
-};
-
-export function getTaxiStatus(player: PlayerRow, job: JobDef, now = Date.now()): TaxiStatus {
-  let state = parseTaxiState(player);
-  if (state) {
-    state = syncIdleOffline(state, now);
-    state = ensureOrder(player, state, now);
-    saveTaxiState(player.user_id, state);
+function syncIdleOffline(state: TaxiState, now: number): TaxiState {
+  if (!state.onLine && !state.activeTrip) return state;
+  if (state.activeTrip) return state;
+  if (state.onLine && now - state.lastActivityAt >= taxiConfig.idleOfflineMs) {
+    return {
+      ...state,
+      onLine: false,
+      availableOrders: [],
+      ordersRefreshAt: 0,
+    };
   }
-  const car = state
-    ? listTaxiCarOptions(player, now).find(
-        (c) => c.source === state!.carSource && c.refId === state!.carRefId,
-      )
-    : null;
-  return {
-    onLine: state?.onLine ?? false,
-    rating: state?.rating ?? taxiConfig.ratingDefault,
-    sessionIncomeRub: state?.sessionIncomeRub ?? 0,
-    ordersCompleted: state?.ordersCompleted ?? 0,
-    ordersDeclined: state?.ordersDeclined ?? 0,
-    carLabel: car?.label ?? null,
-    taxiClass: state?.taxiClass ?? null,
-    currentOrder: state?.currentOrder ?? null,
-    targetIncomeRub: job.taxiTargetIncomeRub ?? job.payoutMax ?? 10_000,
-    payoutMin: job.payoutMin ?? 0,
-    payoutMax: job.payoutMax ?? 0,
-    availableCars: listTaxiCarOptions(player, now),
-    cityTariffs: availableTariffsForCity(player.city_id),
-  };
+  return state;
 }
 
-export function taxiGoOnline(
-  player: PlayerRow,
-  carSource: "owned" | "rental",
-  carRefId: number,
-  now = Date.now(),
-): { ok: true; message: string } | { ok: false; error: string } {
-  const options = listTaxiCarOptions(player, now);
-  const car = options.find((c) => c.source === carSource && c.refId === carRefId);
-  if (!car) return { ok: false, error: "Автомобиль не найден" };
-  if (!tariffAllowedInCity(player.city_id, car.taxiClass)) {
-    return { ok: false, error: "Этот класс авто недоступен для тарифов в вашем городе" };
-  }
-  const prev = parseTaxiState(player);
-  const state: TaxiState = {
-    onLine: true,
-    rating: prev?.rating ?? taxiConfig.ratingDefault,
-    carSource,
-    carRefId,
-    carModelId: car.modelId,
-    taxiClass: car.taxiClass,
-    currentOrder: null,
-    lastActivityAt: now,
-    sessionIncomeRub: 0,
-    ordersCompleted: 0,
-    ordersDeclined: 0,
-    lastOrderOfferAt: 0,
-  };
-  saveTaxiState(player.user_id, state);
-  appendPlayerFeed(player.user_id, "work:taxi", `Вышли на линию (${car.label})`, now);
-  return { ok: true, message: `На линии: ${car.label}, тариф «${car.tariffTitle}»` };
-}
-
-export function taxiGoOffline(
-  player: PlayerRow,
-  now = Date.now(),
-): { ok: true; message: string; sessionIncomeRub: number } | { ok: false; error: string } {
-  const state = parseTaxiState(player);
-  if (!state?.onLine) return { ok: false, error: "Вы не на линии" };
-  const income = state.sessionIncomeRub;
-  saveTaxiState(player.user_id, null);
-  appendPlayerFeed(
-    player.user_id,
-    "work:taxi",
-    `Сошли с линии (+${income.toLocaleString("ru-RU")} ₽ за сессию)`,
-    now,
-  );
-  return {
-    ok: true,
-    message: `С линии. Заработано за сессию: ${income.toLocaleString("ru-RU")} ₽`,
-    sessionIncomeRub: income,
-  };
-}
-
-type TripResult = {
-  payoutRub: number;
-  message: string;
-  moodDelta: number;
-  energyCost: number;
-};
-
-function resolveTrip(
+function completeActiveTrip(
   player: PlayerRow,
   job: JobDef,
   state: TaxiState,
-  order: TaxiOrder,
-): TripResult {
-  const skillMult = skillPayoutMultiplier(player, "taxi");
-  let payoutRub = Math.floor(order.expectedPayoutRub * skillMult);
+  now: number,
+): { state: TaxiState; payoutRub: number; message: string; moodDelta: number } {
+  const trip = state.activeTrip!;
+  const order = trip.order;
+  let payoutRub = order.payoutRub;
   let moodDelta = 0;
-  let energyCost = taxiConfig.energyPerOrderBase;
+  let payNote = "";
 
   if (order.passengerRating >= 4.5) moodDelta += randInt(0, 2);
   else if (order.passengerRating < 3.5) moodDelta -= randInt(1, 3);
 
-  if (order.tripMinutes >= taxiConfig.longTripMinutes) energyCost += taxiConfig.energyLongTripExtra;
-  if (order.passengerRating < 3.5) energyCost += taxiConfig.energyConflictExtra;
-
-  let payNote = "";
   if (order.payment === "cash" && order.passengerRating < 4) {
     if (Math.random() < taxiConfig.cashNoPayChance) {
       payoutRub = Math.floor(payoutRub * taxiConfig.parkCompensationFraction);
@@ -315,26 +217,300 @@ function resolveTrip(
   }
 
   const reviewRoll = Math.random();
+  let rating = state.rating;
   if (order.passengerRating >= 4.5 && reviewRoll < 0.35) {
-    state.rating = clampRating(state.rating + taxiConfig.ratingGoodTripBonus);
+    rating = clampRating(rating + taxiConfig.ratingGoodTripBonus);
   } else if (order.passengerRating < 3.5 && reviewRoll < 0.4) {
-    state.rating = clampRating(state.rating - taxiConfig.ratingBadTripPenalty);
+    rating = clampRating(rating - taxiConfig.ratingBadTripPenalty);
   }
 
-  const msg = `${order.tariffTitle}, ${order.tripMinutes} мин · +${payoutRub.toLocaleString("ru-RU")} ₽${payNote}`;
-  return { payoutRub, message: msg, moodDelta, energyCost };
+  let energyCost = taxiConfig.energyPerOrderBase;
+  if (order.tripMinutes >= taxiConfig.longTripMinutes) energyCost += taxiConfig.energyLongTripExtra;
+  if (order.passengerRating < 3.5) energyCost += taxiConfig.energyConflictExtra;
+
+  const costs = scaleWorkCosts(player, {
+    energy: energyCost,
+    hunger: job.workCosts?.hunger ?? 4,
+    mood: 0,
+  });
+  const lifeErr = canAffordCosts(player, costs);
+  if (lifeErr) {
+    return {
+      state: { ...state, activeTrip: trip },
+      payoutRub: 0,
+      message: lifeErr,
+      moodDelta: 0,
+    };
+  }
+
+  const statPatch = applyWorkStatCosts(player, scaleWorkCosts(player, costs)!);
+  const mood = clampVital("mood", (statPatch.mood ?? player.mood ?? 70) + moodDelta);
+  const witGain = Math.random() < 0.4 ? 1 : 0;
+  updatePlayer(player.user_id, {
+    ...statPatch,
+    mood,
+    rubles: player.rubles + payoutRub,
+    wit: player.wit + witGain,
+  });
+
+  let next: TaxiState = {
+    ...state,
+    activeTrip: null,
+    sessionIncomeRub: state.sessionIncomeRub + payoutRub,
+    ordersCompleted: state.ordersCompleted + 1,
+    rating,
+    lastActivityAt: now,
+  };
+
+  if (next.onLine) {
+    next = refreshOrderPool(player, next, now);
+  } else {
+    next = { ...next, availableOrders: [], ordersRefreshAt: 0 };
+  }
+
+  const msg = `Поездка ${order.tripMinutes} мин · +${payoutRub.toLocaleString("ru-RU")} ₽${payNote}`;
+  return { state: next, payoutRub, message: msg, moodDelta };
+}
+
+/** Синхронизация: завершение поездки, обновление пула заказов. */
+export function advanceTaxiState(
+  player: PlayerRow,
+  job: JobDef | undefined,
+  state: TaxiState,
+  now: number,
+): { state: TaxiState; completedMessage?: string; completedPayout?: number } {
+  let s = syncIdleOffline(state, now);
+  let completedMessage: string | undefined;
+  let completedPayout: number | undefined;
+
+  if (s.activeTrip && now >= s.activeTrip.endsAt && job) {
+    const fresh = getPlayer(player.user_id) ?? player;
+    const result = completeActiveTrip(fresh, job, s, now);
+    if (result.payoutRub > 0) {
+      s = result.state;
+      completedMessage = result.message;
+      completedPayout = result.payoutRub;
+      appendPlayerFeed(player.user_id, "work:taxi", `Заказ: ${result.message}`, now);
+    } else if (result.message && result.payoutRub === 0) {
+      return { state: s, completedMessage: result.message };
+    }
+  }
+
+  if (s.onLine && !s.activeTrip) {
+    if (s.availableOrders.length === 0 || now >= s.ordersRefreshAt) {
+      s = refreshOrderPool(player, s, now);
+    }
+  }
+
+  saveTaxiState(player.user_id, s.onLine || s.carSelected ? s : null);
+  return { state: s, completedMessage, completedPayout };
+}
+
+export type TaxiActiveTripView = {
+  orderId: string;
+  startedAt: number;
+  endsAt: number;
+  remainingMs: number;
+  order: TaxiOrder;
+};
+
+export type TaxiStatus = {
+  carSelected: boolean;
+  onLine: boolean;
+  rating: number;
+  sessionIncomeRub: number;
+  ordersCompleted: number;
+  ordersDeclined: number;
+  carLabel: string | null;
+  taxiClass: string | null;
+  selectedCarKey: string | null;
+  availableOrders: TaxiOrder[];
+  activeTrip: TaxiActiveTripView | null;
+  ordersRefreshAt: number;
+  ordersRefreshInMs: number;
+  targetIncomeRub: number;
+  payoutMin: number;
+  payoutMax: number;
+  availableCars: TaxiCarOption[];
+  cityTariffs: string[];
+  completedMessage?: string;
+  completedPayout?: number;
+};
+
+function carKey(c: { source: string; refId: number }) {
+  return `${c.source}:${c.refId}`;
+}
+
+export function getTaxiStatus(player: PlayerRow, job: JobDef, now = Date.now()): TaxiStatus {
+  let state = parseTaxiState(player);
+  let completedMessage: string | undefined;
+  let completedPayout: number | undefined;
+
+  if (state) {
+    const advanced = advanceTaxiState(player, job, state, now);
+    state = advanced.state;
+    completedMessage = advanced.completedMessage;
+    completedPayout = advanced.completedPayout;
+  }
+
+  const cars = listTaxiCarOptions(player, now);
+  const selected = state?.carSelected
+    ? cars.find((c) => c.source === state.carSource && c.refId === state.carRefId)
+    : undefined;
+
+  let activeTrip: TaxiActiveTripView | null = null;
+  if (state?.activeTrip) {
+    activeTrip = {
+      orderId: state.activeTrip.orderId,
+      startedAt: state.activeTrip.startedAt,
+      endsAt: state.activeTrip.endsAt,
+      remainingMs: Math.max(0, state.activeTrip.endsAt - now),
+      order: state.activeTrip.order,
+    };
+  }
+
+  return {
+    carSelected: Boolean(state?.carSelected),
+    onLine: state?.onLine ?? false,
+    rating: state?.rating ?? taxiConfig.ratingDefault,
+    sessionIncomeRub: state?.sessionIncomeRub ?? 0,
+    ordersCompleted: state?.ordersCompleted ?? 0,
+    ordersDeclined: state?.ordersDeclined ?? 0,
+    carLabel: selected?.label ?? null,
+    taxiClass: state?.taxiClass ?? null,
+    selectedCarKey: selected ? carKey(selected) : null,
+    availableOrders: state?.activeTrip ? [] : (state?.availableOrders ?? []),
+    activeTrip,
+    ordersRefreshAt: state?.ordersRefreshAt ?? 0,
+    ordersRefreshInMs: state ? Math.max(0, state.ordersRefreshAt - now) : 0,
+    targetIncomeRub: job.taxiTargetIncomeRub ?? job.payoutMax ?? 10_000,
+    payoutMin: job.payoutMin ?? 0,
+    payoutMax: job.payoutMax ?? 0,
+    availableCars: cars,
+    cityTariffs: availableTariffsForCity(player.city_id),
+    completedMessage,
+    completedPayout,
+  };
+}
+
+export function taxiClearCar(
+  player: PlayerRow,
+): { ok: true; message: string } | { ok: false; error: string } {
+  const state = parseTaxiState(player);
+  if (state?.onLine) return { ok: false, error: "Сначала завершите линию" };
+  if (state?.activeTrip) return { ok: false, error: "Дождитесь окончания поездки" };
+  saveTaxiState(player.user_id, null);
+  return { ok: true, message: "Выбор автомобиля сброшен" };
+}
+
+export function taxiSelectCar(
+  player: PlayerRow,
+  carSource: "owned" | "rental",
+  carRefId: number,
+  now = Date.now(),
+): { ok: true; message: string } | { ok: false; error: string } {
+  const options = listTaxiCarOptions(player, now);
+  const car = options.find((c) => c.source === carSource && c.refId === carRefId);
+  if (!car) return { ok: false, error: "Автомобиль не найден" };
+  if (!tariffAllowedInCity(player.city_id, car.taxiClass)) {
+    return { ok: false, error: "Этот класс авто недоступен для тарифов в вашем городе" };
+  }
+
+  const prev = parseTaxiState(player);
+  const state: TaxiState = {
+    onLine: false,
+    rating: prev?.rating ?? taxiConfig.ratingDefault,
+    carSource,
+    carRefId,
+    carModelId: car.modelId,
+    taxiClass: car.taxiClass,
+    carSelected: true,
+    availableOrders: [],
+    ordersRefreshAt: 0,
+    activeTrip: prev?.activeTrip ?? null,
+    lastActivityAt: now,
+    sessionIncomeRub: prev?.sessionIncomeRub ?? 0,
+    ordersCompleted: prev?.ordersCompleted ?? 0,
+    ordersDeclined: prev?.ordersDeclined ?? 0,
+  };
+  saveTaxiState(player.user_id, state);
+  return { ok: true, message: `Выбран автомобиль: ${car.label} (${car.tariffTitle})` };
+}
+
+export function taxiGoOnline(
+  player: PlayerRow,
+  now = Date.now(),
+): { ok: true; message: string } | { ok: false; error: string } {
+  let state = parseTaxiState(player);
+  if (!state?.carSelected) {
+    return { ok: false, error: "Сначала выберите автомобиль" };
+  }
+  if (state.activeTrip) {
+    return { ok: false, error: "Дождитесь окончания текущей поездки" };
+  }
+  if (state.onLine) return { ok: false, error: "Вы уже на линии" };
+
+  state = {
+    ...state,
+    onLine: true,
+    lastActivityAt: now,
+    availableOrders: [],
+    ordersRefreshAt: 0,
+  };
+  state = refreshOrderPool(player, state, now);
+  saveTaxiState(player.user_id, state);
+  const car = listTaxiCarOptions(player, now).find(
+    (c) => c.source === state.carSource && c.refId === state.carRefId,
+  );
+  appendPlayerFeed(player.user_id, "work:taxi", `На линии (${car?.label ?? "авто"})`, now);
+  return { ok: true, message: `Работа на линии: ${car?.label ?? "авто"}` };
+}
+
+export function taxiGoOffline(
+  player: PlayerRow,
+  now = Date.now(),
+): { ok: true; message: string; sessionIncomeRub: number } | { ok: false; error: string } {
+  const state = parseTaxiState(player);
+  if (!state?.onLine && !state?.carSelected) {
+    return { ok: false, error: "Вы не на линии" };
+  }
+  if (state.activeTrip) {
+    return { ok: false, error: "Завершите поездку перед уходом с линии" };
+  }
+  const income = state.sessionIncomeRub;
+  const kept: TaxiState = {
+    ...state,
+    onLine: false,
+    availableOrders: [],
+    ordersRefreshAt: 0,
+    lastActivityAt: now,
+  };
+  saveTaxiState(player.user_id, kept.carSelected ? kept : null);
+  appendPlayerFeed(
+    player.user_id,
+    "work:taxi",
+    `Завершили линию (+${income.toLocaleString("ru-RU")} ₽ за сессию)`,
+    now,
+  );
+  return {
+    ok: true,
+    message: `Линия завершена. За сессию: ${income.toLocaleString("ru-RU")} ₽`,
+    sessionIncomeRub: income,
+  };
 }
 
 export function taxiAcceptOrder(
   player: PlayerRow,
   job: JobDef,
+  orderId: string,
   now = Date.now(),
-): { ok: true; message: string; payout: number } | { ok: false; error: string } {
+): { ok: true; message: string } | { ok: false; error: string } {
   let state = parseTaxiState(player);
   if (!state?.onLine) return { ok: false, error: "Сначала выйдите на линию" };
-  state = syncIdleOffline(state, now);
-  if (!state.onLine) return { ok: false, error: "Вы автоматически сошли с линии из‑за бездействия" };
-  if (!state.currentOrder) return { ok: false, error: "Нет активного заказа" };
+  if (state.activeTrip) return { ok: false, error: "Вы уже в поездке" };
+
+  const order = state.availableOrders.find((o) => o.id === orderId);
+  if (!order) return { ok: false, error: "Заказ не найден или устарел" };
 
   const costs = scaleWorkCosts(player, {
     energy: taxiConfig.energyPerOrderBase,
@@ -344,65 +520,61 @@ export function taxiAcceptOrder(
   const lifeErr = canAffordCosts(player, costs);
   if (lifeErr) return { ok: false, error: lifeErr };
 
-  const order = state.currentOrder;
-  const trip = resolveTrip(player, job, state, order);
-  const scaledCosts = scaleWorkCosts(player, {
-    ...costs,
-    energy: trip.energyCost,
-  });
-  const statPatch = applyWorkStatCosts(player, scaledCosts);
+  const tripMs = order.tripMinutes * MS_MIN;
+  const activeTrip: TaxiActiveTrip = {
+    orderId: order.id,
+    startedAt: now,
+    endsAt: now + tripMs,
+    order,
+  };
 
-  state.sessionIncomeRub += trip.payoutRub;
-  state.ordersCompleted += 1;
-  state.currentOrder = null;
-  state.lastActivityAt = now;
-  state.lastOrderOfferAt = now;
-  state.rating = clampRating(state.rating);
-
+  state = {
+    ...state,
+    activeTrip,
+    availableOrders: state.availableOrders.filter((o) => o.id !== orderId),
+    lastActivityAt: now,
+  };
   saveTaxiState(player.user_id, state);
 
-  const mood = clampVital("mood", (statPatch.mood ?? player.mood ?? 70) + trip.moodDelta);
-  const witGain = Math.random() < 0.4 ? 1 : 0;
-  updatePlayer(player.user_id, {
-    ...statPatch,
-    mood,
-    rubles: player.rubles + trip.payoutRub,
-    wit: player.wit + witGain,
-  });
-
-  appendPlayerFeed(player.user_id, "work:taxi", `Заказ: ${trip.message}`, now);
-  return { ok: true, message: trip.message, payout: trip.payoutRub };
+  return {
+    ok: true,
+    message: `В пути ${order.tripMinutes} мин. Выплата по прибытии: ${order.payoutRub.toLocaleString("ru-RU")} ₽`,
+  };
 }
 
 export function taxiDeclineOrder(
   player: PlayerRow,
+  orderId: string,
   now = Date.now(),
 ): { ok: true; message: string } | { ok: false; error: string } {
   let state = parseTaxiState(player);
   if (!state?.onLine) return { ok: false, error: "Вы не на линии" };
-  if (!state.currentOrder) return { ok: false, error: "Нет заказа" };
+  if (state.activeTrip) return { ok: false, error: "Вы в поездке" };
 
-  state.ordersDeclined += 1;
-  state.rating = clampRating(state.rating - taxiConfig.ratingDeclinePenalty);
-  state.currentOrder = null;
-  state.lastActivityAt = now;
-  state.lastOrderOfferAt = now;
+  const had = state.availableOrders.some((o) => o.id === orderId);
+  if (!had) return { ok: false, error: "Заказ не найден" };
+
+  state = {
+    ...state,
+    availableOrders: state.availableOrders.filter((o) => o.id !== orderId),
+    ordersDeclined: state.ordersDeclined + 1,
+    rating: clampRating(state.rating - taxiConfig.ratingDeclinePenalty),
+    lastActivityAt: now,
+  };
   saveTaxiState(player.user_id, state);
 
-  return { ok: true, message: "Заказ отклонён. Рейтинг слегка снизился." };
+  return { ok: true, message: "Заказ отклонён" };
 }
 
 export function syncTaxiForPlayer(player: PlayerRow, now = Date.now()): void {
   const state = parseTaxiState(player);
-  if (!state?.onLine) return;
-  const synced = syncIdleOffline(ensureOrder(player, state, now), now);
-  if (JSON.stringify(synced) !== JSON.stringify(state)) {
-    saveTaxiState(player.user_id, synced.onLine ? synced : null);
-  }
+  if (!state) return;
+  const job = getTaxiJobForPlayer(player);
+  advanceTaxiState(player, job, state, now);
 }
 
 export function taxiBlocksShift(player: PlayerRow): boolean {
-  return isTaxiOnLine(player);
+  return taxiBlocksWork(player);
 }
 
 export function refreshTaxiAfterWork(player: PlayerRow, now = Date.now()): PlayerRow {
