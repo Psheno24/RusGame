@@ -269,7 +269,10 @@ export function applyJob(
     const workCity = jobCityId(player.job_id);
     const curJob = workCity ? findCityJob(workCity, player.job_id) : null;
     if (taxiBlocksShift(player)) {
-      return { ok: false, error: "Сначала сойдите с линии такси" };
+      return {
+        ok: false,
+        error: "Сначала завершите поездку и сойдите с линии такси",
+      };
     }
     const st = canWorkJobNow(player, player.job_id, now);
     if (!st.ok) {
@@ -313,7 +316,10 @@ export function quitJob(
   if (player.job_id !== jobId) return { ok: false, error: "Вы не устроены на эту работу" };
 
   if (taxiBlocksShift(player)) {
-    return { ok: false, error: "Сначала сойдите с линии такси" };
+    return {
+      ok: false,
+      error: "Сначала завершите поездку и сойдите с линии такси",
+    };
   }
 
   const st = canWorkJobNow(player, jobId, now);

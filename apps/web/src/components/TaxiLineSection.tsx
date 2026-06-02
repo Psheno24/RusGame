@@ -1,26 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  fetchTaxiStatus,
-  formatDuration,
-  taxiAcceptOrder,
-  taxiDeclineOrder,
-  taxiGoOffline,
-  taxiGoOnline,
-  taxiClearCar,
-  taxiSelectCar,
-  type TaxiOrderView,
-  type TaxiStatus,
-  type User,
-} from "../api";
-
-type Props = {
-  user: User;
-  setUser: (u: User) => void;
-  onToast: (msg: string, isErr?: boolean) => void;
-  targetIncomeRub: number;
-  payoutMin: number;
-  payoutMax: number;
-};
+import { formatDuration, type TaxiOrderView, type TaxiStatus } from "../api";
+import { type TaxiLineHandle } from "../hooks/useTaxiLine";
 
 function carKey(c: { source: string; refId: number }) {
   return `${c.source}:${c.refId}`;
@@ -38,7 +17,7 @@ function OrderCard({
   onDecline: () => void;
 }) {
   return (
-    <li className="taxi-order-item card">
+    <li className="taxi-order-item">
       <p className="taxi-order-meta">
         {order.tripMinutes} мин в пути · пассажир {order.passengerRating.toFixed(1)} ★ ·{" "}
         {order.payment === "cash" ? "наличные" : "карта"}
@@ -61,104 +40,67 @@ function OrderCard({
   );
 }
 
-export function TaxiLineSection({
-  user: _user,
-  setUser,
-  onToast,
-  targetIncomeRub,
-  payoutMin,
-  payoutMax,
-}: Props) {
-  const [status, setStatus] = useState<TaxiStatus | null>(null);
-  const [pickCar, setPickCar] = useState<string>("");
-  const [busy, setBusy] = useState(false);
+type SetupProps = {
+  taxi: TaxiLineHandle;
+  targetIncomeRub: number;
+  payoutMin: number;
+  payoutMax: number;
+};
 
-  const refresh = useCallback(async () => {
-    const data = await fetchTaxiStatus();
-    if (data.completedMessage) {
-      onToast(data.completedMessage);
-      if (data.user) setUser(data.user);
-    }
-    setStatus(data.status);
-    if (data.status.selectedCarKey) setPickCar(data.status.selectedCarKey);
-  }, [onToast, setUser]);
-
-  useEffect(() => {
-    refresh().catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
-    const ms = status?.activeTrip ? 3000 : 15000;
-    const id = setInterval(() => {
-      refresh().catch(() => {});
-    }, ms);
-    return () => clearInterval(id);
-  }, [refresh, onToast, status?.activeTrip != null]);
-
-  const run = async (fn: () => Promise<{ message: string; user: User }>) => {
-    setBusy(true);
-    try {
-      const r = await fn();
-      setUser(r.user);
-      onToast(r.message);
-      await refresh();
-    } catch (e) {
-      onToast(e instanceof Error ? e.message : "Ошибка", true);
-    } finally {
-      setBusy(false);
-    }
-  };
+/** Статистика и выбор авто — внутри карточки работы, без кнопки линии */
+export function TaxiLineSetup({ taxi, targetIncomeRub, payoutMin, payoutMax }: SetupProps) {
+  const { status, busy, pickCar, setPickCar, carSelected, onLine, inTrip, clearCar, selectCar } =
+    taxi;
 
   if (!status) {
     return <p className="shop-owned">Загрузка…</p>;
   }
 
-  const carSelected = status.carSelected;
-  const onLine = status.onLine;
-  const inTrip = status.activeTrip != null;
-
   return (
-    <div className="taxi-line">
-      <div className="card">
-        <p className="shop-owned">
-          Средний доход за сессию: {targetIncomeRub.toLocaleString("ru-RU")} ₽ (ориентир{" "}
-          {payoutMin.toLocaleString("ru-RU")}–{payoutMax.toLocaleString("ru-RU")} ₽)
-        </p>
-        <p className="shop-owned">
-          Рейтинг: <strong>{status.rating.toFixed(2)}</strong>
-          {onLine && (
-            <>
-              {" "}
-              · сессия: +{status.sessionIncomeRub.toLocaleString("ru-RU")} ₽ · выполнено:{" "}
-              {status.ordersCompleted}
-            </>
-          )}
-        </p>
-
-        {!carSelected && (
+    <div className="taxi-line-setup">
+      <p className="shop-owned">
+        Средний доход за сессию: {targetIncomeRub.toLocaleString("ru-RU")} ₽ (ориентир{" "}
+        {payoutMin.toLocaleString("ru-RU")}–{payoutMax.toLocaleString("ru-RU")} ₽)
+      </p>
+      <p className="shop-owned">
+        Рейтинг: <strong>{status.rating.toFixed(2)}</strong>
+        {onLine && (
           <>
-            <p className="shop-owned">Выберите автомобиль для работы:</p>
-            {status.availableCars.length === 0 ? (
-              <p className="shop-owned">Нужен свой автомобиль или аренда транспорта.</p>
-            ) : (
-              <ul className="phone-list">
-                {status.availableCars.map((c) => (
-                  <li key={carKey(c)}>
-                    <label className="phone-list-item" style={{ cursor: "pointer" }}>
-                      <input
-                        type="radio"
-                        name="taxi-car"
-                        checked={pickCar === carKey(c)}
-                        onChange={() => setPickCar(carKey(c))}
-                      />
-                      <span className="phone-list-info">
-                        <span className="phone-list-name">{c.label}</span>
-                        <span className="phone-list-price">
-                          {c.tariffTitle} · {c.source === "rental" ? "аренда" : "свой"}
-                        </span>
+            {" "}
+            · сессия: +{status.sessionIncomeRub.toLocaleString("ru-RU")} ₽ · выполнено:{" "}
+            {status.ordersCompleted}
+          </>
+        )}
+      </p>
+
+      {!carSelected && (
+        <>
+          <p className="shop-owned">Выберите автомобиль для работы:</p>
+          {status.availableCars.length === 0 ? (
+            <p className="shop-owned">Нужен свой автомобиль или аренда транспорта.</p>
+          ) : (
+            <ul className="phone-list">
+              {status.availableCars.map((c) => (
+                <li key={carKey(c)}>
+                  <label className="phone-list-item" style={{ cursor: "pointer" }}>
+                    <input
+                      type="radio"
+                      name="taxi-car"
+                      checked={pickCar === carKey(c)}
+                      onChange={() => setPickCar(carKey(c))}
+                    />
+                    <span className="phone-list-info">
+                      <span className="phone-list-name">{c.label}</span>
+                      <span className="phone-list-price">
+                        {c.tariffTitle} · {c.source === "rental" ? "аренда" : "свой"}
                       </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            )}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="taxi-car-actions">
             <button
               type="button"
               className="btn btn-primary"
@@ -166,42 +108,55 @@ export function TaxiLineSection({
               onClick={() => {
                 const car = status.availableCars.find((c) => carKey(c) === pickCar);
                 if (!car) return;
-                void run(() => taxiSelectCar(car.source, car.refId));
+                void selectCar(car.source as "owned" | "rental", car.refId);
               }}
             >
               Выбрать
             </button>
-          </>
-        )}
+          </div>
+        </>
+      )}
 
-        {carSelected && (
-          <>
-            <p className="shop-owned">
-              Автомобиль: <strong>{status.carLabel}</strong>
-              {!onLine && !inTrip && (
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={{ marginLeft: "0.5rem", padding: "0.2rem 0.5rem", fontSize: "0.85rem" }}
-                  disabled={busy}
-                  onClick={() => void run(() => taxiClearCar())}
-                >
-                  Сменить
-                </button>
-              )}
-            </p>
-            <button
-              type="button"
-              className={onLine ? "btn btn-danger" : "btn btn-success"}
-              disabled={busy || inTrip}
-              onClick={() => void run(onLine ? taxiGoOffline : taxiGoOnline)}
-            >
-              {onLine ? "Завершить линию" : "Работа на линии"}
-            </button>
-          </>
-        )}
-      </div>
+      {carSelected && (
+        <>
+          <p className="shop-owned">
+            Автомобиль: <strong>{status.carLabel}</strong>
+          </p>
+          {!onLine && !inTrip && (
+            <div className="taxi-car-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={busy}
+                onClick={() => void clearCar()}
+              >
+                Сменить
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
+/** Поездка и заказы — отдельные карточки под карточкой работы */
+export function TaxiLinePanels({ taxi }: { taxi: TaxiLineHandle }) {
+  const { status, busy, onLine, inTrip, acceptOrder, declineOrder } = taxi;
+
+  if (!status) return null;
+
+  const carSelected = status.carSelected;
+  const onLine = status.onLine;
+  const inTrip = status.activeTrip != null;
+
+  return (
+    <div className="taxi-line-panels">
+      {carSelected && !onLine && !inTrip && (
+        <p className="shop-owned taxi-orders-hint">
+          Нажмите «Работа на линии» — заказы появятся здесь, в отдельной карточке ниже.
+        </p>
+      )}
       {inTrip && status.activeTrip && (
         <div className="card taxi-trip-active">
           <h3>В поездке</h3>
@@ -234,18 +189,8 @@ export function TaxiLineSection({
                   key={order.id}
                   order={order}
                   busy={busy}
-                  onAccept={() =>
-                    void run(async () => {
-                      const r = await taxiAcceptOrder(order.id);
-                      return { message: r.message, user: r.user };
-                    })
-                  }
-                  onDecline={() =>
-                    void run(async () => {
-                      const r = await taxiDeclineOrder(order.id);
-                      return { message: r.message, user: r.user };
-                    })
-                  }
+                  onAccept={() => void acceptOrder(order.id)}
+                  onDecline={() => void declineOrder(order.id)}
                 />
               ))}
             </ul>
