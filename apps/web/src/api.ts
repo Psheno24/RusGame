@@ -555,6 +555,8 @@ export type TaxiOrderView = {
   tariff: string;
   tariffTitle: string;
   offeredAt: number;
+  canAccept: boolean;
+  acceptBlockReason?: string | null;
 };
 
 export type TaxiActiveTripView = {
@@ -574,6 +576,7 @@ export type TaxiStatus = {
   ordersDeclined: number;
   carLabel: string | null;
   taxiClass: string | null;
+  taxiClassTitle: string | null;
   selectedCarKey: string | null;
   availableOrders: TaxiOrderView[];
   activeTrip: TaxiActiveTripView | null;

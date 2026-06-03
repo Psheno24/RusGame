@@ -7,6 +7,13 @@ import { DATA_DIR } from "./config.js";
 import { randInt } from "./random.js";
 import { findCityJob, getCar, getVehicleRental, type JobDef } from "./gameData.js";
 import { taxiClassForCarModel } from "./carStats.js";
+import {
+  acceptBlockReasonForOrder,
+  canCarFulfillOrderTariff,
+  orderTariffsAvailableToCar,
+  pickWeightedOrderTariff,
+  TAXI_TARIFF_ORDER,
+} from "./taxiTariff.js";
 import { getCitySalaryMultiplier, skillPayoutMultiplier } from "./jobSalaries.js";
 import { listPlayerCars, playerHasAnyCar } from "./playerCars.js";
 import {
@@ -70,9 +77,9 @@ export function availableTariffsForCity(cityId: string): string[] {
 function tariffAllowedInCity(cityId: string, taxiClass: string): boolean {
   const list = availableTariffsForCity(cityId);
   if (list.includes(taxiClass)) return true;
-  const order = ["economy", "comfort", "comfort_plus", "business"];
-  const maxIdx = Math.max(...list.map((t) => order.indexOf(t)));
-  return order.indexOf(taxiClass) <= maxIdx;
+  const maxIdx = Math.max(...list.map((t) => TAXI_TARIFF_ORDER.indexOf(t as (typeof TAXI_TARIFF_ORDER)[number])));
+  const idx = TAXI_TARIFF_ORDER.indexOf(taxiClass as (typeof TAXI_TARIFF_ORDER)[number]);
+  return idx >= 0 && idx <= maxIdx;
 }
 
 export type TaxiCarOption = {
@@ -117,10 +124,11 @@ export function listTaxiCarOptions(player: PlayerRow, now = Date.now()): TaxiCar
   return options;
 }
 
-function generateOrder(player: PlayerRow, state: TaxiState): TaxiOrder {
+function generateOrder(player: PlayerRow, orderTariff: string, driverRating: number): TaxiOrder {
   const cityMult = getCitySalaryMultiplier(player.city_id);
-  const tariffDef = taxiConfig.tariffs[state.taxiClass] ?? taxiConfig.tariffs.economy!;
-  const ratingMult = 0.88 + ((state.rating - taxiConfig.ratingMin) / (taxiConfig.ratingMax - taxiConfig.ratingMin)) * 0.22;
+  const tariffDef = taxiConfig.tariffs[orderTariff] ?? taxiConfig.tariffs.economy!;
+  const ratingMult =
+    0.88 + ((driverRating - taxiConfig.ratingMin) / (taxiConfig.ratingMax - taxiConfig.ratingMin)) * 0.22;
   const tripMinutes = randInt(6, 38);
   const passengerRating =
     Math.random() < 0.65
@@ -143,7 +151,7 @@ function generateOrder(player: PlayerRow, state: TaxiState): TaxiOrder {
     passengerRating,
     payment,
     payoutRub,
-    tariff: state.taxiClass,
+    tariff: orderTariff,
     tariffTitle: tariffDef.title,
     offeredAt: Date.now(),
   };
@@ -151,10 +159,13 @@ function generateOrder(player: PlayerRow, state: TaxiState): TaxiOrder {
 
 function generateOrderPool(player: PlayerRow, state: TaxiState): TaxiOrder[] {
   const count = taxiConfig.ordersPerPool;
+  const cityTariffs = availableTariffsForCity(player.city_id);
+  const allowedTariffs = orderTariffsAvailableToCar(cityTariffs, state.taxiClass);
   const orders: TaxiOrder[] = [];
   const usedIds = new Set<string>();
   while (orders.length < count) {
-    const o = generateOrder(player, state);
+    const orderTariff = pickWeightedOrderTariff(allowedTariffs);
+    const o = generateOrder(player, orderTariff, state.rating);
     if (!usedIds.has(o.id)) {
       usedIds.add(o.id);
       orders.push(o);
@@ -315,6 +326,11 @@ export type TaxiActiveTripView = {
   order: TaxiOrder;
 };
 
+export type TaxiOrderView = TaxiOrder & {
+  canAccept: boolean;
+  acceptBlockReason?: string | null;
+};
+
 export type TaxiStatus = {
   carSelected: boolean;
   onLine: boolean;
@@ -324,8 +340,9 @@ export type TaxiStatus = {
   ordersDeclined: number;
   carLabel: string | null;
   taxiClass: string | null;
+  taxiClassTitle: string | null;
   selectedCarKey: string | null;
-  availableOrders: TaxiOrder[];
+  availableOrders: TaxiOrderView[];
   activeTrip: TaxiActiveTripView | null;
   ordersRefreshAt: number;
   ordersRefreshInMs: number;
@@ -370,6 +387,20 @@ export function getTaxiStatus(player: PlayerRow, job: JobDef, now = Date.now()):
     };
   }
 
+  const carTariff = state?.taxiClass ?? "economy";
+  const rawOrders = state?.activeTrip ? [] : (state?.availableOrders ?? []);
+  const availableOrders: TaxiOrderView[] = rawOrders.map((o) => {
+    const canAccept = canCarFulfillOrderTariff(carTariff, o.tariff);
+    const block = acceptBlockReasonForOrder(carTariff, o.tariff);
+    return {
+      ...o,
+      canAccept,
+      acceptBlockReason: block,
+    };
+  });
+
+  const carTariffDef = taxiConfig.tariffs[carTariff];
+
   return {
     carSelected: Boolean(selected),
     onLine: state?.onLine ?? false,
@@ -379,8 +410,9 @@ export function getTaxiStatus(player: PlayerRow, job: JobDef, now = Date.now()):
     ordersDeclined: state?.ordersDeclined ?? 0,
     carLabel: selected?.label ?? null,
     taxiClass: state?.taxiClass ?? null,
+    taxiClassTitle: carTariffDef?.title ?? null,
     selectedCarKey: selected ? carKey(selected) : null,
-    availableOrders: state?.activeTrip ? [] : (state?.availableOrders ?? []),
+    availableOrders,
     activeTrip,
     ordersRefreshAt: state?.ordersRefreshAt ?? 0,
     ordersRefreshInMs: state ? Math.max(0, state.ordersRefreshAt - now) : 0,
@@ -535,6 +567,11 @@ export function taxiAcceptOrder(
   const order = state.availableOrders.find((o) => o.id === orderId);
   if (!order) return { ok: false, error: "Заказ не найден или устарел" };
 
+  if (!canCarFulfillOrderTariff(state.taxiClass, order.tariff)) {
+    const block = acceptBlockReasonForOrder(state.taxiClass, order.tariff);
+    return { ok: false, error: block ?? "Автомобиль не подходит для этого тарифа" };
+  }
+
   const tripMs = order.tripMinutes * MS_MIN;
   const activeTrip: TaxiActiveTrip = {
     orderId: order.id,
@@ -553,7 +590,7 @@ export function taxiAcceptOrder(
 
   return {
     ok: true,
-    message: `В пути ${order.tripMinutes} мин. Выплата по прибытии: ${order.payoutRub.toLocaleString("ru-RU")} ₽`,
+    message: `В пути ${order.tripMinutes} мин · тариф «${order.tariffTitle}». Выплата по прибытии: ${order.payoutRub.toLocaleString("ru-RU")} ₽`,
   };
 }
 

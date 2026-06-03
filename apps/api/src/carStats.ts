@@ -18,20 +18,20 @@ export function getCarCooldownReducePct(car: CarModel): number {
   return speedToCooldownReducePct(getCarSpeed(car));
 }
 
-/** Тариф такси по комфорту автомобиля. */
-export function comfortToTaxiClass(comfort: number): string {
-  if (comfort >= 80) return "business";
-  if (comfort >= 60) return "comfort_plus";
-  if (comfort >= 40) return "comfort";
-  return "economy";
-}
+import { comfortToTaxiTariff } from "./taxiTariff.js";
 
 export function getCarComfort(car: CarModel): number {
   return car.comfort ?? 20;
 }
 
+/** Максимальный тариф заказов, доступных этому авто (по комфорту). */
 export function taxiClassForCarModel(car: CarModel): string {
-  return comfortToTaxiClass(getCarComfort(car));
+  return comfortToTaxiTariff(getCarComfort(car));
+}
+
+/** @deprecated use comfortToTaxiTariff */
+export function comfortToTaxiClass(comfort: number): string {
+  return comfortToTaxiTariff(comfort);
 }
 
 /** Бонус настроения от престижа: 10→0, 50→2, 80→5, 100→10. */
