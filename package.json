@@ -13,7 +13,8 @@
     "generate:housing": "node scripts/generate-housing-catalog.mjs",
     "start": "npm run start -w @russia-game/api",
     "docker:up": "docker compose up -d --build",
-    "docker:logs": "docker compose logs -f app"
+    "docker:logs": "docker compose logs -f app",
+    "setup:hooks": "git config core.hooksPath .githooks"
   },
   "engines": {
     "node": ">=20"

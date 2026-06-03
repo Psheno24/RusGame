@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Обновление на сервере одной командой (удобно из Termius):
+# Обновление на сервере одной командой:
 #   cd /opt/rusgame && bash deploy/update.sh
+# или (после setup-server-command.sh):  rusgame-update
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -8,9 +9,21 @@ cd "$ROOT"
 
 echo "=== RusGame: обновление ==="
 git fetch origin main
-git reset --hard origin/main
+if git pull --ff-only origin main; then
+  echo "Код обновлён (fast-forward)."
+else
+  echo "git pull не прошёл — сбрасываем к origin/main (локальные правки на сервере будут потеряны)."
+  git reset --hard origin/main
+fi
 
-docker compose up -d --build
+echo "=== Сборка Docker (как в CI) ==="
+if ! docker compose up -d --build; then
+  echo ""
+  echo "ОШИБКА: сборка упала. Чаще всего — TypeScript в apps/api."
+  echo "На ПК: npm run build && git push только после зелёной сборки."
+  echo "Включите хук один раз: powershell -File scripts/setup-dev-hooks.ps1"
+  exit 1
+fi
 
 echo ""
 echo "=== Статус ==="

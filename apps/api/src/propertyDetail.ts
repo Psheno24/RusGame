@@ -44,7 +44,7 @@ import { parseTaxiState } from "./playerTaxi.js";
 
 const MS_DAY = 24 * 60 * 60 * 1000;
 
-export type PropertySpecRow = { label: string; value: string };
+export type PropertySpecRow = { label: string; value: string; hint?: string };
 export type PropertyStatusRow = { label: string; value: string; hint?: string };
 
 export type PropertyDetail = {

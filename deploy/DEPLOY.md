@@ -93,6 +93,27 @@ cd /opt/rusgame
 bash deploy/update.sh
 ```
 
+Один раз на VPS (короткая команда вместо `git pull` + `docker`):
+
+```bash
+cd /opt/rusgame
+bash deploy/setup-server-command.sh
+source ~/.bashrc
+```
+
+Дальше на сервере только: **`rusgame-update`** (внутри — `git pull` и `docker compose up -d --build`).
+
+### Один раз на вашем ПК (чтобы Docker на сервере не падал из‑за TypeScript)
+
+```powershell
+cd C:\Users\pshen\Desktop\Devel\RussiaGame
+powershell -ExecutionPolicy Bypass -File scripts/setup-dev-hooks.ps1
+```
+
+Или: `npm run setup:hooks`
+
+Перед каждым `git push` автоматически запустятся `npm run build` и тесты API — те же проверки, что ломают Docker. Если сборка красная, push не уйдёт.
+
 ---
 
 После каждого `git push` в ветку `main` Actions выполнит на сервере:
@@ -154,13 +175,13 @@ cp data/game.db data/game.db.backup-$(date +%F)
 
 ## 6. Обновление без GitHub Actions
 
-На сервере:
+На сервере (одна команда):
 
 ```bash
-cd /opt/rusgame
-git pull origin main
-docker compose up -d --build
+cd /opt/rusgame && bash deploy/update.sh
 ```
+
+Или после `setup-server-command.sh`: **`rusgame-update`**
 
 ---
 
