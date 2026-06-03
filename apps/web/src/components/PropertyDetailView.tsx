@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { formatDuration } from "../formatDuration";
 import {
   fetchLiveHereQuote,
   cancelVehicleRental,
@@ -33,6 +34,7 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
   const [sellQuote, setSellQuote] = useState<PropertySellQuote | null>(null);
   const [liveQuote, setLiveQuote] = useState<LiveHereQuote | null>(null);
   const [cancelRentalConfirm, setCancelRentalConfirm] = useState(false);
+  const [liveRemainingMs, setLiveRemainingMs] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     const d = await fetchPropertyDetail(propertyId);
@@ -48,6 +50,26 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
       })
       .finally(() => setLoading(false));
   }, [load, onBack, onToast]);
+
+  useEffect(() => {
+    if (
+      detail?.kind !== "rental" ||
+      detail.rentalRemainingMs == null ||
+      detail.rentalServerNow == null
+    ) {
+      setLiveRemainingMs(null);
+      return;
+    }
+    const serverNow = detail.rentalServerNow;
+    const baseRemaining = detail.rentalRemainingMs;
+    const tick = () => {
+      const ms = baseRemaining - (Date.now() - serverNow);
+      setLiveRemainingMs(ms);
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [detail]);
 
   const onSellClick = async () => {
     if (!detail?.canSell) return;
@@ -206,6 +228,17 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
           <header className="property-detail-header">
             <h3 className="property-detail-title">{detail.title}</h3>
             {detail.subtitle && <p className="property-detail-sub">{detail.subtitle}</p>}
+            {detail.kind === "rental" && liveRemainingMs != null && (
+              <p className="property-detail-rental-timer">
+                {liveRemainingMs > 0 ? (
+                  <>
+                    По серверу игры осталось: <strong>{formatDuration(liveRemainingMs)}</strong>
+                  </>
+                ) : (
+                  <strong>Срок аренды истёк</strong>
+                )}
+              </p>
+            )}
           </header>
 
           {plateParts && (

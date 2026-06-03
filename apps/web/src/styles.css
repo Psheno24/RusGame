@@ -2569,6 +2569,16 @@ button.property-card--clickable:hover {
   font-weight: 800;
 }
 
+.property-detail-rental-timer {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.property-detail-rental-timer strong {
+  color: var(--text);
+}
+
 .property-detail-sub {
   margin: 4px 0 0;
   font-size: 0.78rem;

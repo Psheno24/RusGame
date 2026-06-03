@@ -35,6 +35,10 @@ import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 import { findNextResidence } from "./housingStack.js";
 import { getOwnedHousing, isSubletActive } from "./playerOwnedHousing.js";
 import { isVehicleRentalActive, playerHasVehicleRentalRecord } from "./vehicleRental.js";
+import {
+  buildVehicleRentalTimeInfo,
+  vehicleRentalDetailStatusRows,
+} from "./vehicleRentalDisplay.js";
 import { parseTaxiState } from "./playerTaxi.js";
 
 const MS_DAY = 24 * 60 * 60 * 1000;
@@ -57,6 +61,8 @@ export type PropertyDetail = {
   sellBlockReason: string | null;
   canCancelRental: boolean;
   cancelBlockReason: string | null;
+  rentalRemainingMs?: number | null;
+  rentalServerNow?: number | null;
   canLiveHere: boolean;
   housingOwnedId: number | null;
   playerCarId: number | null;
@@ -202,31 +208,31 @@ export function getPropertyDetail(
     }
     const rental = getVehicleRental(p.vehicle_rental_id!);
     const active = isVehicleRentalActive(p, now);
+    const timeInfo = buildVehicleRentalTimeInfo(p, now);
     const taxiState = parseTaxiState(p);
     let cancelBlockReason: string | null = null;
     if (taxiState?.onLine) cancelBlockReason = "Сначала завершите линию такси";
     else if (taxiState?.activeTrip) cancelBlockReason = "Дождитесь окончания поездки";
 
-    const status: PropertyStatusRow[] = active
-      ? [
-          {
-            label: "Аренда до",
-            value: formatLocaleDateRu(p.vehicle_rental_expires_at!, { withTime: true }),
-          },
-        ]
-      : [{ label: "Статус", value: "Истекла" }];
+    const status: PropertyStatusRow[] = timeInfo ? vehicleRentalDetailStatusRows(timeInfo) : [];
 
     if (rental?.taxiCarModelId) {
-      status.push({ label: "Такси", value: "подходит для работы таксистом" });
+      status.push({
+        label: "Такси",
+        value: active ? "подходит для работы таксистом" : "не подходит — аренда истекла",
+      });
     } else {
-      status.push({ label: "Такси", value: "не подходит (нужен каршеринг или свой авто)" });
+      status.push({
+        label: "Такси",
+        value: "не подходит (нужен каршеринг «Эконом» или свой авто)",
+      });
     }
 
     return {
       id: propertyId,
       kind: "rental",
       title: rental?.label ?? "Аренда транспорта",
-      subtitle: active ? null : "Срок аренды истёк",
+      subtitle: active ? `Осталось ${timeInfo?.remainingLabel ?? ""}` : "Срок аренды истёк по серверу",
       accent: rental?.accent ?? "#2d8f5c",
       specs: [
         { label: "Пробег", value: "0 км" },
@@ -240,6 +246,8 @@ export function getPropertyDetail(
       sellBlockReason: null,
       canCancelRental: cancelBlockReason == null,
       cancelBlockReason,
+      rentalRemainingMs: timeInfo?.remainingMs ?? null,
+      rentalServerNow: timeInfo?.serverNow ?? null,
       canLiveHere: false,
       housingOwnedId: null,
       playerCarId: null,

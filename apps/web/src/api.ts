@@ -787,7 +787,7 @@ export async function fetchVehicleRentals() {
 }
 
 export async function rentVehicle(rentalId: string) {
-  return api<{ label: string; expiresAt: number; user: User }>("/api/shop/vehicle-rent", {
+  return api<{ label: string; expiresAt: number; message: string; user: User }>("/api/shop/vehicle-rent", {
     method: "POST",
     body: JSON.stringify({ rentalId }),
   });
@@ -853,6 +853,8 @@ export type PropertyDetail = {
   sellBlockReason: string | null;
   canCancelRental: boolean;
   cancelBlockReason: string | null;
+  rentalRemainingMs?: number | null;
+  rentalServerNow?: number | null;
   canLiveHere: boolean;
   housingOwnedId: number | null;
   playerCarId: number | null;

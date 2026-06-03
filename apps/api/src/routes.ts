@@ -1140,7 +1140,7 @@ export async function registerRoutes(app: FastifyInstance) {
     const result = rentVehicle(userId, rentalId);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
-    return { label: result.label, expiresAt: result.expiresAt, user };
+    return { label: result.label, expiresAt: result.expiresAt, message: result.message, user };
   });
 
   app.post<{ Body: { playerCarId?: number } }>("/api/shop/plate/register", async (req, reply) => {
