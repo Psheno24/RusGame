@@ -851,6 +851,8 @@ export type PropertyDetail = {
   plateText: string | null;
   canSell: boolean;
   sellBlockReason: string | null;
+  canCancelRental: boolean;
+  cancelBlockReason: string | null;
   canLiveHere: boolean;
   housingOwnedId: number | null;
   playerCarId: number | null;
@@ -880,6 +882,12 @@ export async function sellProperty(propertyId: string) {
     `/api/player/property/${encodeURIComponent(propertyId)}/sell`,
     { method: "POST" },
   );
+}
+
+export async function cancelVehicleRental() {
+  return api<{ message: string; user: User }>("/api/player/property/rental/cancel", {
+    method: "POST",
+  });
 }
 
 export async function fetchSimShop() {

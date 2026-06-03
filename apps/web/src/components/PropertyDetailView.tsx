@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   fetchLiveHereQuote,
+  cancelVehicleRental,
   fetchPropertyDetail,
   fetchPropertySellQuote,
   payLiveHere,
@@ -31,6 +32,7 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
   const [busy, setBusy] = useState(false);
   const [sellQuote, setSellQuote] = useState<PropertySellQuote | null>(null);
   const [liveQuote, setLiveQuote] = useState<LiveHereQuote | null>(null);
+  const [cancelRentalConfirm, setCancelRentalConfirm] = useState(false);
 
   const load = useCallback(async () => {
     const d = await fetchPropertyDetail(propertyId);
@@ -84,6 +86,21 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
       setLiveQuote(q);
     } catch (e) {
       onToast(e instanceof Error ? e.message : "Ошибка", true);
+    }
+  };
+
+  const confirmCancelRental = async () => {
+    setBusy(true);
+    try {
+      const r = await cancelVehicleRental();
+      setUser(r.user);
+      onToast(r.message);
+      onChanged();
+      onBack();
+    } catch (e) {
+      onToast(e instanceof Error ? e.message : "Ошибка", true);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -163,6 +180,19 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
           onConfirm={() => void confirmLiveHere()}
         />
       )}
+      {cancelRentalConfirm && (
+        <ConfirmDialog
+          title="Завершить аренду?"
+          text="Транспорт будет снят с учёта. Деньги за неиспользованное время не возвращаются."
+          confirmLabel="Завершить"
+          confirmClassName="btn-danger"
+          onCancel={() => setCancelRentalConfirm(false)}
+          onConfirm={() => {
+            setCancelRentalConfirm(false);
+            void confirmCancelRental();
+          }}
+        />
+      )}
 
       <div className="property-detail-wrap">
         <button type="button" className="btn btn-secondary property-detail-back" onClick={onBack}>
@@ -239,6 +269,19 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
               >
                 Жить здесь
               </button>
+            )}
+            {detail.kind === "rental" && detail.canCancelRental && (
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={busy}
+                onClick={() => setCancelRentalConfirm(true)}
+              >
+                Завершить аренду
+              </button>
+            )}
+            {detail.kind === "rental" && !detail.canCancelRental && detail.cancelBlockReason && (
+              <p className="shop-owned">{detail.cancelBlockReason}</p>
             )}
             {detail.canSell ? (
               <button

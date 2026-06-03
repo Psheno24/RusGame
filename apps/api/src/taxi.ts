@@ -102,7 +102,8 @@ export function listTaxiCarOptions(player: PlayerRow, now = Date.now()): TaxiCar
   const rentalId = player.vehicle_rental_id;
   if (rentalId && isVehicleRentalActive(player, now)) {
     const rental = getVehicleRental(rentalId);
-    const modelId = "lada-granta";
+    const modelId = rental?.taxiCarModelId;
+    if (!modelId) return options;
     const taxiClass = taxiCarClassForModel(modelId);
     options.push({
       source: "rental",
@@ -437,6 +438,18 @@ export function taxiSelectCar(
     ordersDeclined: prev?.ordersDeclined ?? 0,
   };
   saveTaxiState(player.user_id, state);
+  const refreshed = getPlayer(player.user_id) ?? player;
+  const saved = parseTaxiState(refreshed);
+  const stillAvailable = listTaxiCarOptions(refreshed, now).some(
+    (c) => c.source === carSource && c.refId === carRefId,
+  );
+  if (!saved?.carSelected || !stillAvailable) {
+    saveTaxiState(player.user_id, null);
+    return {
+      ok: false,
+      error: "Этот автомобиль недоступен для такси (аренда истекла или не подходит)",
+    };
+  }
   return { ok: true, message: `Выбран автомобиль: ${car.label} (${car.tariffTitle})` };
 }
 

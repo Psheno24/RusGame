@@ -103,6 +103,7 @@ import {
   registerVehiclePlate,
 } from "./plateShop.js";
 import { rentVehicle } from "./vehicleRent.js";
+import { cancelVehicleRental } from "./vehicleRental.js";
 import { buildPropertyCards } from "./playerProperty.js";
 import {
   getPropertyDetail,
@@ -837,6 +838,15 @@ export async function registerRoutes(app: FastifyInstance) {
       return { message: result.message, receiveRub: result.receiveRub, user };
     },
   );
+
+  app.post("/api/player/property/rental/cancel", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const result = cancelVehicleRental(userId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
+  });
 
   app.get("/api/shop/car-categories", async (req, reply) => {
     const userId = await resolveUserId(req);

@@ -2,6 +2,7 @@ import { getPlayer, updatePlayer } from "./db.js";
 import { appendPlayerFeed } from "./playerFeed.js";
 import { getVehicleRental } from "./gameData.js";
 import { hasDriverLicense } from "./playerCars.js";
+import { playerHasVehicleRentalRecord } from "./vehicleRental.js";
 
 const MS_HOUR = 60 * 60 * 1000;
 
@@ -19,6 +20,12 @@ export function rentVehicle(
   }
   if (player.rubles < rental.priceRub) {
     return { ok: false, error: `Нужно ${rental.priceRub.toLocaleString("ru-RU")} ₽` };
+  }
+  if (playerHasVehicleRentalRecord(player)) {
+    return {
+      ok: false,
+      error: "Сначала завершите текущую аренду в профиле → имущество",
+    };
   }
   const expiresAt = now + rental.hours * MS_HOUR;
   updatePlayer(userId, {
