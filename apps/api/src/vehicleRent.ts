@@ -45,7 +45,7 @@ export function rentVehicle(
   const refreshed = getPlayer(userId);
   const timeInfo = refreshed ? buildVehicleRentalTimeInfo(refreshed, now) : null;
   const message = timeInfo
-    ? `Арендовали ${rental.label}. ${timeInfo.remainingLabel} — до ${timeInfo.expiresLabel} (${timeInfo.cityName}, время сервера игры)`
+    ? `Арендовали ${rental.label}. Осталось: ${timeInfo.remainingLabel}`
     : `Арендовали ${rental.label} на ${rental.hours} ч`;
   return { ok: true, label: rental.label, expiresAt, message };
 }

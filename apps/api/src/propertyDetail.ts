@@ -232,7 +232,7 @@ export function getPropertyDetail(
       id: propertyId,
       kind: "rental",
       title: rental?.label ?? "Аренда транспорта",
-      subtitle: active ? `Осталось ${timeInfo?.remainingLabel ?? ""}` : "Срок аренды истёк по серверу",
+      subtitle: active ? timeInfo?.remainingLabel ?? null : "истекла",
       accent: rental?.accent ?? "#2d8f5c",
       specs: [
         { label: "Пробег", value: "0 км" },

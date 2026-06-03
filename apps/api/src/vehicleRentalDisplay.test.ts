@@ -71,7 +71,7 @@ function player(partial: Partial<PlayerRow>): PlayerRow {
 }
 
 describe("buildVehicleRentalTimeInfo", () => {
-  it("shows remaining when active", () => {
+  it("shows duration remaining when active", () => {
     const now = 5_000;
     const info = buildVehicleRentalTimeInfo(
       player({ vehicle_rental_expires_at: now + 2 * 60 * 60 * 1000 }),
@@ -79,8 +79,8 @@ describe("buildVehicleRentalTimeInfo", () => {
     );
     assert.ok(info);
     assert.equal(info.isActive, true);
-    assert.ok(info.remainingLabel.startsWith("ещё"));
-    assert.ok(info.cardRightSubtext.includes("Омск"));
+    assert.match(info.remainingLabel, /\d/);
+    assert.equal(info.cardRightSubtext, null);
   });
 
   it("shows expired when past expiresAt", () => {
@@ -89,6 +89,5 @@ describe("buildVehicleRentalTimeInfo", () => {
     assert.ok(info);
     assert.equal(info.isActive, false);
     assert.equal(info.cardRightText, "истекла");
-    assert.ok(info.remainingLabel.includes("истекла"));
   });
 });
