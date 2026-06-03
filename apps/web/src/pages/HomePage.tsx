@@ -61,6 +61,12 @@ export function HomePage() {
   }, [homeNav]);
 
   useEffect(() => {
+    if (showRest && home && !home.sleeping) {
+      setDurationMs((d) => Math.min(d, home.maxSleepMs));
+    }
+  }, [showRest, home]);
+
+  useEffect(() => {
     if (!traveling || !arrivesAt) return;
     if (Date.now() >= arrivesAt) load();
   }, [traveling, arrivesAt, load, tick]);

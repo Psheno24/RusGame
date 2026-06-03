@@ -35,13 +35,10 @@ function OrderCard({
 
 type SetupProps = {
   taxi: TaxiLineHandle;
-  targetIncomeRub: number;
-  payoutMin: number;
-  payoutMax: number;
 };
 
 /** Статистика и выбор авто — внутри карточки работы, без кнопки линии */
-export function TaxiLineSetup({ taxi, targetIncomeRub, payoutMin, payoutMax }: SetupProps) {
+export function TaxiLineSetup({ taxi }: SetupProps) {
   const { status, busy, pickCar, setPickCar, carSelected, onLine, inTrip, clearCar, selectCar } =
     taxi;
 
@@ -51,10 +48,6 @@ export function TaxiLineSetup({ taxi, targetIncomeRub, payoutMin, payoutMax }: S
 
   return (
     <div className="taxi-line-setup">
-      <p className="shop-owned">
-        Средний доход за сессию: {targetIncomeRub.toLocaleString("ru-RU")} ₽ (ориентир{" "}
-        {payoutMin.toLocaleString("ru-RU")}–{payoutMax.toLocaleString("ru-RU")} ₽)
-      </p>
       <p className="shop-owned">
         Рейтинг: <strong>{status.rating.toFixed(2)}</strong>
         {onLine && (

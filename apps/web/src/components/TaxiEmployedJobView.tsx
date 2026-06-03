@@ -1,7 +1,7 @@
 import { JobActionButtonLabel } from "./JobActionButtonLabel";
 import { TaxiLinePanels, TaxiLineSetup } from "./TaxiLineSection";
 import { useTaxiLine } from "../hooks/useTaxiLine";
-import { SKILL_LABELS, type JobView, type User } from "../api";
+import type { JobView, type User } from "../api";
 
 type JobCard = JobView;
 
@@ -38,11 +38,9 @@ export function TaxiEmployedJobView({
   const taxiBlocksQuit = onLine || inTrip;
   const canQuit = canQuitBase && !taxiBlocksQuit;
   const quitReason = taxiBlocksQuit
-    ? onLine && inTrip
-      ? "на линии и в поездке"
-      : inTrip
-        ? "идёт поездка"
-        : "на линии"
+    ? inTrip
+      ? "дождитесь поездки"
+      : "сначала завершите линию"
     : undefined;
 
   const lineBusy = parentBusy || taxiBusy;
@@ -57,14 +55,10 @@ export function TaxiEmployedJobView({
           <dl className="phone-specs job-specs">
             <div>
               <dt>Зарплата</dt>
-              <dd>
-                ~{(selected.taxiTargetIncomeRub ?? selected.payoutMax).toLocaleString("ru-RU")} ₽ за
-                активную сессию ({selected.payoutMin.toLocaleString("ru-RU")}–
-                {selected.payoutMax.toLocaleString("ru-RU")} ₽)
-              </dd>
+              <dd>Неопределённая (зависит от заказов и длительности сессии)</dd>
             </div>
             <div>
-              <dt>Длительность смены</dt>
+              <dt>Сессия</dt>
               <dd>{shiftDurationLabel}</dd>
             </div>
             <div className="job-requirements">
@@ -82,27 +76,14 @@ export function TaxiEmployedJobView({
                 </ul>
               </dd>
             </div>
-            {selected.skillGain != null && selected.skill && (
-              <div>
-                <dt>Опыт</dt>
-                <dd>
-                  +{selected.skillGain} {SKILL_LABELS[selected.skill] ?? selected.skill}
-                </dd>
-              </div>
-            )}
           </dl>
 
-          <TaxiLineSetup
-            taxi={taxi}
-            targetIncomeRub={selected.taxiTargetIncomeRub ?? selected.payoutMax}
-            payoutMin={selected.payoutMin}
-            payoutMax={selected.payoutMax}
-          />
+          <TaxiLineSetup taxi={taxi} />
 
           <div className="job-detail-actions">
             <button
               type="button"
-              className={onLine ? "btn btn-danger" : "btn btn-success"}
+              className={`btn job-detail-action-btn${onLine ? " btn-danger" : " btn-success"}`}
               disabled={lineDisabled}
               onClick={() => void (onLine ? goOffline() : goOnline())}
             >
@@ -121,7 +102,7 @@ export function TaxiEmployedJobView({
             </button>
             <button
               type="button"
-              className="btn btn-danger"
+              className="btn btn-danger job-detail-action-btn"
               disabled={!canQuit || parentBusy || employmentBlocked}
               onClick={onRequestQuit}
             >
