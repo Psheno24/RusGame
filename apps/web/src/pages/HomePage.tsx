@@ -6,22 +6,23 @@ import {
   startHomeSleep,
   wakeUpHome,
   type HomeStatus,
+  type Player,
 } from "../api";
-import { cityDisplayName } from "../cityNames";
 import { useApp } from "../context";
 import { useNotice } from "../noticeContext";
 import { useHomeNav } from "../homeNav";
 import { SLEEP_MS_FOR_FULL_ENERGY } from "../sleepConstants";
+import {
+  minTargetEnergy,
+  sleepMsForTargetEnergy,
+  SLEEP_ENERGY_STEP,
+} from "../sleepEnergy";
 
-function formatHours(ms: number): string {
-  const h = ms / (60 * 60 * 1000);
-  if (h < 1) return `${Math.round(ms / (60 * 1000))} мин`;
-  return `${h.toFixed(1).replace(/\.0$/, "")} ч`;
-}
-
-function previewEnergy(current: number, durationMs: number): number {
-  const gain = (durationMs / SLEEP_MS_FOR_FULL_ENERGY) * 100;
-  return Math.min(100, Math.round(current + gain));
+function homePlaceTitle(p: Player): string {
+  if (p.housingPropertyTitle) return p.housingPropertyTitle;
+  const label = p.housingStatusLabel ?? "";
+  const afterDot = label.split("·").pop()?.trim();
+  return afterDot && afterDot.length > 0 ? afterDot : label || "Дом";
 }
 
 export function HomePage() {
@@ -33,7 +34,8 @@ export function HomePage() {
   const [housingLabel, setHousingLabel] = useState("");
   const [traveling, setTraveling] = useState(false);
   const [arrivesAt, setArrivesAt] = useState<number | null>(null);
-  const [durationMs, setDurationMs] = useState(SLEEP_MS_FOR_FULL_ENERGY);
+  const [targetEnergy, setTargetEnergy] = useState(100);
+  const [sliderActive, setSliderActive] = useState(false);
   const [showRest, setShowRest] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
@@ -56,15 +58,10 @@ export function HomePage() {
   useEffect(() => {
     homeNav?.registerReset(() => {
       setShowRest(false);
+      setSliderActive(false);
     });
     return () => homeNav?.registerReset(null);
   }, [homeNav]);
-
-  useEffect(() => {
-    if (showRest && home && !home.sleeping) {
-      setDurationMs((d) => Math.min(d, home.maxSleepMs));
-    }
-  }, [showRest, home]);
 
   useEffect(() => {
     if (!traveling || !arrivesAt) return;
@@ -87,13 +84,15 @@ export function HomePage() {
     return Math.max(0, home.sleepPlannedEndAt - Date.now());
   }, [home, tick]);
 
-  const onSleep = async (ms: number) => {
+  const onSleep = async (startEnergy: number, target: number) => {
+    const ms = sleepMsForTargetEnergy(startEnergy, target);
     setBusy(true);
     try {
       const r = await startHomeSleep(ms);
       setUser(r.user);
       showNotice(r.message);
       setShowRest(false);
+      setSliderActive(false);
       await load();
     } catch (e) {
       showNotice(e instanceof Error ? e.message : "Ошибка", true);
@@ -140,7 +139,6 @@ export function HomePage() {
   if (!home.isResident) {
     return (
       <div className="card work-empty-card">
-        <h2>Мой дом</h2>
         <p>Чтобы отдыхать дома, нужно жильё в этом городе.</p>
         <p className="work-empty-hint">{housingLabel}</p>
         <button
@@ -154,43 +152,45 @@ export function HomePage() {
     );
   }
 
-  if (showRest && !home.sleeping) {
-    const startEnergy = p.vitals.energy;
-    const minMs = home.minSleepMs;
-    const maxMs = home.maxSleepMs;
-    const sliderMs = Math.min(durationMs, maxMs);
-    const after = previewEnergy(startEnergy, sliderMs);
+  const placeTitle = homePlaceTitle(p);
+  const startEnergy = p.vitals.energy;
+  const minEnergy = minTargetEnergy(startEnergy);
+  const maxEnergy = 100;
+  const sliderEnergy = Math.min(maxEnergy, Math.max(minEnergy, targetEnergy));
 
+  if (showRest && !home.sleeping) {
     return (
       <div className="card home-rest-card">
-        <h2>Отдохнуть</h2>
-        <p className="home-rest-hint">
-          4 часа сна дают +100 энергии. Сейчас достаточно до {formatHours(maxMs)} — дальше смысла нет.
-        </p>
-        <label className="home-sleep-slider-label">
-          Длительность: <strong>{formatHours(sliderMs)}</strong>
-        </label>
+        <h2 className="city-header-title home-place-title">Отдохнуть</h2>
         <input
           type="range"
           className="home-sleep-slider"
-          min={minMs}
-          max={maxMs}
-          step={15 * 60 * 1000}
-          value={sliderMs}
-          onChange={(e) => setDurationMs(Number(e.target.value))}
+          min={minEnergy}
+          max={maxEnergy}
+          step={SLEEP_ENERGY_STEP}
+          value={sliderEnergy}
+          onPointerDown={() => setSliderActive(true)}
+          onPointerUp={() => setSliderActive(false)}
+          onPointerCancel={() => setSliderActive(false)}
+          onTouchStart={() => setSliderActive(true)}
+          onTouchEnd={() => setSliderActive(false)}
+          onBlur={() => setSliderActive(false)}
+          onChange={(e) => setTargetEnergy(Number(e.target.value))}
         />
-        <p className="home-sleep-preview">
-          Энергия после сна: <strong>{after}</strong> (сейчас {startEnergy})
-        </p>
+        {sliderActive && (
+          <p className="home-sleep-preview-live">
+            Энергия после сна: <strong>{sliderEnergy}</strong>
+          </p>
+        )}
         <div className="home-rest-actions">
-          <button type="button" className="btn btn-secondary" onClick={() => setShowRest(false)}>
+          <button type="button" className="btn btn-secondary job-detail-action-btn" onClick={() => setShowRest(false)}>
             Назад
           </button>
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn btn-primary job-detail-action-btn"
             disabled={busy}
-            onClick={() => void onSleep(sliderMs)}
+            onClick={() => void onSleep(startEnergy, sliderEnergy)}
           >
             {busy ? "…" : "Лечь спать"}
           </button>
@@ -201,36 +201,28 @@ export function HomePage() {
 
   return (
     <div className="home-page">
-      <div className="card">
-        <h2>Мой дом</h2>
-        <p className="home-lead">
-          {cityDisplayName(p.cityId)} · {housingLabel}
-        </p>
-        {p.housingPropertyTitle && (
-          <p className="home-detail">{p.housingPropertyTitle}</p>
-        )}
-        <p className="home-detail">
-          Здесь можно восстановить силы: чем дольше сон, тем больше энергии. За 4 часа — до полных 100.
-          Во сне энергия растёт постепенно, проснуться можно в любой момент.
-        </p>
+      <div className="card city-header-card home-header-card">
+        <h2 className="city-header-title home-place-title">{placeTitle}</h2>
         <div className="home-energy-row">
           <span>Энергия</span>
-          <strong>
-            {energyNow} / 100
-          </strong>
+          <strong>{energyNow} / 100</strong>
         </div>
       </div>
 
       {home.sleeping ? (
         <div className="card home-sleeping-card">
-          <h3>Вы спите</h3>
-          <p>Энергия сейчас: <strong>{energyNow}</strong></p>
+          <p>
+            Энергия: <strong>{energyNow}</strong> / 100
+          </p>
           {sleepRemaining > 0 && (
-            <p className="home-sleep-remaining">
-              Запланировано ещё ~{formatDuration(sleepRemaining)}
-            </p>
+            <p className="home-sleep-remaining">Осталось ~{formatDuration(sleepRemaining)}</p>
           )}
-          <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void onWake()}>
+          <button
+            type="button"
+            className="btn btn-primary btn-block job-detail-action-btn"
+            disabled={busy}
+            onClick={() => void onWake()}
+          >
             {busy ? "…" : "Проснуться"}
           </button>
         </div>
@@ -238,18 +230,16 @@ export function HomePage() {
         <div className="card">
           <button
             type="button"
-            className="btn btn-primary btn-block"
+            className="btn btn-primary btn-block job-detail-action-btn"
             onClick={() => {
-              setDurationMs(home.maxSleepMs);
+              setTargetEnergy(maxEnergy);
+              setSliderActive(false);
               setShowRest(true);
             }}
-            disabled={p.vitals.energy >= 100}
+            disabled={startEnergy >= 100}
           >
             Отдохнуть
           </button>
-          {p.vitals.energy >= 100 && (
-            <p className="home-rest-full">Энергия на максимуме — отдых не нужен.</p>
-          )}
         </div>
       )}
     </div>

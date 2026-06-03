@@ -1207,16 +1207,15 @@ body {
   gap: 10px;
 }
 
-.home-lead {
-  margin: 8px 0 0;
-  color: var(--text-muted);
+.home-header-card {
+  padding-top: 14px;
+  padding-bottom: 14px;
 }
 
-.home-detail {
-  margin: 10px 0 0;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  line-height: 1.45;
+.home-place-title {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 1.15rem;
 }
 
 .home-energy-row {
@@ -1226,23 +1225,32 @@ body {
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+
+.home-rest-card {
+  text-align: center;
+}
+
+.home-rest-card .home-place-title {
+  margin-bottom: 16px;
 }
 
 .home-sleep-slider {
   width: 100%;
-  margin: 12px 0;
+  margin: 8px 0 4px;
 }
 
-.home-sleep-slider-label,
-.home-sleep-preview,
-.home-rest-hint {
-  margin: 0;
-  font-size: 0.9rem;
-  color: var(--text-muted);
+.home-sleep-preview-live {
+  margin: 12px 0 0;
+  font-size: 1rem;
+  color: var(--text);
+  min-height: 1.5rem;
 }
 
-.home-sleep-preview {
-  margin-top: 8px;
+.home-sleep-preview-live strong {
+  color: var(--accent);
+  font-size: 1.15rem;
 }
 
 .home-rest-actions {
@@ -1253,6 +1261,14 @@ body {
 
 .home-rest-actions .btn {
   flex: 1;
+  width: auto;
+}
+
+.btn-block.job-detail-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
 }
 
 .home-rest-full,
@@ -2158,13 +2174,15 @@ body {
   gap: 8px;
 }
 
-.job-detail-actions .btn {
+.job-detail-actions .btn,
+.home-rest-actions .btn {
   flex: 1 1 0;
   min-width: 0;
+  min-height: 3.25rem;
   margin-top: 0;
   line-height: 1.25;
   white-space: normal;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
@@ -2184,7 +2202,10 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .job-btn-reason {
