@@ -1,0 +1,17 @@
+---
+description: After code changes, keep localhost dev running for the user
+alwaysApply: true
+---
+
+# Local dev for the user
+
+The user tests changes at **http://localhost:5173** (Vite + API proxy). They should not need to run terminals manually.
+
+After editing code in this repo:
+
+1. If dev is not running, start it in the background:
+   `npm run dev` from repo root (or `npm run dev:clean` if ports/sqlite conflict).
+2. After API or env changes that need a full restart, run `npm run dev:clean` in background.
+3. Do not ask the user to run dev unless the command failed — tell them the URL when servers are up.
+
+Local stack: web :5173 → proxy `/api` → api :3001.
