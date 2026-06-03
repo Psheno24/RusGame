@@ -2891,25 +2891,8 @@ button.property-badge--live:not(:disabled):active {
   margin-top: 12px;
 }
 
-.taxi-car-pick {
-  border: 1px solid #2d3f56;
-}
-
-.taxi-car-pick--active {
-  border-color: var(--accent);
-  background: rgba(201, 162, 39, 0.08);
-}
-
-.taxi-car-pick-mark {
-  flex-shrink: 0;
-  width: 1.25rem;
-  font-weight: 700;
-  color: var(--accent);
-  text-align: center;
-}
-
-.taxi-car-pick-hint {
-  margin-top: 8px;
+.taxi-car-list {
+  margin-top: 10px;
 }
 
 .taxi-car-actions {
