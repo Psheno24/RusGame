@@ -278,7 +278,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
       } else {
         const r = await rentVehicle(pending.rentalId);
         setUser(r.user);
-        onToast(`Арендовано: ${r.label}`);
+        onToast(r.message ?? `Арендовано: ${r.label}`);
       }
       setPending(null);
     } catch (e) {

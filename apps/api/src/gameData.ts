@@ -132,6 +132,8 @@ export type VehicleRentalDef = {
   hours: number;
   needsLicense: boolean;
   accent: string;
+  /** Модель для такси; без поля аренда не подходит для работы таксистом. */
+  taxiCarModelId?: string;
 };
 
 const cities = JSON.parse(readFileSync(join(DATA_DIR, "cities.json"), "utf-8")) as City[];

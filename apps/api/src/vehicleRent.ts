@@ -2,6 +2,8 @@ import { getPlayer, updatePlayer } from "./db.js";
 import { appendPlayerFeed } from "./playerFeed.js";
 import { getVehicleRental } from "./gameData.js";
 import { hasDriverLicense } from "./playerCars.js";
+import { playerHasVehicleRentalRecord } from "./vehicleRental.js";
+import { buildVehicleRentalTimeInfo } from "./vehicleRentalDisplay.js";
 
 const MS_HOUR = 60 * 60 * 1000;
 
@@ -9,7 +11,9 @@ export function rentVehicle(
   userId: number,
   rentalId: string,
   now = Date.now(),
-): { ok: true; label: string; expiresAt: number } | { ok: false; error: string } {
+):
+  | { ok: true; label: string; expiresAt: number; message: string }
+  | { ok: false; error: string } {
   const player = getPlayer(userId);
   if (!player) return { ok: false, error: "Игрок не найден" };
   const rental = getVehicleRental(rentalId);
@@ -19,6 +23,12 @@ export function rentVehicle(
   }
   if (player.rubles < rental.priceRub) {
     return { ok: false, error: `Нужно ${rental.priceRub.toLocaleString("ru-RU")} ₽` };
+  }
+  if (playerHasVehicleRentalRecord(player)) {
+    return {
+      ok: false,
+      error: "Сначала завершите текущую аренду в профиле → имущество",
+    };
   }
   const expiresAt = now + rental.hours * MS_HOUR;
   updatePlayer(userId, {
@@ -32,5 +42,10 @@ export function rentVehicle(
     `Арендовали ${rental.label} на ${rental.hours} ч`,
     now,
   );
-  return { ok: true, label: rental.label, expiresAt };
+  const refreshed = getPlayer(userId);
+  const timeInfo = refreshed ? buildVehicleRentalTimeInfo(refreshed, now) : null;
+  const message = timeInfo
+    ? `Арендовали ${rental.label}. ${timeInfo.remainingLabel} — до ${timeInfo.expiresLabel} (${timeInfo.cityName}, время сервера игры)`
+    : `Арендовали ${rental.label} на ${rental.hours} ч`;
+  return { ok: true, label: rental.label, expiresAt, message };
 }

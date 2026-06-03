@@ -34,6 +34,12 @@ import { getPlayerCarById } from "./playerCars.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 import { findNextResidence } from "./housingStack.js";
 import { getOwnedHousing, isSubletActive } from "./playerOwnedHousing.js";
+import { isVehicleRentalActive, playerHasVehicleRentalRecord } from "./vehicleRental.js";
+import {
+  buildVehicleRentalTimeInfo,
+  vehicleRentalDetailStatusRows,
+} from "./vehicleRentalDisplay.js";
+import { parseTaxiState } from "./playerTaxi.js";
 
 const MS_DAY = 24 * 60 * 60 * 1000;
 
@@ -53,6 +59,10 @@ export type PropertyDetail = {
   plateText: string | null;
   canSell: boolean;
   sellBlockReason: string | null;
+  canCancelRental: boolean;
+  cancelBlockReason: string | null;
+  rentalRemainingMs?: number | null;
+  rentalServerNow?: number | null;
   canLiveHere: boolean;
   housingOwnedId: number | null;
   playerCarId: number | null;
@@ -137,6 +147,8 @@ export function getPropertyDetail(
       plateText: null,
       canSell: true,
       sellBlockReason: null,
+      canCancelRental: false,
+      cancelBlockReason: null,
       canLiveHere: false,
       housingOwnedId: null,
       playerCarId: null,
@@ -182,6 +194,8 @@ export function getPropertyDetail(
       plateText,
       canSell: true,
       sellBlockReason: null,
+      canCancelRental: false,
+      cancelBlockReason: null,
       canLiveHere: false,
       housingOwnedId: null,
       playerCarId: row.id,
@@ -189,35 +203,51 @@ export function getPropertyDetail(
   }
 
   if (parsed.kind === "rental") {
-    if (
-      !p.vehicle_rental_id ||
-      p.vehicle_rental_expires_at == null ||
-      p.vehicle_rental_expires_at <= now
-    ) {
-      return { error: "Аренда не активна" };
+    if (!playerHasVehicleRentalRecord(p)) {
+      return { error: "Аренда не найдена" };
     }
-    const rental = getVehicleRental(p.vehicle_rental_id);
+    const rental = getVehicleRental(p.vehicle_rental_id!);
+    const active = isVehicleRentalActive(p, now);
+    const timeInfo = buildVehicleRentalTimeInfo(p, now);
+    const taxiState = parseTaxiState(p);
+    let cancelBlockReason: string | null = null;
+    if (taxiState?.onLine) cancelBlockReason = "Сначала завершите линию такси";
+    else if (taxiState?.activeTrip) cancelBlockReason = "Дождитесь окончания поездки";
+
+    const status: PropertyStatusRow[] = timeInfo ? vehicleRentalDetailStatusRows(timeInfo) : [];
+
+    if (rental?.taxiCarModelId) {
+      status.push({
+        label: "Такси",
+        value: active ? "подходит для работы таксистом" : "не подходит — аренда истекла",
+      });
+    } else {
+      status.push({
+        label: "Такси",
+        value: "не подходит (нужен каршеринг «Эконом» или свой авто)",
+      });
+    }
+
     return {
       id: propertyId,
       kind: "rental",
       title: rental?.label ?? "Аренда транспорта",
-      subtitle: null,
+      subtitle: active ? `Осталось ${timeInfo?.remainingLabel ?? ""}` : "Срок аренды истёк по серверу",
       accent: rental?.accent ?? "#2d8f5c",
       specs: [
         { label: "Пробег", value: "0 км" },
         { label: "Износ шин", value: pct(0) },
       ],
       features: [],
-      status: [
-        {
-          label: "Аренда до",
-          value: formatLocaleDateRu(p.vehicle_rental_expires_at, { withTime: true }),
-        },
-      ],
+      status,
       plate: null,
       plateText: null,
       canSell: false,
-      sellBlockReason: "Арендованный транспорт не продаётся",
+      sellBlockReason: null,
+      canCancelRental: cancelBlockReason == null,
+      cancelBlockReason,
+      rentalRemainingMs: timeInfo?.remainingMs ?? null,
+      rentalServerNow: timeInfo?.serverNow ?? null,
       canLiveHere: false,
       housingOwnedId: null,
       playerCarId: null,
@@ -257,6 +287,8 @@ export function getPropertyDetail(
       plateText: null,
       canSell: false,
       sellBlockReason: "Снимаемое жильё не продаётся — продлите в разделе «Недвижимость»",
+      canCancelRental: false,
+      cancelBlockReason: null,
       canLiveHere: false,
       housingOwnedId: null,
       playerCarId: null,
@@ -340,6 +372,8 @@ export function getPropertyDetail(
     plateText: null,
     canSell: sellBlock == null,
     sellBlockReason: sellBlock,
+    canCancelRental: false,
+    cancelBlockReason: null,
     canLiveHere: !isActive,
     housingOwnedId: row.id,
     playerCarId: null,
