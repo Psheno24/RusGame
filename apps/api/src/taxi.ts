@@ -370,7 +370,7 @@ export function getTaxiStatus(player: PlayerRow, job: JobDef, now = Date.now()):
   }
 
   return {
-    carSelected: Boolean(state?.carSelected),
+    carSelected: Boolean(selected),
     onLine: state?.onLine ?? false,
     rating: state?.rating ?? taxiConfig.ratingDefault,
     sessionIncomeRub: state?.sessionIncomeRub ?? 0,
@@ -409,6 +409,9 @@ export function taxiSelectCar(
   carRefId: number,
   now = Date.now(),
 ): { ok: true; message: string } | { ok: false; error: string } {
+  if (carSource === "rental" && !isVehicleRentalActive(player, now)) {
+    return { ok: false, error: "Аренда истекла — выберите свой автомобиль или оформите новую аренду" };
+  }
   const options = listTaxiCarOptions(player, now);
   const car = options.find((c) => c.source === carSource && c.refId === carRefId);
   if (!car) return { ok: false, error: "Автомобиль не найден" };
@@ -444,12 +447,14 @@ export function taxiGoOnline(
   const sleepErr = sleepBlockMessage(player, now);
   if (sleepErr) return { ok: false, error: sleepErr };
 
-  const state = parseTaxiState(player);
+  let state = parseTaxiState(player);
   if (!state?.carSelected) {
     return { ok: false, error: "Сначала выберите автомобиль" };
   }
   const cars = listTaxiCarOptions(player, now);
-  if (!cars.some((c) => c.source === state.carSource && c.refId === state.carRefId)) {
+  const selectedCar = cars.find((c) => c.source === state!.carSource && c.refId === state!.carRefId);
+  if (!selectedCar) {
+    if (!state.activeTrip) saveTaxiState(player.user_id, null);
     return { ok: false, error: "Аренда или автомобиль недоступны — выберите другое авто" };
   }
   if (state.activeTrip) {
