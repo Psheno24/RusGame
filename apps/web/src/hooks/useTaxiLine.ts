@@ -20,19 +20,39 @@ export function useTaxiLine(
   onToast: (msg: string, isErr?: boolean) => void,
 ) {
   const [status, setStatus] = useState<TaxiStatus | null>(null);
-  const [pickCar, setPickCar] = useState("");
+  const [pickCar, setPickCarState] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const onToastRef = useRef(onToast);
+  onToastRef.current = onToast;
+  const setUserRef = useRef(setUser);
+  setUserRef.current = setUser;
+  const pickCarRef = useRef("");
+  const userPickedAtRef = useRef(0);
   const busyRef = useRef(false);
   busyRef.current = busy;
 
+  const setPickCar = useCallback((value: string) => {
+    pickCarRef.current = value;
+    if (value) userPickedAtRef.current = Date.now();
+    setPickCarState(value);
+  }, []);
+
   const syncPickCar = useCallback((nextStatus: TaxiStatus) => {
     if (nextStatus.selectedCarKey) {
-      setPickCar(nextStatus.selectedCarKey);
+      pickCarRef.current = nextStatus.selectedCarKey;
+      setPickCarState(nextStatus.selectedCarKey);
       return;
     }
-    setPickCar((prev) => {
-      if (busyRef.current && prev) return prev;
-      if (prev && nextStatus.availableCars.some((c) => carKey(c) === prev)) return prev;
+    const guardMs = Date.now() - userPickedAtRef.current;
+    if (guardMs < 5000 && pickCarRef.current) {
+      return;
+    }
+    setPickCarState((prev) => {
+      const keep = pickCarRef.current || prev;
+      if (busyRef.current && keep) return keep;
+      if (keep && nextStatus.availableCars.some((c) => carKey(c) === keep)) return keep;
+      pickCarRef.current = "";
       return "";
     });
   }, []);
@@ -40,39 +60,45 @@ export function useTaxiLine(
   const refresh = useCallback(async () => {
     const data = await fetchTaxiStatus();
     if (data.completedMessage) {
-      onToast(data.completedMessage);
-      if (data.user) setUser(data.user);
+      onToastRef.current(data.completedMessage);
+      if (data.user) setUserRef.current(data.user);
     }
     setStatus(data.status);
     syncPickCar(data.status);
-  }, [onToast, setUser, syncPickCar]);
+  }, [syncPickCar]);
+
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
 
   const inTrip = Boolean(status?.activeTrip);
 
   useEffect(() => {
-    refresh().catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+    void refreshRef.current().catch((e) =>
+      onToastRef.current(e instanceof Error ? e.message : "Ошибка", true),
+    );
     const ms = inTrip ? 3000 : 15000;
     const id = setInterval(() => {
-      refresh().catch(() => {});
+      void refreshRef.current().catch(() => {});
     }, ms);
     return () => clearInterval(id);
-  }, [refresh, onToast, inTrip]);
+  }, [inTrip]);
 
   const run = useCallback(
     async (fn: () => Promise<{ message: string; user: User }>) => {
       setBusy(true);
       try {
         const r = await fn();
-        setUser(r.user);
-        onToast(r.message);
-        await refresh();
+        setUserRef.current(r.user);
+        onToastRef.current(r.message);
+        userPickedAtRef.current = 0;
+        await refreshRef.current();
       } catch (e) {
-        onToast(e instanceof Error ? e.message : "Ошибка", true);
+        onToastRef.current(e instanceof Error ? e.message : "Ошибка", true);
       } finally {
         setBusy(false);
       }
     },
-    [onToast, refresh, setUser],
+    [],
   );
 
   const carSelected = Boolean(status?.selectedCarKey ?? status?.carSelected);
