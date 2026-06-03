@@ -103,7 +103,7 @@ export function TaxiLineSetup({ taxi }: SetupProps) {
         </>
       )}
 
-      {carSelected && (
+      {carSelected && status.carLabel && (
         <>
           <p className="shop-owned">
             Автомобиль: <strong>{status.carLabel}</strong>

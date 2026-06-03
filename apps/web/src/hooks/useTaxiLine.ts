@@ -27,6 +27,7 @@ export function useTaxiLine(
     }
     setStatus(data.status);
     if (data.status.selectedCarKey) setPickCar(data.status.selectedCarKey);
+    else setPickCar("");
   }, [onToast, setUser]);
 
   useEffect(() => {
@@ -55,7 +56,7 @@ export function useTaxiLine(
     [onToast, refresh, setUser],
   );
 
-  const carSelected = status?.carSelected ?? false;
+  const carSelected = Boolean(status?.selectedCarKey ?? status?.carSelected);
   const onLine = status?.onLine ?? false;
   const inTrip = status?.activeTrip != null;
 

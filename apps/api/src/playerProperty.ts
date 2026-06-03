@@ -8,6 +8,7 @@ import { listPlayerCars } from "./playerCars.js";
 import { formatLocaleDateRu } from "./formatLocaleDate.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 import { isSubletActive, listOwnedHousing } from "./playerOwnedHousing.js";
+import { isVehicleRentalActive } from "./vehicleRental.js";
 
 export type PropertyCard = {
   id: string;
@@ -59,11 +60,7 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
     });
   }
 
-  if (
-    p.vehicle_rental_id &&
-    p.vehicle_rental_expires_at != null &&
-    p.vehicle_rental_expires_at > now
-  ) {
+  if (isVehicleRentalActive(p, now)) {
     const rental = getVehicleRental(p.vehicle_rental_id);
     cards.push({
       id: "rental",

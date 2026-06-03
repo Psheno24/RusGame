@@ -38,7 +38,7 @@ export function syncPlayerVehicleRental(player: PlayerRow, now = Date.now()): Pl
 
   const next = clearTaxiRentalCar(state);
   if (next !== state) {
-    saveTaxiState(p.user_id, next);
+    saveTaxiState(p.user_id, next ?? null);
   }
 
   return getPlayer(p.user_id) ?? p;

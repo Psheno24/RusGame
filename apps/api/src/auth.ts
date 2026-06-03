@@ -10,6 +10,7 @@ import { formatVehiclePlate, parsePlatePartsFromRow } from "./licensePlate.js";
 import { housingStatusForPlayer } from "./housing.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 import { getPlayerSimTariffId, getSimTariffPlan } from "./simTariff.js";
+import { isVehicleRentalActive } from "./vehicleRental.js";
 import {
   createPlayer,
   createUser,
@@ -194,11 +195,11 @@ export function serializePlayer(p: import("./db.js").PlayerRow) {
       const parts = parsePlatePartsFromRow(p);
       return parts ? formatVehiclePlate(parts) : p.plate_text;
     })(),
-    vehicleRentalId: p.vehicle_rental_id,
-    vehicleRentalLabel: p.vehicle_rental_id
-      ? (getVehicleRental(p.vehicle_rental_id)?.label ?? null)
+    vehicleRentalId: isVehicleRentalActive(p) ? p.vehicle_rental_id : null,
+    vehicleRentalLabel: isVehicleRentalActive(p)
+      ? (getVehicleRental(p.vehicle_rental_id!)?.label ?? null)
       : null,
-    vehicleRentalExpiresAt: p.vehicle_rental_expires_at,
+    vehicleRentalExpiresAt: isVehicleRentalActive(p) ? p.vehicle_rental_expires_at : null,
     driversLicense: Boolean(p.drivers_license),
     driverLicenseCategories: parseDriverLicenses(p),
     ownedCars: listOwnedCars(p),
