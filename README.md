@@ -1,63 +1,56 @@
 # Россия — жизнь
 
-PWA-игра по городам России: регистрация, карта, работа, магазин, лента города.
+PWA-игра по городам России.
 
-- Репозиторий: [github.com/Psheno24/RusGame](https://github.com/Psheno24/RusGame)
-- **Инструкция для чайника (от А до Я):** [deploy/INSTRUKCIYA.md](deploy/INSTRUKCIYA.md)
-- **Краткий тех. деплой:** [deploy/DEPLOY.md](deploy/DEPLOY.md)
+## Ежедневная работа (2 шага)
 
-## Что есть
+### 1. Локально — тест
 
-- Регистрация и вход, сессия (refresh cookie)
-- Карта 16 городов (играют **Омск** и **Казань**)
-- Подработка и смена, переезд, симка, авто
-- Разные места (шиномонтаж, полиция и др.)
-- Лента активности города
+```powershell
+cd C:\Users\pshen\Desktop\Devel\RussiaGame
+npm run dev
+```
 
-## Локально (Windows)
+Откройте **http://localhost:5173** — фронт обновляется мгновенно (Vite), API перезапускается при сохранении (tsx watch).
+
+В Cursor: **Terminal → Run Task → Dev: localhost** (или `Ctrl+Shift+B`).
+
+### 2. На сервер — GitHub Desktop → Push
+
+Commit → **Push origin** → GitHub Actions собирает и деплоит на VPS (~2–3 мин).
+
+Секреты один раз: [deploy/GITHUB-ACTIONS.md](deploy/GITHUB-ACTIONS.md)
+
+---
+
+## Первый раз на ПК
 
 [Node.js 20+](https://nodejs.org/).
 
 ```powershell
-cd C:\Users\pshen\Desktop\Devel\RussiaGame
-npm install
+npm run setup
 ```
 
-**Терминал 1:** `npm run dev:api`  
-**Терминал 2:** `npm run dev:web`
+(установка зависимостей, `.env`, запуск dev)
 
-Откройте **http://localhost:5173**
+---
 
-На телефоне в той же Wi‑Fi: `http://ВАШ_IP:5173` (`ipconfig` → IPv4). PWA: «Добавить на главный экран».
+## Полезное
 
-### Проверка production-сборки локально
+| Команда | Зачем |
+|---------|--------|
+| `npm run check` | Сборка + тесты (как в CI) перед push |
+| `npm run build` | Production-сборка |
+| `npm run docker:up` | Локально через Docker |
 
-```powershell
-npm run build
-$env:LOCAL_DEV="true"; npm run start
-```
+## Документация
 
-Откройте **http://localhost:3001** (API + собранный фронт).
-
-## База данных
-
-SQLite: `data/game.db` (создаётся при первом запуске API).  
-На сервере файл лежит в `data/` и **сохраняется** при `git pull` / деплое.
-
-Удалить `data/game.db` — начать игру с нуля.
-
-## На сайт (кратко)
-
-1. VPS + домен → A-запись на IP.
-2. На сервере: `git clone` + `.env` → `docker compose up -d --build`.
-3. В GitHub Secrets: `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`, `DEPLOY_PATH`.
-4. `git push origin main` — сайт обновится сам.
-
-Подробно: **[deploy/INSTRUKCIYA.md](deploy/INSTRUKCIYA.md)** (пошагово) или [deploy/DEPLOY.md](deploy/DEPLOY.md) (кратко)
+- [deploy/GITHUB-ACTIONS.md](deploy/GITHUB-ACTIONS.md) — автодеплой (Secrets)
+- [deploy/INSTRUKCIYA.md](deploy/INSTRUKCIYA.md) — VPS с нуля
+- [deploy/DEPLOY.md](deploy/DEPLOY.md) — краткий тех. деплой
 
 ## Структура
 
-- `apps/api` — Fastify, SQLite, API
+- `apps/api` — Fastify, SQLite
 - `apps/web` — React, PWA
-- `data/*.json` — города, работы, телефоны
-- `docker-compose.yml` — app + Caddy (HTTPS)
+- `data/` — конфиги и `game.db` локально

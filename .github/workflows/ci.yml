@@ -1,10 +1,15 @@
-name: CI
+name: CI and Deploy
 
 on:
-  pull_request:
-    branches: [main]
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-deploy-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:
@@ -25,3 +30,45 @@ jobs:
 
       - name: API tests
         run: npm test -w @russia-game/api
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check deploy secrets
+        id: deploy_cfg
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          missing=""
+          for name in SSH_HOST SSH_USER SSH_PRIVATE_KEY DEPLOY_PATH; do
+            val="${!name}"
+            if [ -z "$val" ]; then
+              missing="$missing $name"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::error::Deploy skipped. Add GitHub Secrets:$missing"
+            echo "See deploy/GITHUB-ACTIONS.md"
+            exit 1
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            cd "${{ secrets.DEPLOY_PATH }}"
+            bash deploy/update.sh
+            docker image prune -f

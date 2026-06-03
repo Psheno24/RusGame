@@ -68,51 +68,19 @@ docker compose up -d --build
 
 ## 2. GitHub Actions — push → обновление сайта
 
-В репозитории GitHub: **Settings → Secrets and variables → Actions → New repository secret**
+**Подробно:** [GITHUB-ACTIONS.md](GITHUB-ACTIONS.md)
 
-| Secret | Пример |
-|--------|--------|
-| `SSH_HOST` | IP или домен VPS |
-| `SSH_USER` | `root` или `ubuntu` |
-| `SSH_PRIVATE_KEY` | приватный ключ SSH (весь файл `id_ed25519`) |
-| `DEPLOY_PATH` | `/opt/rusgame` |
+После push в `main`: сборка → тесты → SSH → `deploy/update.sh` на VPS.
 
-На сервере должен быть настроен **доступ по ключу** для `SSH_USER`.
+Секреты в GitHub: `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`, `DEPLOY_PATH`.
 
-### Если в GitHub красный крестик «Deploy to VPS»
-
-Чаще всего **не заданы секреты** (в логах: `missing server host`, `cd ""`). Пока секреты не добавлены, workflow **пропускает деплой** и не блокирует merge; проверка **CI** (сборка и тесты) должна быть зелёной.
-
-Чтобы сайт обновлялся сам после merge в `main`, добавьте все четыре секрета из таблицы выше.
-
-**Обновить сервер вручную** (пока нет Actions):
+**Обновить сервер вручную** (если Actions не настроен):
 
 ```bash
-ssh user@ВАШ_IP
-cd /opt/rusgame
-bash deploy/update.sh
+cd /opt/rusgame && bash deploy/update.sh
 ```
 
-Один раз на VPS (короткая команда вместо `git pull` + `docker`):
-
-```bash
-cd /opt/rusgame
-bash deploy/setup-server-command.sh
-source ~/.bashrc
-```
-
-Дальше на сервере только: **`rusgame-update`** (внутри — `git pull` и `docker compose up -d --build`).
-
-### Один раз на вашем ПК (чтобы Docker на сервере не падал из‑за TypeScript)
-
-```powershell
-cd C:\Users\pshen\Desktop\Devel\RussiaGame
-powershell -ExecutionPolicy Bypass -File scripts/setup-dev-hooks.ps1
-```
-
-Или: `npm run setup:hooks`
-
-Перед каждым `git push` автоматически запустятся `npm run build` и тесты API — те же проверки, что ломают Docker. Если сборка красная, push не уйдёт.
+**Локально на ПК:** `npm run dev` → http://localhost:5173. Push через GitHub Desktop — без git-хуков.
 
 ---
 

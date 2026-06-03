@@ -6,15 +6,19 @@
     "apps/web"
   ],
   "scripts": {
-    "dev": "echo Запустите в двух терминалах: npm run dev:api и npm run dev:web",
+    "dev": "concurrently -k -n api,web -c blue,green \"npm run dev:api\" \"npm run dev:web\"",
     "dev:api": "npm run dev -w @russia-game/api",
     "dev:web": "npm run dev -w @russia-game/web",
     "build": "npm run build -w @russia-game/web && npm run build -w @russia-game/api",
+    "check": "npm run build && npm test -w @russia-game/api",
     "generate:housing": "node scripts/generate-housing-catalog.mjs",
     "start": "npm run start -w @russia-game/api",
+    "setup": "powershell -ExecutionPolicy Bypass -File scripts/setup-windows.ps1",
     "docker:up": "docker compose up -d --build",
-    "docker:logs": "docker compose logs -f app",
-    "setup:hooks": "git config core.hooksPath .githooks"
+    "docker:logs": "docker compose logs -f app"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
   },
   "engines": {
     "node": ">=20"

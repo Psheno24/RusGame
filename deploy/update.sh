@@ -19,9 +19,7 @@ fi
 echo "=== Сборка Docker (как в CI) ==="
 if ! docker compose up -d --build; then
   echo ""
-  echo "ОШИБКА: сборка упала. Чаще всего — TypeScript в apps/api."
-  echo "На ПК: npm run build && git push только после зелёной сборки."
-  echo "Включите хук один раз: powershell -File scripts/setup-dev-hooks.ps1"
+  echo "ОШИБКА: сборка упала. Исправьте на ПК: npm run check, затем push в main."
   exit 1
 fi
 
