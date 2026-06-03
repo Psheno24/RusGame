@@ -148,11 +148,8 @@ export async function getPublicUser(userId: number) {
   };
 }
 
-export type SkillKey = "agility" | "stamina" | "charisma" | "wit";
-
-export function getSkill(player: { agility: number; stamina: number; charisma: number; wit: number }, key: SkillKey) {
-  return player[key];
-}
+export type { SkillKey } from "./skills.js";
+export { getSkill, SKILL_LABELS, SKILL_MAX } from "./skills.js";
 
 export function serializePlayer(p: import("./db.js").PlayerRow) {
   const housing = housingStatusForPlayer(p);
@@ -165,10 +162,10 @@ export function serializePlayer(p: import("./db.js").PlayerRow) {
     travelArrivesAt: p.travel_arrives_at,
     jobId: p.job_id,
     skills: {
-      agility: p.agility,
+      driving: p.driving,
       stamina: p.stamina,
       charisma: p.charisma,
-      wit: p.wit,
+      discipline: p.discipline,
     },
     phoneNumber: formatSimFromPlayer(p),
     hasSim: playerHasSim(p),

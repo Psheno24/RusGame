@@ -24,10 +24,10 @@
     "night_guard": 25000
   },
   "skillWeights": {
-    "delivery": { "stamina": 0.7, "agility": 0.3 },
-    "taxi": { "wit": 0.4, "charisma": 0.3, "agility": 0.3 },
-    "cashier": { "charisma": 0.7, "wit": 0.3 },
-    "night_guard": { "stamina": 0.8, "health": 0.2 }
+    "delivery": { "stamina": 1 },
+    "taxi": { "driving": 0.6, "charisma": 0.2, "stamina": 0.2 },
+    "cashier": { "charisma": 1 },
+    "night_guard": { "discipline": 0.8, "health": 0.2 }
   },
   "skillMultiplier": {
     "min": 0.7,

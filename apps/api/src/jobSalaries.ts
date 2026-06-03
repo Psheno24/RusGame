@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PlayerRow } from "./db.js";
-import { getSkill, type SkillKey } from "./auth.js";
+import { getSkill, type SkillKey } from "./skills.js";
 import { DATA_DIR } from "./config.js";
 import type { JobTemplate } from "./gameData.js";
 

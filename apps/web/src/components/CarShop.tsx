@@ -194,8 +194,6 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
     } else if (nav === "buyList" && category) {
       title = category.title;
       backLabel = "Новые";
-      title = category.title;
-      backLabel = "Купить";
     } else if (nav === "buyDetail" && selected) {
       title = `${selected.brand} ${selected.model}`;
       backLabel = category?.title ?? "Новые";
@@ -263,7 +261,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
   }, [nav, registerBack]);
 
   useEffect(() => {
-    if (nav === "buyCategories") {
+    if (nav === "buyChoice" || nav === "buyCategories") {
       fetchCarCategories()
         .then((r) => setCategories(r.categories))
         .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
@@ -481,8 +479,8 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
             <span className="city-grid-hint">Салон по категориям прав</span>
           </button>
           <button type="button" className="city-grid-btn" onClick={() => go("usedList")}>
-            <span className="city-grid-title">С пробегом (б/у)</span>
-            <span className="city-grid-hint">Рынок подержанных, диагностика</span>
+            <span className="city-grid-title">С пробегом</span>
+            <span className="city-grid-hint">Б/у рынок, диагностика перед покупкой</span>
           </button>
         </div>
       )}

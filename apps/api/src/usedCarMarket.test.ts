@@ -36,24 +36,6 @@ describe("usedCarMarket", () => {
     assert.ok(a.every((l) => l.priceRub > 0 && l.mileageKm >= 0));
   });
 
-  it("Omsk used VAZ and Granta respect catalog price bands", () => {
-    const bands: Record<string, [number, number]> = {
-      "vaz-2114": [55_000, 200_000],
-      "lada-granta": [90_000, 330_000],
-      "renault-logan": [110_000, 385_000],
-      "kia-rio": [180_000, 550_000],
-    };
-    for (let i = 0; i < 24; i++) {
-      const listings = generateCityListings("omsk", i * 2_880_000_000);
-      for (const l of listings) {
-        const band = bands[l.carModelId];
-        if (!band) continue;
-        assert.ok(l.priceRub >= band[0], `${l.carModelId} ${l.priceRub}`);
-        assert.ok(l.priceRub <= band[1], `${l.carModelId} ${l.priceRub}`);
-      }
-    }
-  });
-
   it("Moscow used market has more listings than Omsk", () => {
     const slot = 2_880_000_000;
     const omsk = generateCityListings("omsk", slot).length;

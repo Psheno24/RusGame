@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { PlayerRow } from "./db.js";
 import {
-  getCitySalaryMultiplier,
-  skillPayoutMultiplier,
-  applyCitySalaryToTemplate,
-} from "./jobSalaries.js";
-import { getCityJobs } from "./gameData.js";
+  recordSkillAction,
+  recordSkillActionForTemplate,
+  SKILL_MAX,
+  SKILL_PROGRESS_EVERY,
+} from "./skills.js";
 
-function player(partial: Partial<PlayerRow>): PlayerRow {
+function player(partial: Partial<PlayerRow> = {}): PlayerRow {
   return {
     user_id: 1,
     display_name: "T",
@@ -18,10 +18,10 @@ function player(partial: Partial<PlayerRow>): PlayerRow {
     travel_to_city_id: null,
     travel_arrives_at: null,
     job_id: null,
-    driving: 25,
-    stamina: 25,
-    charisma: 25,
-    discipline: 25,
+    driving: 0,
+    stamina: 0,
+    charisma: 0,
+    discipline: 0,
     skill_progress: null,
     side_gig_ready_at: 0,
     shift_ready_at: 0,
@@ -76,25 +76,37 @@ function player(partial: Partial<PlayerRow>): PlayerRow {
   };
 }
 
-describe("jobSalaries", () => {
-  it("moscow multiplier is 4", () => {
-    assert.equal(getCitySalaryMultiplier("moscow"), 4);
+describe("skills", () => {
+  it("grants driving after 10 taxi trips", () => {
+    let p = player();
+    for (let i = 1; i < SKILL_PROGRESS_EVERY; i++) {
+      const r = recordSkillAction(p, "taxi_trips");
+      p = { ...p, ...r.patch };
+      assert.equal(r.granted, undefined);
+    }
+    const r = recordSkillAction(p, "taxi_trips");
+    assert.equal(r.granted?.key, "driving");
+    assert.equal(r.granted?.amount, 1);
+    assert.equal(r.patch.driving, 1);
   });
 
-  it("moscow courier payout is 32000 base range", () => {
-    const job = getCityJobs("moscow").find((j) => j.templateKey === "delivery");
-    assert.ok(job);
-    assert.equal(job!.payoutMin, 30_400);
-    assert.equal(job!.payoutMax, 33_600);
+  it("cashier shifts grant charisma every 10", () => {
+    let p = player({ charisma: 99 });
+    for (let i = 0; i < SKILL_PROGRESS_EVERY - 1; i++) {
+      p = { ...p, ...recordSkillActionForTemplate(p, "cashier").patch };
+    }
+    const r = recordSkillActionForTemplate(p, "cashier");
+    assert.equal(r.granted?.key, "charisma");
+    assert.equal((r.patch.charisma ?? p.charisma), 100);
   });
 
-  it("skill at reference gives ~1.0 multiplier", () => {
-    const mult = skillPayoutMultiplier(player({ stamina: 25, driving: 0, charisma: 0, discipline: 0 }), "delivery");
-    assert.ok(mult >= 0.95 && mult <= 1.05);
-  });
-
-  it("low skills reduce payout up to 30%", () => {
-    const mult = skillPayoutMultiplier(player({ stamina: 0, driving: 0, charisma: 0, discipline: 0 }), "delivery");
-    assert.equal(mult, 0.7);
+  it("does not exceed SKILL_MAX", () => {
+    let p = player({ discipline: SKILL_MAX });
+    for (let i = 0; i < SKILL_PROGRESS_EVERY; i++) {
+      p = { ...p, ...recordSkillActionForTemplate(p, "night_guard").patch };
+    }
+    const r = recordSkillActionForTemplate(p, "night_guard");
+    assert.equal(r.granted, undefined);
+    assert.equal(r.patch.discipline ?? p.discipline, SKILL_MAX);
   });
 });

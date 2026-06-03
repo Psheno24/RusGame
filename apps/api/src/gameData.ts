@@ -46,7 +46,7 @@ export type JobTemplate = {
   /** Целевой средний доход за сессию на линии (такси). */
   taxiTargetIncomeRub?: number;
   requiresCar?: boolean;
-  skill?: "agility" | "stamina" | "charisma" | "wit" | null;
+  skill?: "driving" | "stamina" | "charisma" | "discipline" | null;
   skillMin?: number;
   skillGain?: number;
   requiresSim?: boolean;

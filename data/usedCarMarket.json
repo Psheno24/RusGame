@@ -1,10 +1,4 @@
 {
-  "usedPriceRubOmsk": {
-    "vaz-2114": [100000, 180000],
-    "lada-granta": [150000, 300000],
-    "renault-logan": [180000, 350000],
-    "kia-rio": [300000, 500000]
-  },
   "refreshIntervalMs": 28800000,
   "usedMaxClassOffset": 2,
   "listingCountByCity": {

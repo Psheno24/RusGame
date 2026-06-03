@@ -15,19 +15,19 @@ describe("playerReset", () => {
     const userId = reg.userId;
     getDb()
       .prepare(
-        `UPDATE players SET rubles = 99999, city_id = 'ekb', job_id = 'ekb_delivery', agility = 5 WHERE user_id = ?`,
+        `UPDATE players SET rubles = 99999, city_id = 'ekb', job_id = 'ekb_delivery', discipline = 5 WHERE user_id = ?`,
       )
       .run(userId);
 
     assert.equal(resetPlayerAccount(userId), true);
 
     const row = getDb()
-      .prepare("SELECT rubles, city_id, job_id, agility FROM players WHERE user_id = ?")
-      .get(userId) as { rubles: number; city_id: string; job_id: string | null; agility: number };
+      .prepare("SELECT rubles, city_id, job_id, discipline FROM players WHERE user_id = ?")
+      .get(userId) as { rubles: number; city_id: string; job_id: string | null; discipline: number };
     assert.equal(row.rubles, 5000);
     assert.equal(row.city_id, "omsk");
     assert.equal(row.job_id, null);
-    assert.equal(row.agility, 0);
+    assert.equal(row.discipline, 0);
   });
 
   it("lists accounts for test admin", () => {

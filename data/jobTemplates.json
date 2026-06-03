@@ -6,27 +6,24 @@
     "shiftHours": 2,
     "requiresPhone": true,
     "requiresSimTariff": "unlimited",
-    "skill": "stamina",
-    "skillGain": 1
+    "skill": "stamina"
   },
   "taxi": {
     "title": "Таксист",
-    "description": "Выход на линию и заказы пассажиров. Нужны права B, автомобиль, телефон и тариф «Полный безлимит».",
+    "description": "Выход на линию и заказы пассажиров. Нужны права B, автомобиль, телефон и тариф «Полный безлимит». Каждые 10 поездок — +1 к вождению.",
     "kind": "taxi_line",
     "requiresDriversLicense": true,
     "requiresPhone": true,
     "requiresSimTariff": "unlimited",
     "requiresCar": true,
-    "skill": "wit",
-    "skillGain": 1
+    "skill": "driving"
   },
   "cashier": {
     "title": "Кассир «Пятёрочка»",
     "description": "Работа на кассе. Смена 4 часа. Можно в любое время.",
     "kind": "cooldown",
     "shiftHours": 4,
-    "skill": "charisma",
-    "skillGain": 1
+    "skill": "charisma"
   },
   "night_guard": {
     "title": "Ночной охранник",
@@ -34,7 +31,6 @@
     "kind": "cooldown",
     "shiftEndsAtHour": 8,
     "schedule": { "mode": "night", "nightStartHour": 22, "dayStartHour": 8 },
-    "skill": "stamina",
-    "skillGain": 1
+    "skill": "discipline"
   }
 }

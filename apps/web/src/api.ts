@@ -285,9 +285,18 @@ export function getAccessToken() {
   return accessToken;
 }
 
-const AUTH_PATHS = new Set(["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/logout"]);
+const AUTH_PATHS = new Set([
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/refresh",
+  "/api/auth/logout",
+]);
 
-async function api<T>(path: string, init?: RequestInit, retried = false): Promise<T> {
+async function api<T>(
+  path: string,
+  init?: RequestInit,
+  retried = false,
+): Promise<T> {
   const headers: Record<string, string> = {
     ...(init?.headers as Record<string, string>),
   };
@@ -307,13 +316,17 @@ async function api<T>(path: string, init?: RequestInit, retried = false): Promis
     if (ok) return api<T>(path, init, true);
   }
 
-  if (!res.ok) throw new Error((data as { error?: string }).error ?? "Ошибка сервера");
+  if (!res.ok)
+    throw new Error((data as { error?: string }).error ?? "Ошибка сервера");
   return data as T;
 }
 
 export async function refreshSession(): Promise<User | null> {
   try {
-    const data = await api<{ accessToken: string; user: User }>("/api/auth/refresh", { method: "POST" });
+    const data = await api<{ accessToken: string; user: User }>(
+      "/api/auth/refresh",
+      { method: "POST" },
+    );
     setAccessToken(data.accessToken);
     return data.user;
   } catch {
@@ -322,19 +335,25 @@ export async function refreshSession(): Promise<User | null> {
 }
 
 export async function login(loginName: string, password: string) {
-  const data = await api<{ accessToken: string; user: User }>("/api/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ login: loginName, password }),
-  });
+  const data = await api<{ accessToken: string; user: User }>(
+    "/api/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify({ login: loginName, password }),
+    },
+  );
   setAccessToken(data.accessToken);
   return data.user;
 }
 
 export async function register(loginName: string, password: string) {
-  const data = await api<{ accessToken: string; user: User }>("/api/auth/register", {
-    method: "POST",
-    body: JSON.stringify({ login: loginName, password }),
-  });
+  const data = await api<{ accessToken: string; user: User }>(
+    "/api/auth/register",
+    {
+      method: "POST",
+      body: JSON.stringify({ login: loginName, password }),
+    },
+  );
   setAccessToken(data.accessToken);
   return data.user;
 }
@@ -435,9 +454,12 @@ export async function fetchCity() {
 }
 
 export async function performAction(actionId: string) {
-  return api<{ message: string; user: User }>(`/api/action/${encodeURIComponent(actionId)}`, {
-    method: "POST",
-  });
+  return api<{ message: string; user: User }>(
+    `/api/action/${encodeURIComponent(actionId)}`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export type JobScheduleView = {
@@ -475,7 +497,11 @@ export type JobView = {
   requiresCar?: boolean;
   taxiTargetIncomeRub?: number | null;
   schedule?: JobScheduleView;
-  payoutPeriods?: Array<{ fromHour: number; toHour: number; multiplier: number }>;
+  payoutPeriods?: Array<{
+    fromHour: number;
+    toHour: number;
+    multiplier: number;
+  }>;
   cooldown: {
     ready: boolean;
     remainingMs: number;
@@ -499,8 +525,13 @@ export type ApplyJobResponse =
       newTitle: string;
     };
 
-export async function applyJob(jobId: string, opts?: { forceSwitch?: boolean }): Promise<ApplyJobResponse> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+export async function applyJob(
+  jobId: string,
+  opts?: { forceSwitch?: boolean },
+): Promise<ApplyJobResponse> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
   const res = await fetch("/api/work/apply", {
@@ -525,7 +556,11 @@ export async function applyJob(jobId: string, opts?: { forceSwitch?: boolean }):
     throw new Error((data.error as string | undefined) ?? "Ошибка сервера");
   }
 
-  return { ok: true, message: String(data.message ?? ""), user: data.user as User };
+  return {
+    ok: true,
+    message: String(data.message ?? ""),
+    user: data.user as User,
+  };
 }
 
 export async function quitJob(jobId: string) {
@@ -608,10 +643,15 @@ export async function fetchTaxiStatus() {
 }
 
 export async function taxiClearCar() {
-  return api<{ message: string; user: User }>("/api/taxi/clear-car", { method: "POST" });
+  return api<{ message: string; user: User }>("/api/taxi/clear-car", {
+    method: "POST",
+  });
 }
 
-export async function taxiSelectCar(carSource: "owned" | "rental", carRefId: number) {
+export async function taxiSelectCar(
+  carSource: "owned" | "rental",
+  carRefId: number,
+) {
   return api<{ message: string; user: User }>("/api/taxi/select-car", {
     method: "POST",
     body: JSON.stringify({ carSource, carRefId }),
@@ -619,11 +659,15 @@ export async function taxiSelectCar(carSource: "owned" | "rental", carRefId: num
 }
 
 export async function taxiGoOnline() {
-  return api<{ message: string; user: User }>("/api/taxi/go-online", { method: "POST" });
+  return api<{ message: string; user: User }>("/api/taxi/go-online", {
+    method: "POST",
+  });
 }
 
 export async function taxiGoOffline() {
-  return api<{ message: string; user: User }>("/api/taxi/go-offline", { method: "POST" });
+  return api<{ message: string; user: User }>("/api/taxi/go-offline", {
+    method: "POST",
+  });
 }
 
 export async function taxiAcceptOrder(orderId: string) {
@@ -658,11 +702,17 @@ export async function travelQuote(to: string) {
   );
 }
 
-export async function travelStart(toCityId: string, mode: TravelMode = "train") {
-  return api<{ arrivesAt: number; priceRub: number; user: User }>("/api/travel/start", {
-    method: "POST",
-    body: JSON.stringify({ toCityId, mode }),
-  });
+export async function travelStart(
+  toCityId: string,
+  mode: TravelMode = "train",
+) {
+  return api<{ arrivesAt: number; priceRub: number; user: User }>(
+    "/api/travel/start",
+    {
+      method: "POST",
+      body: JSON.stringify({ toCityId, mode }),
+    },
+  );
 }
 
 export type PhoneDevice = {
@@ -739,7 +789,9 @@ export type SimShopInfo = {
 };
 
 export async function fetchShopPrices() {
-  return api<{ driversLicense: number; sim: SimShopPrices }>("/api/shop/prices");
+  return api<{ driversLicense: number; sim: SimShopPrices }>(
+    "/api/shop/prices",
+  );
 }
 
 export async function fetchCarCategories() {
@@ -806,21 +858,32 @@ export async function fetchUsedCarMarket() {
 }
 
 export async function fetchUsedCarDetail(listingId: string) {
-  return api<UsedCarListing>(`/api/shop/used-cars/detail?listingId=${encodeURIComponent(listingId)}`);
+  return api<UsedCarListing>(
+    `/api/shop/used-cars/detail?listingId=${encodeURIComponent(listingId)}`,
+  );
 }
 
 export async function diagnoseUsedCar(listingId: string) {
-  return api<{ diagnosis: UsedCarDiagnosisRanges; costRub: number; user: User }>(
-    "/api/shop/used-cars/diagnose",
-    { method: "POST", body: JSON.stringify({ listingId }) },
-  );
+  return api<{
+    diagnosis: UsedCarDiagnosisRanges;
+    costRub: number;
+    user: User;
+  }>("/api/shop/used-cars/diagnose", {
+    method: "POST",
+    body: JSON.stringify({ listingId }),
+  });
 }
 
 export async function buyUsedCar(listingId: string) {
-  return api<{ carName: string; playerCarId: number; condition: UsedCarCondition; user: User }>(
-    "/api/shop/used-cars/buy",
-    { method: "POST", body: JSON.stringify({ listingId }) },
-  );
+  return api<{
+    carName: string;
+    playerCarId: number;
+    condition: UsedCarCondition;
+    user: User;
+  }>("/api/shop/used-cars/buy", {
+    method: "POST",
+    body: JSON.stringify({ listingId }),
+  });
 }
 
 export type CarRepairServiceId = "sto" | "tire";
@@ -866,8 +929,13 @@ export async function repairCarNode(
   );
 }
 
-export async function fetchCarQuote(carId: string, tradeInCarIds: number[] = []) {
-  const ids = tradeInCarIds.length ? `&tradeInIds=${tradeInCarIds.join(",")}` : "";
+export async function fetchCarQuote(
+  carId: string,
+  tradeInCarIds: number[] = [],
+) {
+  const ids = tradeInCarIds.length
+    ? `&tradeInIds=${tradeInCarIds.join(",")}`
+    : "";
   return api<CarPurchaseQuote>(
     `/api/shop/car/quote?carId=${encodeURIComponent(carId)}${ids}`,
   );
@@ -881,15 +949,23 @@ export async function buyCar(carId: string) {
 }
 
 export async function tradeInCar(carId: string, tradeInCarIds: number[]) {
-  return api<{ carName: string; excessRub: number; user: User }>("/api/shop/car/trade-in", {
-    method: "POST",
-    body: JSON.stringify({ carId, tradeInCarIds }),
-  });
+  return api<{ carName: string; excessRub: number; user: User }>(
+    "/api/shop/car/trade-in",
+    {
+      method: "POST",
+      body: JSON.stringify({ carId, tradeInCarIds }),
+    },
+  );
 }
 
 export async function fetchPoliceLicenses() {
   return api<{
-    licenses: { category: string; title: string; subtitle: string; priceRub: number }[];
+    licenses: {
+      category: string;
+      title: string;
+      subtitle: string;
+      priceRub: number;
+    }[];
   }>("/api/police/licenses");
 }
 
@@ -905,10 +981,13 @@ export async function fetchVehicleRentals() {
 }
 
 export async function rentVehicle(rentalId: string) {
-  return api<{ label: string; expiresAt: number; message: string; user: User }>("/api/shop/vehicle-rent", {
-    method: "POST",
-    body: JSON.stringify({ rentalId }),
-  });
+  return api<{ label: string; expiresAt: number; message: string; user: User }>(
+    "/api/shop/vehicle-rent",
+    {
+      method: "POST",
+      body: JSON.stringify({ rentalId }),
+    },
+  );
 }
 
 export async function fetchPlateGarage() {
@@ -988,7 +1067,9 @@ export type PropertySellQuote = {
 };
 
 export async function fetchPropertyDetail(propertyId: string) {
-  return api<PropertyDetail>(`/api/player/property/${encodeURIComponent(propertyId)}`);
+  return api<PropertyDetail>(
+    `/api/player/property/${encodeURIComponent(propertyId)}`,
+  );
 }
 
 export async function fetchPropertySellQuote(propertyId: string) {
@@ -1005,9 +1086,12 @@ export async function sellProperty(propertyId: string) {
 }
 
 export async function cancelVehicleRental() {
-  return api<{ message: string; user: User }>("/api/player/property/rental/cancel", {
-    method: "POST",
-  });
+  return api<{ message: string; user: User }>(
+    "/api/player/property/rental/cancel",
+    {
+      method: "POST",
+    },
+  );
 }
 
 export async function fetchSimShop() {
@@ -1019,26 +1103,37 @@ export async function fetchShopPhones() {
 }
 
 export async function fetchPhoneQuote(deviceId: string) {
-  return api<AssetQuote>(`/api/shop/phone/quote?deviceId=${encodeURIComponent(deviceId)}`);
+  return api<AssetQuote>(
+    `/api/shop/phone/quote?deviceId=${encodeURIComponent(deviceId)}`,
+  );
 }
 
 export async function buyPhone(deviceId: string) {
-  return api<{ deviceName: string; tradeInRub: number; user: User }>("/api/shop/phone", {
-    method: "POST",
-    body: JSON.stringify({ deviceId }),
-  });
+  return api<{ deviceName: string; tradeInRub: number; user: User }>(
+    "/api/shop/phone",
+    {
+      method: "POST",
+      body: JSON.stringify({ deviceId }),
+    },
+  );
 }
 
 export async function fetchPhoneSellQuote() {
-  return api<{ amountRub: number; catalogPriceRub: number }>("/api/shop/phone/sell/quote");
+  return api<{ amountRub: number; catalogPriceRub: number }>(
+    "/api/shop/phone/sell/quote",
+  );
 }
 
 export async function sellPhone() {
-  return api<{ amountRub: number; user: User }>("/api/shop/phone/sell", { method: "POST" });
+  return api<{ amountRub: number; user: User }>("/api/shop/phone/sell", {
+    method: "POST",
+  });
 }
 
 export async function registerSim() {
-  return api<{ number: string; user: User }>("/api/shop/sim/register", { method: "POST" });
+  return api<{ number: string; user: User }>("/api/shop/sim/register", {
+    method: "POST",
+  });
 }
 
 export async function changeSimPart(part: "operator" | "mid" | "last") {
@@ -1056,14 +1151,19 @@ export async function topupSim(amount: number) {
 }
 
 export async function fetchSimTariffQuote(planId: string) {
-  return api<SimTariffQuote>(`/api/shop/sim/tariff/quote?planId=${encodeURIComponent(planId)}`);
+  return api<SimTariffQuote>(
+    `/api/shop/sim/tariff/quote?planId=${encodeURIComponent(planId)}`,
+  );
 }
 
 export async function selectSimTariff(planId: string) {
-  return api<{ planId: string; paidUntil: number | null; user: User }>("/api/shop/sim/tariff", {
-    method: "POST",
-    body: JSON.stringify({ planId }),
-  });
+  return api<{ planId: string; paidUntil: number | null; user: User }>(
+    "/api/shop/sim/tariff",
+    {
+      method: "POST",
+      body: JSON.stringify({ planId }),
+    },
+  );
 }
 
 export const SIM_TARIFF_LABELS: Record<string, string> = {
@@ -1100,7 +1200,9 @@ export type ProductPreview = {
 };
 
 export async function fetchShopProducts() {
-  return api<{ products: ProductPreview[]; previews: ProductPreview[] }>("/api/shop/products");
+  return api<{ products: ProductPreview[]; previews: ProductPreview[] }>(
+    "/api/shop/products",
+  );
 }
 
 export async function buyProduct(productId: string) {
@@ -1126,7 +1228,9 @@ export async function startHomeSleep(durationMs: number) {
 }
 
 export async function wakeUpHome() {
-  return api<{ message: string; user: User }>("/api/home/wake", { method: "POST" });
+  return api<{ message: string; user: User }>("/api/home/wake", {
+    method: "POST",
+  });
 }
 
 export async function fetchHousing() {
@@ -1134,11 +1238,15 @@ export async function fetchHousing() {
 }
 
 export async function payHousingDorm() {
-  return api<{ message: string; user: User }>("/api/housing/dorm", { method: "POST" });
+  return api<{ message: string; user: User }>("/api/housing/dorm", {
+    method: "POST",
+  });
 }
 
 export async function payHousingRent() {
-  return api<{ message: string; user: User }>("/api/housing/rent", { method: "POST" });
+  return api<{ message: string; user: User }>("/api/housing/rent", {
+    method: "POST",
+  });
 }
 
 export type HousingBuyQuote = {
@@ -1172,16 +1280,24 @@ export type LiveHereQuote = {
 };
 
 export async function fetchHousingBuyQuote(propertyId: string) {
-  return api<HousingBuyQuote>(`/api/housing/buy/quote?propertyId=${encodeURIComponent(propertyId)}`);
+  return api<HousingBuyQuote>(
+    `/api/housing/buy/quote?propertyId=${encodeURIComponent(propertyId)}`,
+  );
 }
 
-export async function fetchHousingExchangeQuote(propertyId: string, sellOwnedIds: number[]) {
+export async function fetchHousingExchangeQuote(
+  propertyId: string,
+  sellOwnedIds: number[],
+) {
   const qs = new URLSearchParams({ propertyId });
   if (sellOwnedIds.length) qs.set("sellIds", sellOwnedIds.join(","));
   return api<HousingPurchaseQuote>(`/api/housing/buy/exchange-quote?${qs}`);
 }
 
-export async function payHousingBuy(propertyId: string, sellOwnedIds: number[] = []) {
+export async function payHousingBuy(
+  propertyId: string,
+  sellOwnedIds: number[] = [],
+) {
   return api<{
     message: string;
     user: User;
@@ -1193,7 +1309,10 @@ export async function payHousingBuy(propertyId: string, sellOwnedIds: number[] =
   });
 }
 
-export async function afterBuyHousingChoice(ownedId: number, mode: "live" | "sublet") {
+export async function afterBuyHousingChoice(
+  ownedId: number,
+  mode: "live" | "sublet",
+) {
   return api<{ message: string; user: User }>("/api/housing/after-buy", {
     method: "POST",
     body: JSON.stringify({ ownedId, mode }),
@@ -1214,7 +1333,9 @@ export async function sellHousing(ownedId: number) {
 }
 
 export async function fetchLiveHereQuote(ownedId: number) {
-  return api<LiveHereQuote>(`/api/housing/live/quote?ownedId=${encodeURIComponent(String(ownedId))}`);
+  return api<LiveHereQuote>(
+    `/api/housing/live/quote?ownedId=${encodeURIComponent(String(ownedId))}`,
+  );
 }
 
 export async function payLiveHere(ownedId: number) {

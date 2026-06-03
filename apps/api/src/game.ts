@@ -3,7 +3,7 @@ import { getPlayer, updatePlayer } from "./db.js";
 import { computeResaleValue } from "./assetTrade.js";
 import type { AssetQuote } from "./carShop.js";
 import { getPhoneShopPriceRub } from "./shopCatalog.js";
-import { getSkill, type SkillKey } from "./auth.js";
+import { getSkill, SKILL_LABELS, recordSkillActionForTemplate, type SkillKey } from "./skills.js";
 import { appendPlayerFeed } from "./playerFeed.js";
 import {
   enrichJobWorkState,
@@ -115,13 +115,8 @@ function checkJobRequirements(player: PlayerRow, job: JobDef): string | null {
   if (job.skill && job.skillMin != null) {
     const v = getSkill(player, job.skill as SkillKey);
     if (v < job.skillMin) {
-      const names: Record<SkillKey, string> = {
-        agility: "Ловкость",
-        stamina: "Стойкость",
-        charisma: "Общение",
-        wit: "Смекалка",
-      };
-      return `Нужна ${names[job.skill as SkillKey]} ${job.skillMin}+ (у вас ${v})`;
+      const name = SKILL_LABELS[job.skill as SkillKey] ?? job.skill;
+      return `Нужен навык «${name}» ${job.skillMin}+ (у вас ${v})`;
     }
   }
   return null;
@@ -434,15 +429,13 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
   }
 
   let skillGain: { key: SkillKey; amount: number } | undefined;
-  if (job.skill && job.skillGain) {
-    const grantSkill =
-      !isNightGuardJob(job) ||
-      nightGuardStaminaEligible(schedule.localTime, job.shiftEndsAtHour ?? 8);
-    if (grantSkill) {
-      const key = job.skill as SkillKey;
-      patch[key] = getSkill(player, key) + job.skillGain;
-      skillGain = { key, amount: job.skillGain };
-    }
+  const grantSkillProgress =
+    !isNightGuardJob(job) ||
+    nightGuardStaminaEligible(schedule.localTime, job.shiftEndsAtHour ?? 8);
+  if (grantSkillProgress && job.templateKey) {
+    const skillResult = recordSkillActionForTemplate(player, job.templateKey);
+    Object.assign(patch, skillResult.patch);
+    skillGain = skillResult.granted;
   }
 
   updatePlayer(userId, patch);

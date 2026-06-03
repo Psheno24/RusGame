@@ -1,7 +1,7 @@
 import { JobActionButtonLabel } from "./JobActionButtonLabel";
 import { TaxiLinePanels, TaxiLineSetup } from "./TaxiLineSection";
 import { useTaxiLine } from "../hooks/useTaxiLine";
-import type { JobView, User } from "../api";
+import type { JobView, type User } from "../api";
 
 type JobCard = JobView;
 

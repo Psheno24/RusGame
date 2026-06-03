@@ -15,6 +15,7 @@ import {
   TAXI_TARIFF_ORDER,
 } from "./taxiTariff.js";
 import { getCitySalaryMultiplier, skillPayoutMultiplier } from "./jobSalaries.js";
+import { recordSkillAction, SKILL_LABELS } from "./skills.js";
 import { listPlayerCars, playerHasAnyCar } from "./playerCars.js";
 import {
   hasActiveTaxiTrip,
@@ -265,12 +266,22 @@ function completeActiveTrip(
   }
 
   const mood = clampVital("mood", (player.mood ?? 70) + moodDelta);
-  const witGain = Math.random() < 0.4 ? 1 : 0;
+  const skillResult = recordSkillAction(player, "taxi_trips");
+  const skillPatch = skillResult.patch;
   updatePlayer(player.user_id, {
     mood,
     rubles: player.rubles + payoutRub,
-    wit: player.wit + witGain,
+    ...skillPatch,
   });
+  if (skillResult.granted) {
+    const label = SKILL_LABELS[skillResult.granted.key];
+    appendPlayerFeed(
+      player.user_id,
+      "work:taxi",
+      `Навык: +${skillResult.granted.amount} ${label}`,
+      now,
+    );
+  }
 
   let next: TaxiState = {
     ...state,

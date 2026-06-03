@@ -15,8 +15,6 @@ export type UsedCarCondition = PlayerCarCondition;
 const DATA_DIR = join(import.meta.dirname, "../../../data");
 
 type UsedCarMarketConfig = {
-  /** Базовые диапазоны цен б/у в Омске (₽), для остальных городов масштабируются по цене нового авто. */
-  usedPriceRubOmsk?: Record<string, [number, number]>;
   refreshIntervalMs: number;
   usedMaxClassOffset: number;
   listingCountByCity: Record<string, [number, number]>;
@@ -200,25 +198,8 @@ function conditionPriceFactor(condition: UsedCarCondition, mileageKm: number): n
   return 0.55 + (avg / 100) * 0.38 - mileagePenalty;
 }
 
-function usedPriceRangeForCity(
-  cityId: string,
-  carModelId: string,
-  newPriceRub: number,
-): [number, number] | null {
-  const omskRange = config.usedPriceRubOmsk?.[carModelId];
-  if (!omskRange) return null;
-  const car = getCar(carModelId);
-  if (!car) return omskRange;
-  const omskNew = getCarCityPriceRub("omsk", car);
-  if (!omskNew || omskNew <= 0) return omskRange;
-  const scale = newPriceRub / omskNew;
-  return [Math.round(omskRange[0] * scale), Math.round(omskRange[1] * scale)];
-}
-
 function rollPriceRub(
   rng: () => number,
-  cityId: string,
-  carModelId: string,
   newPriceRub: number,
   condition: UsedCarCondition,
   mileageKm: number,
@@ -226,13 +207,6 @@ function rollPriceRub(
   const tier = pickWeighted(rng, config.priceTierWeights);
   const tierPct = randFloat(rng, tier.minPct, tier.maxPct);
   const condFactor = conditionPriceFactor(condition, mileageKm);
-  const explicit = usedPriceRangeForCity(cityId, carModelId, newPriceRub);
-  if (explicit) {
-    const [minRub, maxRub] = explicit;
-    const spread = Math.max(0, maxRub - minRub);
-    const base = minRub + spread * tierPct;
-    return Math.max(50_000, Math.round(base * condFactor));
-  }
   return Math.max(50_000, Math.round(newPriceRub * tierPct * condFactor));
 }
 
@@ -265,7 +239,7 @@ export function generateCityListings(cityId: string, refreshedAt: number): UsedC
     const mileageKm = rollMileageKm(rng);
     const condition = rollCondition(rng, mileageKm);
     const newPriceRub = getCarCityPriceRub(cityId, car);
-    const priceRub = rollPriceRub(rng, cityId, car.id, newPriceRub, condition, mileageKm);
+    const priceRub = rollPriceRub(rng, newPriceRub, condition, mileageKm);
 
     listings.push({
       id: `${cityId}-${refreshedAt}-${i}`,

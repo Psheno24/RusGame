@@ -150,7 +150,9 @@ function migrate(database: Database.Database) {
     );
   `);
 
-  const cols = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const cols = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
   if (!cols.some((c) => c.name === "phone_device_id")) {
     database.exec("ALTER TABLE players ADD COLUMN phone_device_id TEXT");
   }
@@ -158,13 +160,19 @@ function migrate(database: Database.Database) {
     database.exec("ALTER TABLE players ADD COLUMN sim_operator TEXT");
     database.exec("ALTER TABLE players ADD COLUMN sim_mid TEXT");
     database.exec("ALTER TABLE players ADD COLUMN sim_last TEXT");
-    database.exec("ALTER TABLE players ADD COLUMN sim_balance_rub REAL NOT NULL DEFAULT 0");
+    database.exec(
+      "ALTER TABLE players ADD COLUMN sim_balance_rub REAL NOT NULL DEFAULT 0",
+    );
   }
-  const cols2 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const cols2 = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
   if (!cols2.some((c) => c.name === "last_work_at_by_job")) {
     database.exec("ALTER TABLE players ADD COLUMN last_work_at_by_job TEXT");
   }
-  const cols3 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const cols3 = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
   if (!cols3.some((c) => c.name === "housing_type")) {
     database.exec("ALTER TABLE players ADD COLUMN housing_type TEXT");
     database.exec("ALTER TABLE players ADD COLUMN housing_city_id TEXT");
@@ -177,31 +185,57 @@ function migrate(database: Database.Database) {
       )
       .run(expires);
   }
-  const cols4 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const cols4 = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
   if (!cols4.some((c) => c.name === "game_day")) {
-    database.exec("ALTER TABLE players ADD COLUMN game_day INTEGER NOT NULL DEFAULT 1");
-    database.exec("ALTER TABLE players ADD COLUMN game_minute INTEGER NOT NULL DEFAULT 480");
-    database.exec("ALTER TABLE players ADD COLUMN energy INTEGER NOT NULL DEFAULT 80");
-    database.exec("ALTER TABLE players ADD COLUMN hunger INTEGER NOT NULL DEFAULT 80");
-    database.exec("ALTER TABLE players ADD COLUMN mood INTEGER NOT NULL DEFAULT 70");
-    database.exec("ALTER TABLE players ADD COLUMN health INTEGER NOT NULL DEFAULT 100");
-    database.exec("ALTER TABLE players ADD COLUMN reputation INTEGER NOT NULL DEFAULT 100");
-    database.exec("ALTER TABLE players ADD COLUMN education TEXT NOT NULL DEFAULT 'none'");
+    database.exec(
+      "ALTER TABLE players ADD COLUMN game_day INTEGER NOT NULL DEFAULT 1",
+    );
+    database.exec(
+      "ALTER TABLE players ADD COLUMN game_minute INTEGER NOT NULL DEFAULT 480",
+    );
+    database.exec(
+      "ALTER TABLE players ADD COLUMN energy INTEGER NOT NULL DEFAULT 80",
+    );
+    database.exec(
+      "ALTER TABLE players ADD COLUMN hunger INTEGER NOT NULL DEFAULT 80",
+    );
+    database.exec(
+      "ALTER TABLE players ADD COLUMN mood INTEGER NOT NULL DEFAULT 70",
+    );
+    database.exec(
+      "ALTER TABLE players ADD COLUMN health INTEGER NOT NULL DEFAULT 100",
+    );
+    database.exec(
+      "ALTER TABLE players ADD COLUMN reputation INTEGER NOT NULL DEFAULT 100",
+    );
+    database.exec(
+      "ALTER TABLE players ADD COLUMN education TEXT NOT NULL DEFAULT 'none'",
+    );
   }
-  const cols5 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const cols5 = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
   if (!cols5.some((c) => c.name === "drivers_license")) {
-    database.exec("ALTER TABLE players ADD COLUMN drivers_license INTEGER NOT NULL DEFAULT 0");
+    database.exec(
+      "ALTER TABLE players ADD COLUMN drivers_license INTEGER NOT NULL DEFAULT 0",
+    );
     database
       .prepare("UPDATE players SET drivers_license = 1 WHERE car_owned = 1")
       .run();
   }
-  const cols6 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const cols6 = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
   if (!cols6.some((c) => c.name === "phone_acquired_at")) {
     database.exec("ALTER TABLE players ADD COLUMN phone_acquired_at INTEGER");
     database.exec("ALTER TABLE players ADD COLUMN car_acquired_at INTEGER");
     database.exec("ALTER TABLE players ADD COLUMN housing_owned_at INTEGER");
   }
-  const cols7 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const cols7 = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
   if (!cols7.some((c) => c.name === "car_model_id")) {
     database.exec("ALTER TABLE players ADD COLUMN car_model_id TEXT");
     database.exec("ALTER TABLE players ADD COLUMN plate_l1 TEXT");
@@ -209,15 +243,23 @@ function migrate(database: Database.Database) {
     database.exec("ALTER TABLE players ADD COLUMN plate_l2 TEXT");
     database.exec("ALTER TABLE players ADD COLUMN plate_region TEXT");
     database.exec("ALTER TABLE players ADD COLUMN vehicle_rental_id TEXT");
-    database.exec("ALTER TABLE players ADD COLUMN vehicle_rental_expires_at INTEGER");
+    database.exec(
+      "ALTER TABLE players ADD COLUMN vehicle_rental_expires_at INTEGER",
+    );
     database.exec("ALTER TABLE players ADD COLUMN housing_property_id TEXT");
     database
-      .prepare("UPDATE players SET car_model_id = 'lada-granta' WHERE car_owned = 1 AND car_model_id IS NULL")
+      .prepare(
+        "UPDATE players SET car_model_id = 'lada-granta' WHERE car_owned = 1 AND car_model_id IS NULL",
+      )
       .run();
   }
-  const userCols = database.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+  const userCols = database.prepare("PRAGMA table_info(users)").all() as {
+    name: string;
+  }[];
   if (!userCols.some((c) => c.name === "is_test")) {
-    database.exec("ALTER TABLE users ADD COLUMN is_test INTEGER NOT NULL DEFAULT 0");
+    database.exec(
+      "ALTER TABLE users ADD COLUMN is_test INTEGER NOT NULL DEFAULT 0",
+    );
   }
 
   database.exec(`
@@ -235,23 +277,33 @@ function migrate(database: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_player_cars_user ON player_cars(user_id);
   `);
 
-  const colsTariff = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const colsTariff = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
   if (!colsTariff.some((c) => c.name === "sim_tariff_id")) {
     database.exec(
       "ALTER TABLE players ADD COLUMN sim_tariff_id TEXT NOT NULL DEFAULT 'incoming_only'",
     );
-    database.exec("ALTER TABLE players ADD COLUMN sim_tariff_paid_until INTEGER");
+    database.exec(
+      "ALTER TABLE players ADD COLUMN sim_tariff_paid_until INTEGER",
+    );
   }
-  const colsTariffPending = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const colsTariffPending = database
+    .prepare("PRAGMA table_info(players)")
+    .all() as { name: string }[];
   if (!colsTariffPending.some((c) => c.name === "sim_tariff_pending_id")) {
     database.exec("ALTER TABLE players ADD COLUMN sim_tariff_pending_id TEXT");
   }
 
-  const cols8 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const cols8 = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
   if (!cols8.some((c) => c.name === "driver_licenses")) {
     database.exec("ALTER TABLE players ADD COLUMN driver_licenses TEXT");
     database
-      .prepare(`UPDATE players SET driver_licenses = '["B"]' WHERE drivers_license = 1`)
+      .prepare(
+        `UPDATE players SET driver_licenses = '["B"]' WHERE drivers_license = 1`,
+      )
       .run();
   }
 
@@ -286,21 +338,36 @@ function migrate(database: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_owned_housing_user ON player_owned_housing(user_id);
   `);
 
-  const ownedCols = database.prepare("PRAGMA table_info(player_owned_housing)").all() as {
+  const ownedCols = database
+    .prepare("PRAGMA table_info(player_owned_housing)")
+    .all() as {
     name: string;
   }[];
-  if (ownedCols.length > 0 && !ownedCols.some((c) => c.name === "sublet_from")) {
-    database.exec("ALTER TABLE player_owned_housing ADD COLUMN sublet_from INTEGER");
+  if (
+    ownedCols.length > 0 &&
+    !ownedCols.some((c) => c.name === "sublet_from")
+  ) {
+    database.exec(
+      "ALTER TABLE player_owned_housing ADD COLUMN sublet_from INTEGER",
+    );
   }
 
-  const colsH = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const colsH = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
   if (!colsH.some((c) => c.name === "housing_owned_id")) {
     database.exec("ALTER TABLE players ADD COLUMN housing_owned_id INTEGER");
     database.exec("ALTER TABLE players ADD COLUMN housing_last_type TEXT");
     database.exec("ALTER TABLE players ADD COLUMN housing_last_city_id TEXT");
-    database.exec("ALTER TABLE players ADD COLUMN housing_last_expires_at INTEGER");
-    database.exec("ALTER TABLE players ADD COLUMN housing_last_owned_id INTEGER");
-    database.exec("ALTER TABLE players ADD COLUMN housing_last_property_id TEXT");
+    database.exec(
+      "ALTER TABLE players ADD COLUMN housing_last_expires_at INTEGER",
+    );
+    database.exec(
+      "ALTER TABLE players ADD COLUMN housing_last_owned_id INTEGER",
+    );
+    database.exec(
+      "ALTER TABLE players ADD COLUMN housing_last_property_id TEXT",
+    );
 
     const ownedPlayers = database
       .prepare(
@@ -318,7 +385,9 @@ function migrate(database: Database.Database) {
       `INSERT INTO player_owned_housing (user_id, city_id, property_id, acquired_at, sublet_from, sublet_until, sublet_income_rub)
        VALUES (?, ?, ?, ?, NULL, NULL, 0)`,
     );
-    const setOwnedId = database.prepare("UPDATE players SET housing_owned_id = ? WHERE user_id = ?");
+    const setOwnedId = database.prepare(
+      "UPDATE players SET housing_owned_id = ? WHERE user_id = ?",
+    );
 
     for (const p of ownedPlayers) {
       const r = insOwned.run(
@@ -331,60 +400,105 @@ function migrate(database: Database.Database) {
     }
   }
 
-  const colsStack = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const colsStack = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
   if (!colsStack.some((c) => c.name === "housing_stack")) {
     database.exec("ALTER TABLE players ADD COLUMN housing_stack TEXT");
   }
 
-  const ownedCols2 = database.prepare("PRAGMA table_info(player_owned_housing)").all() as {
+  const ownedCols2 = database
+    .prepare("PRAGMA table_info(player_owned_housing)")
+    .all() as {
     name: string;
   }[];
-  if (ownedCols2.length > 0 && !ownedCols2.some((c) => c.name === "sublet_retry_at")) {
-    database.exec("ALTER TABLE player_owned_housing ADD COLUMN sublet_retry_at INTEGER");
-    database.exec("ALTER TABLE player_owned_housing ADD COLUMN sublet_retry_chance REAL");
+  if (
+    ownedCols2.length > 0 &&
+    !ownedCols2.some((c) => c.name === "sublet_retry_at")
+  ) {
+    database.exec(
+      "ALTER TABLE player_owned_housing ADD COLUMN sublet_retry_at INTEGER",
+    );
+    database.exec(
+      "ALTER TABLE player_owned_housing ADD COLUMN sublet_retry_chance REAL",
+    );
   }
 
-  const colsPending = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const colsPending = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
   if (!colsPending.some((c) => c.name === "housing_pending_owned_id")) {
-    database.exec("ALTER TABLE players ADD COLUMN housing_pending_owned_id INTEGER");
+    database.exec(
+      "ALTER TABLE players ADD COLUMN housing_pending_owned_id INTEGER",
+    );
   }
 
-  const colsTaxi = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const colsTaxi = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
   if (!colsTaxi.some((c) => c.name === "taxi_state")) {
     database.exec("ALTER TABLE players ADD COLUMN taxi_state TEXT");
   }
 
-  const colsCarMaint = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const colsCarMaint = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
   if (!colsCarMaint.some((c) => c.name === "last_car_maintenance_at")) {
-    database.exec("ALTER TABLE players ADD COLUMN last_car_maintenance_at INTEGER");
+    database.exec(
+      "ALTER TABLE players ADD COLUMN last_car_maintenance_at INTEGER",
+    );
   }
 
-  const colsSleep = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  const colsSleep = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
   if (!colsSleep.some((c) => c.name === "sleep_started_at")) {
     database.exec("ALTER TABLE players ADD COLUMN sleep_started_at INTEGER");
     database.exec("ALTER TABLE players ADD COLUMN sleep_planned_ms INTEGER");
     database.exec("ALTER TABLE players ADD COLUMN sleep_start_energy INTEGER");
   }
 
-  const colsPcPrice = database.prepare("PRAGMA table_info(player_cars)").all() as { name: string }[];
-  if (colsPcPrice.length > 0 && !colsPcPrice.some((c) => c.name === "purchase_price_rub")) {
-    database.exec("ALTER TABLE player_cars ADD COLUMN purchase_price_rub INTEGER");
+  const colsPcPrice = database
+    .prepare("PRAGMA table_info(player_cars)")
+    .all() as { name: string }[];
+  if (
+    colsPcPrice.length > 0 &&
+    !colsPcPrice.some((c) => c.name === "purchase_price_rub")
+  ) {
+    database.exec(
+      "ALTER TABLE player_cars ADD COLUMN purchase_price_rub INTEGER",
+    );
   }
 
-  const colsPcUsed = database.prepare("PRAGMA table_info(player_cars)").all() as { name: string }[];
+  const colsPcUsed = database
+    .prepare("PRAGMA table_info(player_cars)")
+    .all() as { name: string }[];
   if (colsPcUsed.length > 0 && !colsPcUsed.some((c) => c.name === "is_used")) {
-    database.exec("ALTER TABLE player_cars ADD COLUMN mileage_km INTEGER NOT NULL DEFAULT 0");
-    database.exec("ALTER TABLE player_cars ADD COLUMN is_used INTEGER NOT NULL DEFAULT 0");
+    database.exec(
+      "ALTER TABLE player_cars ADD COLUMN mileage_km INTEGER NOT NULL DEFAULT 0",
+    );
+    database.exec(
+      "ALTER TABLE player_cars ADD COLUMN is_used INTEGER NOT NULL DEFAULT 0",
+    );
     database.exec("ALTER TABLE player_cars ADD COLUMN cond_engine INTEGER");
-    database.exec("ALTER TABLE player_cars ADD COLUMN cond_transmission INTEGER");
+    database.exec(
+      "ALTER TABLE player_cars ADD COLUMN cond_transmission INTEGER",
+    );
     database.exec("ALTER TABLE player_cars ADD COLUMN cond_suspension INTEGER");
     database.exec("ALTER TABLE player_cars ADD COLUMN cond_body INTEGER");
-    database.exec("ALTER TABLE player_cars ADD COLUMN cond_electronics INTEGER");
+    database.exec(
+      "ALTER TABLE player_cars ADD COLUMN cond_electronics INTEGER",
+    );
     database.exec("ALTER TABLE player_cars ADD COLUMN cond_interior INTEGER");
   }
 
-  const colsPcTires = database.prepare("PRAGMA table_info(player_cars)").all() as { name: string }[];
-  if (colsPcTires.length > 0 && !colsPcTires.some((c) => c.name === "cond_tires")) {
+  const colsPcTires = database
+    .prepare("PRAGMA table_info(player_cars)")
+    .all() as { name: string }[];
+  if (
+    colsPcTires.length > 0 &&
+    !colsPcTires.some((c) => c.name === "cond_tires")
+  ) {
     database.exec("ALTER TABLE player_cars ADD COLUMN cond_tires INTEGER");
     database.exec("ALTER TABLE player_cars ADD COLUMN cond_alignment INTEGER");
     database.exec(
@@ -421,11 +535,15 @@ function migrate(database: Database.Database) {
 }
 
 export function getUserByLogin(login: string): UserRow | undefined {
-  return getDb().prepare("SELECT * FROM users WHERE login = ? COLLATE NOCASE").get(login) as UserRow | undefined;
+  return getDb()
+    .prepare("SELECT * FROM users WHERE login = ? COLLATE NOCASE")
+    .get(login) as UserRow | undefined;
 }
 
 export function getUserById(id: number): UserRow | undefined {
-  return getDb().prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRow | undefined;
+  return getDb().prepare("SELECT * FROM users WHERE id = ?").get(id) as
+    | UserRow
+    | undefined;
 }
 
 export function createUser(
@@ -437,11 +555,21 @@ export function createUser(
     .prepare(
       "INSERT INTO users (login, password_hash, is_admin, is_test, created_at) VALUES (?, ?, ?, ?, ?)",
     )
-    .run(login, passwordHash, flags.isAdmin ? 1 : 0, flags.isTest ? 1 : 0, Date.now());
+    .run(
+      login,
+      passwordHash,
+      flags.isAdmin ? 1 : 0,
+      flags.isTest ? 1 : 0,
+      Date.now(),
+    );
   return Number(r.lastInsertRowid);
 }
 
-export function createPlayer(userId: number, displayName: string, rubles = 5000) {
+export function createPlayer(
+  userId: number,
+  displayName: string,
+  rubles = 5000,
+) {
   const starterMs = 3 * 24 * 60 * 60 * 1000;
   const expires = Date.now() + starterMs;
   getDb()
@@ -456,7 +584,9 @@ export function createPlayer(userId: number, displayName: string, rubles = 5000)
 }
 
 export function getPlayer(userId: number): PlayerRow | undefined {
-  return getDb().prepare("SELECT * FROM players WHERE user_id = ?").get(userId) as PlayerRow | undefined;
+  return getDb()
+    .prepare("SELECT * FROM players WHERE user_id = ?")
+    .get(userId) as PlayerRow | undefined;
 }
 
 export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
@@ -552,20 +682,32 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
     );
 }
 
-export function saveRefreshToken(userId: number, tokenHash: string, expiresAt: number) {
+export function saveRefreshToken(
+  userId: number,
+  tokenHash: string,
+  expiresAt: number,
+) {
   getDb()
-    .prepare("INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)")
+    .prepare(
+      "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)",
+    )
     .run(userId, tokenHash, expiresAt);
 }
 
-export function findRefreshToken(tokenHash: string): { user_id: number; expires_at: number } | undefined {
+export function findRefreshToken(
+  tokenHash: string,
+): { user_id: number; expires_at: number } | undefined {
   return getDb()
-    .prepare("SELECT user_id, expires_at FROM refresh_tokens WHERE token_hash = ?")
+    .prepare(
+      "SELECT user_id, expires_at FROM refresh_tokens WHERE token_hash = ?",
+    )
     .get(tokenHash) as { user_id: number; expires_at: number } | undefined;
 }
 
 export function deleteRefreshToken(tokenHash: string) {
-  getDb().prepare("DELETE FROM refresh_tokens WHERE token_hash = ?").run(tokenHash);
+  getDb()
+    .prepare("DELETE FROM refresh_tokens WHERE token_hash = ?")
+    .run(tokenHash);
 }
 
 export function deleteUserRefreshTokens(userId: number) {

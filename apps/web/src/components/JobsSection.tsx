@@ -12,6 +12,13 @@ import {
 } from "../api";
 import { applyLiveJobSchedule, getCityLocalTime } from "../cityTime";
 import { getShiftDurationLabel, nightGuardStaminaHint } from "../jobShift";
+
+const SKILL_PROGRESS_HINT: Record<string, string> = {
+  taxi: "Каждые 10 поездок — +1 к вождению (макс. 100)",
+  delivery: "Каждые 10 смен — +1 к стойкости (макс. 100)",
+  cashier: "Каждые 10 смен — +1 к общению (макс. 100)",
+  night_guard: "Каждые 10 смен — +1 к дисциплине (макс. 100)",
+};
 import { ConfirmDialog } from "./ConfirmDialog";
 import { JobActionButtonLabel } from "./JobActionButtonLabel";
 import { TaxiEmployedJobView } from "./TaxiEmployedJobView";
@@ -348,14 +355,15 @@ export function JobsSection({
     }
     const local = getCityLocalTime(cityTimezone);
     const shiftLabel = getShiftDurationLabel(job, local);
-    const staminaNote =
-      job.templateKey === "night_guard" && job.skill
-        ? `\nОпыт: +${job.skillGain ?? 1} ${SKILL_LABELS[job.skill] ?? job.skill} (${nightGuardStaminaHint()})`
-        : "";
+    const skillNote = job.templateKey
+      ? `\n${SKILL_PROGRESS_HINT[job.templateKey] ?? ""}${
+          job.templateKey === "night_guard" ? ` (${nightGuardStaminaHint()})` : ""
+        }`
+      : "";
     const earn = `${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽${mult}`;
     return {
       title: "Выйти на смену?",
-      text: `«${job.title}», смена ${shiftLabel}.\nЗаработок: ${earn}${staminaNote}`,
+      text: `«${job.title}», смена ${shiftLabel}.\nЗаработок: ${earn}${skillNote}`,
       confirmLabel: "Выйти на смену",
       confirmClassName: "btn-primary",
     };
@@ -570,11 +578,11 @@ export function JobsSection({
                   </dd>
                 </div>
               )}
-              {selected.skillGain != null && selected.skill && selected.kind !== "taxi_line" && (
+              {selected.skill && selected.templateKey && SKILL_PROGRESS_HINT[selected.templateKey] && (
                 <div>
-                  <dt>Опыт</dt>
+                  <dt>Навык</dt>
                   <dd>
-                    +{selected.skillGain} {SKILL_LABELS[selected.skill]}
+                    {SKILL_LABELS[selected.skill] ?? selected.skill}. {SKILL_PROGRESS_HINT[selected.templateKey]}
                     {selected.templateKey === "night_guard" && (
                       <span className="job-skill-hint"> ({nightGuardStaminaHint()})</span>
                     )}
