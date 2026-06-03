@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SKILL_LABELS } from "../api";
+import { SKILL_LABELS, SKILL_ORDER } from "../api";
 import { formatLocaleDateRu } from "../formatLocaleDate";
 import { cityDisplayName } from "../cityNames";
 import { TestAdminPanel } from "../components/TestAdminPanel";
@@ -55,9 +55,9 @@ export function ProfilePage() {
           <section className="profile-section">
             <h3 className="profile-section-title">Навыки</h3>
             <div className="skill-grid">
-              {(Object.entries(p.skills) as [string, number][]).map(([k, v]) => (
+              {SKILL_ORDER.map((k) => (
                 <div key={k} className="skill-item">
-                  {SKILL_LABELS[k] ?? k}: <strong>{v}</strong>
+                  {SKILL_LABELS[k]}: <strong>{p.skills[k] ?? 0}</strong>
                 </div>
               ))}
             </div>

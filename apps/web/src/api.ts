@@ -1,11 +1,18 @@
 import { formatLocaleDateRu } from "./formatLocaleDate.js";
 
 export type Skills = {
-  agility: number;
+  driving: number;
   stamina: number;
   charisma: number;
-  wit: number;
+  discipline: number;
 };
+
+export const SKILL_ORDER: (keyof Skills)[] = [
+  "driving",
+  "stamina",
+  "charisma",
+  "discipline",
+];
 
 export type Vitals = {
   energy: number;
@@ -1372,8 +1379,11 @@ export function formatHousingExpiry(ts: number | null): string {
 export { formatDuration } from "./formatDuration.js";
 
 export const SKILL_LABELS: Record<string, string> = {
-  agility: "Ловкость",
+  driving: "Вождение",
   stamina: "Стойкость",
   charisma: "Общение",
-  wit: "Смекалка",
+  discipline: "Дисциплина",
+  /** Старые ключи API — на случай кэша */
+  agility: "Дисциплина",
+  wit: "Вождение",
 };
