@@ -79,40 +79,36 @@ export function TaxiLineSetup({ taxi }: SetupProps) {
             <p className="shop-owned">Нужен свой автомобиль или аренда транспорта.</p>
           ) : (
             <ul className="phone-list">
-              {status.availableCars.map((c) => (
-                <li key={carKey(c)}>
-                  <label className="phone-list-item" style={{ cursor: "pointer" }}>
-                    <input
-                      type="radio"
-                      name="taxi-car"
-                      checked={pickCar === carKey(c)}
-                      onChange={() => setPickCar(carKey(c))}
-                    />
-                    <span className="phone-list-info">
-                      <span className="phone-list-name">{c.label}</span>
-                      <span className="phone-list-price">
-                        {c.tariffTitle} · {c.source === "rental" ? "аренда" : "свой"}
+              {status.availableCars.map((c) => {
+                const key = carKey(c);
+                const isPicked = pickCar === key;
+                return (
+                  <li key={key}>
+                    <button
+                      type="button"
+                      className={`phone-list-item taxi-car-pick${isPicked ? " taxi-car-pick--active" : ""}`}
+                      disabled={busy}
+                      onClick={() => {
+                        setPickCar(key);
+                        void selectCar(c.source as "owned" | "rental", c.refId);
+                      }}
+                    >
+                      <span className="taxi-car-pick-mark" aria-hidden>
+                        {isPicked ? "✓" : ""}
                       </span>
-                    </span>
-                  </label>
-                </li>
-              ))}
+                      <span className="phone-list-info">
+                        <span className="phone-list-name">{c.label}</span>
+                        <span className="phone-list-price">
+                          {c.tariffTitle} · {c.source === "rental" ? "аренда" : "свой"}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
-          <div className="taxi-car-actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={busy || !pickCar}
-              onClick={() => {
-                const car = status.availableCars.find((c) => carKey(c) === pickCar);
-                if (!car) return;
-                void selectCar(car.source as "owned" | "rental", car.refId);
-              }}
-            >
-              Выбрать
-            </button>
-          </div>
+          <p className="shop-owned taxi-car-pick-hint">Нажмите на автомобиль в списке — он сразу будет выбран для смены.</p>
         </>
       )}
 
