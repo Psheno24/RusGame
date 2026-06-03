@@ -2164,6 +2164,16 @@ body {
   margin-top: 0;
   line-height: 1.25;
   white-space: normal;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.job-detail-action-btn .job-btn-label--stack,
+.job-detail-action-btn .job-btn-text {
+  width: 100%;
+  text-align: center;
 }
 
 .job-btn-label {

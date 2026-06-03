@@ -96,7 +96,9 @@ function JobListCard({
         <div className="job-list-info">
           <span className="job-list-name">{job.title}</span>
           <span className="job-list-pay">
-            {job.payoutMin.toLocaleString("ru-RU")}–{job.payoutMax.toLocaleString("ru-RU")} ₽
+            {job.kind === "taxi_line"
+              ? "Доход неопределён"
+              : `${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽`}
           </span>
         </div>
       </div>
@@ -524,14 +526,14 @@ export function JobsSection({
                 <dt>Зарплата</dt>
                 <dd>
                   {selected.kind === "taxi_line"
-                    ? `~${(selected.taxiTargetIncomeRub ?? selected.payoutMax).toLocaleString("ru-RU")} ₽ за активную сессию (${selected.payoutMin.toLocaleString("ru-RU")}–${selected.payoutMax.toLocaleString("ru-RU")} ₽)`
+                    ? "Неопределённая (зависит от заказов и длительности сессии)"
                     : selected.kind === "duration" && selected.payoutPerHourMin != null
                       ? `${selected.payoutPerHourMin.toLocaleString("ru-RU")}–${(selected.payoutPerHourMax ?? selected.payoutPerHourMin).toLocaleString("ru-RU")} ₽/ч`
                       : `${selected.payoutMin.toLocaleString("ru-RU")}–${selected.payoutMax.toLocaleString("ru-RU")} ₽ за смену`}
                 </dd>
               </div>
               <div>
-                <dt>Длительность смены</dt>
+                <dt>{selected.kind === "taxi_line" ? "Сессия" : "Длительность смены"}</dt>
                 <dd>{shiftDurationLabel}</dd>
               </div>
               <div className="job-requirements">
@@ -568,7 +570,7 @@ export function JobsSection({
                   </dd>
                 </div>
               )}
-              {selected.skillGain != null && selected.skill && (
+              {selected.skillGain != null && selected.skill && selected.kind !== "taxi_line" && (
                 <div>
                   <dt>Опыт</dt>
                   <dd>

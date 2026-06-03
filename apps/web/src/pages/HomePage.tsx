@@ -61,6 +61,12 @@ export function HomePage() {
   }, [homeNav]);
 
   useEffect(() => {
+    if (showRest && home && !home.sleeping) {
+      setDurationMs((d) => Math.min(d, home.maxSleepMs));
+    }
+  }, [showRest, home]);
+
+  useEffect(() => {
     if (!traveling || !arrivesAt) return;
     if (Date.now() >= arrivesAt) load();
   }, [traveling, arrivesAt, load, tick]);
@@ -150,10 +156,10 @@ export function HomePage() {
 
   if (showRest && !home.sleeping) {
     const startEnergy = p.vitals.energy;
-    const after = previewEnergy(startEnergy, sliderMs);
     const minMs = home.minSleepMs;
     const maxMs = home.maxSleepMs;
     const sliderMs = Math.min(durationMs, maxMs);
+    const after = previewEnergy(startEnergy, sliderMs);
 
     return (
       <div className="card home-rest-card">

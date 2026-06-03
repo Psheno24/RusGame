@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { useCityNav } from "../cityNav";
 import { useApp } from "../context";
 import { useHomeNav } from "../homeNav";
@@ -151,7 +152,9 @@ export function Layout() {
         </header>
       )}
       <main className="app-main">
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </main>
       <nav className="bottom-nav bottom-nav-safe" aria-label="Основное меню">
         <div className="bottom-nav-inner">
