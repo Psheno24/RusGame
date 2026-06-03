@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchTaxiStatus,
   taxiAcceptOrder,
@@ -11,6 +11,10 @@ import {
   type User,
 } from "../api";
 
+function carKey(c: { source: string; refId: number }) {
+  return `${c.source}:${c.refId}`;
+}
+
 export function useTaxiLine(
   setUser: (u: User) => void,
   onToast: (msg: string, isErr?: boolean) => void,
@@ -18,6 +22,20 @@ export function useTaxiLine(
   const [status, setStatus] = useState<TaxiStatus | null>(null);
   const [pickCar, setPickCar] = useState("");
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  busyRef.current = busy;
+
+  const syncPickCar = useCallback((nextStatus: TaxiStatus) => {
+    if (nextStatus.selectedCarKey) {
+      setPickCar(nextStatus.selectedCarKey);
+      return;
+    }
+    setPickCar((prev) => {
+      if (busyRef.current && prev) return prev;
+      if (prev && nextStatus.availableCars.some((c) => carKey(c) === prev)) return prev;
+      return "";
+    });
+  }, []);
 
   const refresh = useCallback(async () => {
     const data = await fetchTaxiStatus();
@@ -26,18 +44,19 @@ export function useTaxiLine(
       if (data.user) setUser(data.user);
     }
     setStatus(data.status);
-    if (data.status.selectedCarKey) setPickCar(data.status.selectedCarKey);
-    else setPickCar("");
-  }, [onToast, setUser]);
+    syncPickCar(data.status);
+  }, [onToast, setUser, syncPickCar]);
+
+  const inTrip = Boolean(status?.activeTrip);
 
   useEffect(() => {
     refresh().catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
-    const ms = status?.activeTrip ? 3000 : 15000;
+    const ms = inTrip ? 3000 : 15000;
     const id = setInterval(() => {
       refresh().catch(() => {});
     }, ms);
     return () => clearInterval(id);
-  }, [refresh, onToast, status?.activeTrip != null]);
+  }, [refresh, onToast, inTrip]);
 
   const run = useCallback(
     async (fn: () => Promise<{ message: string; user: User }>) => {
@@ -58,7 +77,6 @@ export function useTaxiLine(
 
   const carSelected = Boolean(status?.selectedCarKey ?? status?.carSelected);
   const onLine = status?.onLine ?? false;
-  const inTrip = status?.activeTrip != null;
 
   return {
     status,

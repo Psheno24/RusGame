@@ -232,10 +232,10 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
               <p className="property-detail-rental-timer">
                 {liveRemainingMs > 0 ? (
                   <>
-                    По серверу игры осталось: <strong>{formatDuration(liveRemainingMs)}</strong>
+                    Осталось: <strong>{formatDuration(liveRemainingMs)}</strong>
                   </>
                 ) : (
-                  <strong>Срок аренды истёк</strong>
+                  <strong>Истекла</strong>
                 )}
               </p>
             )}
