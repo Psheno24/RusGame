@@ -33,6 +33,7 @@
     "priceRub": 900,
     "hours": 4,
     "needsLicense": true,
-    "accent": "#3d4f6f"
+    "accent": "#3d4f6f",
+    "taxiCarModelId": "lada-granta"
   }
 ]

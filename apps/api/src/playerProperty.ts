@@ -8,7 +8,8 @@ import { listPlayerCars } from "./playerCars.js";
 import { formatLocaleDateRu } from "./formatLocaleDate.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 import { isSubletActive, listOwnedHousing } from "./playerOwnedHousing.js";
-import { isVehicleRentalActive } from "./vehicleRental.js";
+import { playerHasVehicleRentalRecord } from "./vehicleRental.js";
+import { buildVehicleRentalTimeInfo } from "./vehicleRentalDisplay.js";
 
 export type PropertyCard = {
   id: string;
@@ -60,14 +61,15 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
     });
   }
 
-  if (isVehicleRentalActive(p, now)) {
-    const rental = getVehicleRental(p.vehicle_rental_id);
+  if (playerHasVehicleRentalRecord(p)) {
+    const rental = getVehicleRental(p.vehicle_rental_id!);
+    const time = buildVehicleRentalTimeInfo(p, now);
     cards.push({
       id: "rental",
       kind: "rental",
       title: rental?.label ?? "Аренда транспорта",
-      rightText: `до ${formatLocaleDateRu(p.vehicle_rental_expires_at)}`,
-      rightSubtext: null,
+      rightText: time?.cardRightText ?? "истекла",
+      rightSubtext: time?.cardRightSubtext ?? "нажмите, чтобы снять",
       plate: null,
       accent: rental?.accent ?? "#2d8f5c",
     });

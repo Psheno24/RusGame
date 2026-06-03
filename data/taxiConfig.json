@@ -20,7 +20,8 @@
     "economy": { "title": "Эконом", "orderMult": 1, "minCityMultiplier": 1 },
     "comfort": { "title": "Комфорт", "orderMult": 1.25, "minCityMultiplier": 1.05 },
     "comfort_plus": { "title": "Комфорт+", "orderMult": 1.45, "minCityMultiplier": 1.2 },
-    "business": { "title": "Бизнес", "orderMult": 1.8, "minCityMultiplier": 1.5 }
+    "business": { "title": "Бизнес", "orderMult": 1.8, "minCityMultiplier": 1.5 },
+    "premium": { "title": "Премиум", "orderMult": 2.2, "minCityMultiplier": 1.8 }
   },
   "carClassByPrice": [
     { "maxPriceRub": 400000, "class": "economy" },
@@ -42,9 +43,9 @@
     "krasnodar": ["economy", "comfort", "comfort_plus"],
     "novosibirsk": ["economy", "comfort", "comfort_plus"],
     "ekb": ["economy", "comfort", "comfort_plus", "business"],
-    "kazan": ["economy", "comfort", "comfort_plus", "business"],
-    "spb": ["economy", "comfort", "comfort_plus", "business"],
-    "moscow": ["economy", "comfort", "comfort_plus", "business"]
+    "kazan": ["economy", "comfort", "comfort_plus", "business", "premium"],
+    "spb": ["economy", "comfort", "comfort_plus", "business", "premium"],
+    "moscow": ["economy", "comfort", "comfort_plus", "business", "premium"]
   },
   "orderBaseRubOmsk": 1000
 }

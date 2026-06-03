@@ -2569,6 +2569,16 @@ button.property-card--clickable:hover {
   font-weight: 800;
 }
 
+.property-detail-rental-timer {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.property-detail-rental-timer strong {
+  color: var(--text);
+}
+
 .property-detail-sub {
   margin: 4px 0 0;
   font-size: 0.78rem;
@@ -2925,6 +2935,22 @@ button.property-badge--live:not(:disabled):active {
 
 .taxi-order-card + .taxi-order-card {
   margin-top: 0;
+}
+
+.taxi-order-tariff {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: var(--accent);
+}
+
+.taxi-order-card--blocked {
+  opacity: 0.72;
+}
+
+.taxi-order-block-reason {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  color: #e8a87c;
 }
 
 .taxi-order-meta {
