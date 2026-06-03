@@ -20,7 +20,11 @@ async function main() {
     if (created) console.log(`Тест-аккаунт: ${login} (см. TEST_LOGIN / TEST_PASSWORD в .env)`);
   }
 
-  const app = Fastify({ logger: true, trustProxy: TRUST_PROXY });
+  const app = Fastify({
+    logger: LOCAL_DEV ? { level: "error" } : true,
+    disableRequestLogging: LOCAL_DEV,
+    trustProxy: TRUST_PROXY,
+  });
 
   await app.register(cors, {
     origin: true,

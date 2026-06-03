@@ -33,12 +33,21 @@ npm run setup
 
 (установка зависимостей, `.env`, запуск dev)
 
+Если API падает с `better-sqlite3` / `NODE_MODULE_VERSION` — вы обновили Node.js:
+
+```powershell
+npm run dev:clean
+```
+
+Или вручную: закройте все терминалы с `npm run dev`, затем `npm rebuild better-sqlite3 -w @russia-game/api` и `npm run dev`.
+
 ---
 
 ## Полезное
 
 | Команда | Зачем |
 |---------|--------|
+| `npm run dev:clean` | Остановить старые dev-процессы и запустить заново |
 | `npm run check` | Сборка + тесты (как в CI) перед push |
 | `npm run build` | Production-сборка |
 | `npm run docker:up` | Локально через Docker |

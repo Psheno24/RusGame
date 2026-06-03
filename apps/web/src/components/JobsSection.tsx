@@ -12,6 +12,9 @@ import {
 } from "../api";
 import { applyLiveJobSchedule, getCityLocalTime } from "../cityTime";
 import { getShiftDurationLabel, nightGuardStaminaHint } from "../jobShift";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { JobActionButtonLabel } from "./JobActionButtonLabel";
+import { TaxiEmployedJobView } from "./TaxiEmployedJobView";
 
 const SKILL_PROGRESS_HINT: Record<string, string> = {
   taxi: "Каждые 10 поездок — +1 к вождению (макс. 100)",
@@ -19,9 +22,6 @@ const SKILL_PROGRESS_HINT: Record<string, string> = {
   cashier: "Каждые 10 смен — +1 к общению (макс. 100)",
   night_guard: "Каждые 10 смен — +1 к дисциплине (макс. 100)",
 };
-import { ConfirmDialog } from "./ConfirmDialog";
-import { JobActionButtonLabel } from "./JobActionButtonLabel";
-import { TaxiEmployedJobView } from "./TaxiEmployedJobView";
 
 type JobCard = JobView;
 

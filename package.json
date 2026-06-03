@@ -7,6 +7,7 @@
   ],
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,green \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:clean": "powershell -ExecutionPolicy Bypass -File scripts/dev-clean.ps1",
     "dev:api": "npm run dev -w @russia-game/api",
     "dev:web": "npm run dev -w @russia-game/web",
     "build": "npm run build -w @russia-game/web && npm run build -w @russia-game/api",
@@ -14,6 +15,7 @@
     "generate:housing": "node scripts/generate-housing-catalog.mjs",
     "start": "npm run start -w @russia-game/api",
     "setup": "powershell -ExecutionPolicy Bypass -File scripts/setup-windows.ps1",
+    "postinstall": "npm rebuild better-sqlite3 -w @russia-game/api",
     "docker:up": "docker compose up -d --build",
     "docker:logs": "docker compose logs -f app"
   },
