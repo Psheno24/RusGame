@@ -54,6 +54,9 @@ export function getShiftDurationLabel(
   },
   local?: Pick<CityLocalTime, "hour" | "minute">,
 ): string {
+  if (job.kind === "taxi_line") {
+    return "без фиксированного лимита";
+  }
   if (job.kind === "duration") {
     const min = job.shiftHoursMin ?? 4;
     const max = job.shiftHoursMax ?? 12;
