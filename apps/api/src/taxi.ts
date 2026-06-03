@@ -21,6 +21,7 @@ import {
 import { sleepBlockMessage } from "./playerSleep.js";
 import { clampVital } from "./playerStats.js";
 import { jobCityId } from "./jobLocation.js";
+import { isVehicleRentalActive } from "./vehicleRental.js";
 
 type TaxiConfig = {
   idleOfflineMs: number;
@@ -98,12 +99,9 @@ export function listTaxiCarOptions(player: PlayerRow, now = Date.now()): TaxiCar
       tariffTitle: tariff?.title ?? taxiClass,
     });
   }
-  if (
-    player.vehicle_rental_id &&
-    player.vehicle_rental_expires_at != null &&
-    player.vehicle_rental_expires_at > now
-  ) {
-    const rental = getVehicleRental(player.vehicle_rental_id);
+  const rentalId = player.vehicle_rental_id;
+  if (rentalId && isVehicleRentalActive(player, now)) {
+    const rental = getVehicleRental(rentalId);
     const modelId = "lada-granta";
     const taxiClass = taxiCarClassForModel(modelId);
     options.push({
@@ -250,13 +248,38 @@ function completeActiveTrip(
 }
 
 /** Синхронизация: завершение поездки, обновление пула заказов. */
+function ensureValidTaxiCar(player: PlayerRow, state: TaxiState, now: number): TaxiState | null {
+  if (!state.carSelected) return state;
+  const cars = listTaxiCarOptions(player, now);
+  const valid = cars.some((c) => c.source === state.carSource && c.refId === state.carRefId);
+  if (valid) return state;
+  if (state.activeTrip) {
+    return { ...state, onLine: false, availableOrders: [], ordersRefreshAt: 0 };
+  }
+  return null;
+}
+
 export function advanceTaxiState(
   player: PlayerRow,
   job: JobDef | undefined,
   state: TaxiState,
   now: number,
 ): { state: TaxiState; completedMessage?: string; completedPayout?: number } {
-  let s = syncIdleOffline(state, now);
+  let s = ensureValidTaxiCar(player, state, now);
+  if (s === null) {
+    saveTaxiState(player.user_id, null);
+    return {
+      state: {
+        ...state,
+        carSelected: false,
+        onLine: false,
+        availableOrders: [],
+        ordersRefreshAt: 0,
+        activeTrip: state.activeTrip,
+      },
+    };
+  }
+  s = syncIdleOffline(s, now);
   let completedMessage: string | undefined;
   let completedPayout: number | undefined;
 
@@ -421,27 +444,29 @@ export function taxiGoOnline(
   const sleepErr = sleepBlockMessage(player, now);
   if (sleepErr) return { ok: false, error: sleepErr };
 
-  let state = parseTaxiState(player);
+  const state = parseTaxiState(player);
   if (!state?.carSelected) {
     return { ok: false, error: "Сначала выберите автомобиль" };
+  }
+  const cars = listTaxiCarOptions(player, now);
+  if (!cars.some((c) => c.source === state.carSource && c.refId === state.carRefId)) {
+    return { ok: false, error: "Аренда или автомобиль недоступны — выберите другое авто" };
   }
   if (state.activeTrip) {
     return { ok: false, error: "Дождитесь окончания текущей поездки" };
   }
   if (state.onLine) return { ok: false, error: "Вы уже на линии" };
 
-  state = {
+  let onLineState: TaxiState = {
     ...state,
     onLine: true,
     lastActivityAt: now,
     availableOrders: [],
     ordersRefreshAt: 0,
   };
-  state = refreshOrderPool(player, state, now);
-  saveTaxiState(player.user_id, state);
-  const car = listTaxiCarOptions(player, now).find(
-    (c) => c.source === state.carSource && c.refId === state.carRefId,
-  );
+  onLineState = refreshOrderPool(player, onLineState, now);
+  saveTaxiState(player.user_id, onLineState);
+  const car = cars.find((c) => c.source === onLineState.carSource && c.refId === onLineState.carRefId);
   appendPlayerFeed(player.user_id, "work:taxi", `На линии (${car?.label ?? "авто"})`, now);
   return { ok: true, message: `Работа на линии: ${car?.label ?? "авто"}` };
 }
@@ -563,9 +588,5 @@ export function getTaxiJobForPlayer(player: PlayerRow): JobDef | undefined {
 
 export function playerMeetsCarRequirement(player: PlayerRow, now = Date.now()): boolean {
   if (playerHasAnyCar(player.user_id)) return true;
-  return Boolean(
-    player.vehicle_rental_id &&
-      player.vehicle_rental_expires_at != null &&
-      player.vehicle_rental_expires_at > now,
-  );
+  return isVehicleRentalActive(player, now);
 }

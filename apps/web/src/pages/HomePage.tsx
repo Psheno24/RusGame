@@ -35,7 +35,6 @@ export function HomePage() {
   const [traveling, setTraveling] = useState(false);
   const [arrivesAt, setArrivesAt] = useState<number | null>(null);
   const [targetEnergy, setTargetEnergy] = useState(100);
-  const [sliderActive, setSliderActive] = useState(false);
   const [showRest, setShowRest] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
@@ -58,7 +57,6 @@ export function HomePage() {
   useEffect(() => {
     homeNav?.registerReset(() => {
       setShowRest(false);
-      setSliderActive(false);
     });
     return () => homeNav?.registerReset(null);
   }, [homeNav]);
@@ -92,7 +90,6 @@ export function HomePage() {
       setUser(r.user);
       showNotice(r.message);
       setShowRest(false);
-      setSliderActive(false);
       await load();
     } catch (e) {
       showNotice(e instanceof Error ? e.message : "Ошибка", true);
@@ -157,6 +154,7 @@ export function HomePage() {
   const minEnergy = minTargetEnergy(startEnergy);
   const maxEnergy = 100;
   const sliderEnergy = Math.min(maxEnergy, Math.max(minEnergy, targetEnergy));
+  const sleepMs = sleepMsForTargetEnergy(startEnergy, sliderEnergy);
 
   if (showRest && !home.sleeping) {
     return (
@@ -169,19 +167,13 @@ export function HomePage() {
           max={maxEnergy}
           step={SLEEP_ENERGY_STEP}
           value={sliderEnergy}
-          onPointerDown={() => setSliderActive(true)}
-          onPointerUp={() => setSliderActive(false)}
-          onPointerCancel={() => setSliderActive(false)}
-          onTouchStart={() => setSliderActive(true)}
-          onTouchEnd={() => setSliderActive(false)}
-          onBlur={() => setSliderActive(false)}
           onChange={(e) => setTargetEnergy(Number(e.target.value))}
         />
-        {sliderActive && (
-          <p className="home-sleep-preview-live">
-            Энергия после сна: <strong>{sliderEnergy}</strong>
-          </p>
-        )}
+        <p className="home-sleep-preview-live">
+          Энергия: <strong>{sliderEnergy}</strong>
+          <span className="home-sleep-preview-sep"> · </span>
+          сон ~<strong>{formatDuration(sleepMs)}</strong>
+        </p>
         <div className="home-rest-actions">
           <button type="button" className="btn btn-secondary job-detail-action-btn" onClick={() => setShowRest(false)}>
             Назад
@@ -233,7 +225,6 @@ export function HomePage() {
             className="btn btn-primary btn-block job-detail-action-btn"
             onClick={() => {
               setTargetEnergy(maxEnergy);
-              setSliderActive(false);
               setShowRest(true);
             }}
             disabled={startEnergy >= 100}

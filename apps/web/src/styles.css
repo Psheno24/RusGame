@@ -1242,15 +1242,19 @@ body {
 }
 
 .home-sleep-preview-live {
-  margin: 12px 0 0;
-  font-size: 1rem;
-  color: var(--text);
+  margin: 14px 0 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
   min-height: 1.5rem;
 }
 
 .home-sleep-preview-live strong {
   color: var(--accent);
-  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.home-sleep-preview-sep {
+  opacity: 0.6;
 }
 
 .home-rest-actions {
@@ -2175,17 +2179,19 @@ body {
 }
 
 .job-detail-actions .btn,
-.home-rest-actions .btn {
+.home-rest-actions .btn,
+.btn.job-detail-action-btn {
   flex: 1 1 0;
   min-width: 0;
   min-height: 3.25rem;
   margin-top: 0;
   line-height: 1.25;
   white-space: normal;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid !important;
+  place-items: center;
+  place-content: center;
   text-align: center;
+  box-sizing: border-box;
 }
 
 .job-detail-action-btn .job-btn-label--stack,

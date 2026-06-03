@@ -5,6 +5,7 @@ import { syncPlayerSimTariffBilling } from "./simTariff.js";
 import { syncPlayerCarMaintenance } from "./carMaintenance.js";
 import { syncPlayerSleep } from "./playerSleep.js";
 import { syncTaxiForPlayer } from "./taxi.js";
+import { syncPlayerVehicleRental } from "./vehicleRental.js";
 
 /** Синхронизация состояния по серверному времени (прибытие, жильё, сим). */
 export function refreshPlayerState(userId: number, now = Date.now()) {
@@ -12,6 +13,7 @@ export function refreshPlayerState(userId: number, now = Date.now()) {
   if (!player) return undefined;
   player = resolveTravel(player, now);
   player = syncPlayerSleep(player, now);
+  player = syncPlayerVehicleRental(player, now);
   player = syncPlayerHousing(player, now);
   syncPlayerSimTariffBilling(userId, now);
   syncPlayerCarMaintenance(userId, now);
