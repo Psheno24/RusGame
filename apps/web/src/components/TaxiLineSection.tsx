@@ -4,13 +4,19 @@ import { type TaxiLineHandle } from "../hooks/useTaxiLine";
 
 type TaxiCarOption = TaxiStatus["availableCars"][number];
 
+function carOptionKey(c: { source: string; refId: number }) {
+  return `${c.source}:${c.refId}`;
+}
+
 function TaxiCarList({
   cars,
   busy,
+  selectedCarKey,
   onPick,
 }: {
   cars: TaxiCarOption[];
   busy: boolean;
+  selectedCarKey: string | null;
   onPick: (car: TaxiCarOption) => void;
 }) {
   if (cars.length === 0) {
@@ -19,13 +25,19 @@ function TaxiCarList({
 
   return (
     <ul className="phone-list taxi-car-list">
-      {cars.map((c) => (
-        <li key={`${c.source}:${c.refId}`}>
+      {cars.map((c) => {
+        const isCurrent = selectedCarKey === carOptionKey(c);
+        return (
+        <li key={carOptionKey(c)}>
           <button
             type="button"
-            className="phone-list-item"
+            className={`phone-list-item${isCurrent ? " taxi-car-list-item--current" : ""}`}
             disabled={busy}
-            onClick={() => onPick(c)}
+            aria-current={isCurrent ? "true" : undefined}
+            onClick={() => {
+              if (isCurrent) return;
+              onPick(c);
+            }}
           >
             <span className="phone-list-info">
               <span className="phone-list-name">{c.label}</span>
@@ -35,7 +47,8 @@ function TaxiCarList({
             </span>
           </button>
         </li>
-      ))}
+        );
+      })}
     </ul>
   );
 }
@@ -147,6 +160,7 @@ export function TaxiLineSetup({ taxi }: SetupProps) {
         <TaxiCarList
           cars={status.availableCars}
           busy={busy}
+          selectedCarKey={status.selectedCarKey}
           onPick={(car) => void selectCar(car.source, car.refId)}
         />
       )}

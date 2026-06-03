@@ -2895,6 +2895,17 @@ button.property-badge--live:not(:disabled):active {
   margin-top: 10px;
 }
 
+.taxi-car-list-item--current {
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 1px rgba(90, 160, 220, 0.35);
+  cursor: default;
+}
+
+.taxi-car-list-item--current:active {
+  transform: none;
+  border-color: var(--accent);
+}
+
 .taxi-car-actions {
   display: flex;
   flex-wrap: wrap;

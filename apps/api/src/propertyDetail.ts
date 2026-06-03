@@ -224,7 +224,7 @@ export function getPropertyDetail(
     } else {
       status.push({
         label: "Такси",
-        value: "не подходит (нужен каршеринг «Эконом» или свой авто)",
+        value: "не подходит (нужно «Авто (эконом)» или свой автомобиль)",
       });
     }
 
