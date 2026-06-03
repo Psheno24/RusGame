@@ -17,8 +17,13 @@ export function totalExpenseRatePct(prestige: number, expenseTypePct: number): n
   return prestigeExpensePct(prestige) + expenseTypePct;
 }
 
+/** Гросс-аренда: стоимость объекта / 60 в месяц. */
 export function monthlyGrossRentRub(priceRub: number): number {
-  return Math.round(priceRub * 0.005);
+  return Math.round(priceRub / 60);
+}
+
+export function weeklyGrossRentRub(priceRub: number): number {
+  return Math.round(monthlyGrossRentRub(priceRub) / 4);
 }
 
 export function monthlyExpensesRub(
@@ -50,6 +55,24 @@ export function netIncomeForPeriod(
   return Math.max(0, Math.round((monthlyNetIncomeRub * days) / 30));
 }
 
+export function weeklyNetIncomeRub(
+  priceRub: number,
+  prestige: number,
+  expenseTypePct: number,
+): number {
+  const monthly = monthlyNetIncomeRub(priceRub, prestige, expenseTypePct);
+  return Math.round(monthly / 4);
+}
+
+export function weeklyExpensesRub(
+  priceRub: number,
+  prestige: number,
+  expenseTypePct: number,
+): number {
+  const monthly = monthlyExpensesRub(priceRub, prestige, expenseTypePct);
+  return Math.round(monthly / 4);
+}
+
 export function computeHousingEconomy(
   priceRub: number,
   type: HousingTypeEconomyInput,
@@ -57,11 +80,25 @@ export function computeHousingEconomy(
   monthlyRentRub: number;
   monthlyExpensesRub: number;
   monthlyNetIncomeRub: number;
+  weeklyRentRub: number;
+  weeklyExpensesRub: number;
+  weeklyNetIncomeRub: number;
   expenseRatePct: number;
 } {
   const monthlyRentRub = monthlyGrossRentRub(priceRub);
   const expenseRatePct = totalExpenseRatePct(type.prestige, type.expenseTypePct);
   const monthlyExpensesRub = Math.round((monthlyRentRub * expenseRatePct) / 100);
   const monthlyNetIncomeRub = monthlyRentRub - monthlyExpensesRub;
-  return { monthlyRentRub, monthlyExpensesRub, monthlyNetIncomeRub, expenseRatePct };
+  const weeklyRentRub = Math.round(monthlyRentRub / 4);
+  const weeklyExpensesRub = Math.round(monthlyExpensesRub / 4);
+  const weeklyNetIncomeRub = Math.round(monthlyNetIncomeRub / 4);
+  return {
+    monthlyRentRub,
+    monthlyExpensesRub,
+    monthlyNetIncomeRub,
+    weeklyRentRub,
+    weeklyExpensesRub,
+    weeklyNetIncomeRub,
+    expenseRatePct,
+  };
 }

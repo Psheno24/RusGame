@@ -372,11 +372,14 @@ export function HousingShop({
           {selected.description && (
             <p className="housing-property-desc">{selected.description}</p>
           )}
-          {selected.monthlyNetIncomeRub != null && (
+          {selected.weeklyNetIncomeRub != null && (
             <p className="shop-owned">
               Аренда {rub(selected.monthlyRentRub ?? 0)}/мес · расходы{" "}
-              {rub(selected.monthlyExpensesRub ?? 0)} · чистый доход{" "}
-              <strong>{rub(selected.monthlyNetIncomeRub)}</strong>/мес
+              {rub(selected.monthlyExpensesRub ?? 0)}/мес · чистый доход{" "}
+              <strong>{rub(selected.weeklyNetIncomeRub)}</strong>/нед
+              {selected.monthlyNetIncomeRub != null && (
+                <> ({rub(selected.monthlyNetIncomeRub)}/мес)</>
+              )}
             </p>
           )}
           <div className="phone-detail-buy">

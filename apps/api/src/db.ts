@@ -425,6 +425,21 @@ function migrate(database: Database.Database) {
     );
   }
 
+  const ownedCols3 = database
+    .prepare("PRAGMA table_info(player_owned_housing)")
+    .all() as { name: string }[];
+  if (
+    ownedCols3.length > 0 &&
+    !ownedCols3.some((c) => c.name === "sublet_paid_rub")
+  ) {
+    database.exec(
+      "ALTER TABLE player_owned_housing ADD COLUMN sublet_paid_rub REAL NOT NULL DEFAULT 0",
+    );
+    database.exec(
+      "ALTER TABLE player_owned_housing ADD COLUMN sublet_next_payout_at INTEGER",
+    );
+  }
+
   const colsPending = database.prepare("PRAGMA table_info(players)").all() as {
     name: string;
   }[];

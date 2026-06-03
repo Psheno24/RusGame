@@ -20,11 +20,22 @@ function prestigeExpensePct(prestige) {
 }
 
 function computeEconomy(priceRub, type) {
-  const monthlyRentRub = Math.round(priceRub * 0.005);
+  const monthlyRentRub = Math.round(priceRub / 60);
   const expenseRatePct = prestigeExpensePct(type.prestige) + type.expenseTypePct;
   const monthlyExpensesRub = Math.round((monthlyRentRub * expenseRatePct) / 100);
   const monthlyNetIncomeRub = monthlyRentRub - monthlyExpensesRub;
-  return { monthlyRentRub, monthlyExpensesRub, monthlyNetIncomeRub, expenseRatePct };
+  const weeklyRentRub = Math.round(monthlyRentRub / 4);
+  const weeklyExpensesRub = Math.round(monthlyExpensesRub / 4);
+  const weeklyNetIncomeRub = Math.round(monthlyNetIncomeRub / 4);
+  return {
+    monthlyRentRub,
+    monthlyExpensesRub,
+    monthlyNetIncomeRub,
+    weeklyRentRub,
+    weeklyExpensesRub,
+    weeklyNetIncomeRub,
+    expenseRatePct,
+  };
 }
 
 function descriptionFor(type, listing, cityName) {

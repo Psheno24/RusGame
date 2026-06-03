@@ -336,10 +336,10 @@ export function getPropertyDetail(
       });
     }
     status.push({
-      label: "Чистый доход за период",
-      value: `${row.sublet_income_rub.toLocaleString("ru-RU")} ₽`,
+      label: "Чистый доход / нед.",
+      value: `${(prop?.weeklyNetIncomeRub ?? 0).toLocaleString("ru-RU")} ₽`,
       hint: prop
-        ? `Гросс ${prop.monthlyRentRub.toLocaleString("ru-RU")} ₽/мес − расходы ${prop.monthlyExpensesRub.toLocaleString("ru-RU")} ₽/мес`
+        ? `За период до ${row.sublet_income_rub.toLocaleString("ru-RU")} ₽ (выплаты еженедельно, получено ${row.sublet_paid_rub.toLocaleString("ru-RU")} ₽)`
         : undefined,
     });
   } else {
@@ -377,12 +377,9 @@ export function getPropertyDetail(
             value: `${prop.monthlyRentRub.toLocaleString("ru-RU")} ₽`,
           },
           {
-            label: "Расходы / мес.",
-            value: `${prop.monthlyExpensesRub.toLocaleString("ru-RU")} ₽ (${prop.expenseRatePct}%)`,
-          },
-          {
-            label: "Чистый доход / мес.",
-            value: `${prop.monthlyNetIncomeRub.toLocaleString("ru-RU")} ₽`,
+            label: "Чистый доход / нед.",
+            value: `${prop.weeklyNetIncomeRub.toLocaleString("ru-RU")} ₽`,
+            hint: `≈ ${prop.monthlyNetIncomeRub.toLocaleString("ru-RU")} ₽/мес после расходов ${prop.monthlyExpensesRub.toLocaleString("ru-RU")} ₽`,
           },
         ]
       : [],

@@ -234,12 +234,15 @@ export function afterBuyHousingChoice(
     sublet_from: now,
     sublet_until: periodEnd,
     sublet_income_rub: income,
+    sublet_paid_rub: 0,
+    sublet_next_payout_at: now,
     sublet_retry_at: null,
     sublet_retry_chance: null,
   });
-  updatePlayer(p.user_id, { rubles: p.rubles + income });
   const prop = getHousingProperty(row.city_id, row.property_id);
-  const subletMsg = `${prop?.title ?? "Квартира"} сдаётся 30 дн. (+${income.toLocaleString("ru-RU")} ₽).`;
+  const weekly = prop?.weeklyNetIncomeRub ?? 0;
+  syncPlayerHousing(getPlayer(p.user_id)!, now);
+  const subletMsg = `${prop?.title ?? "Квартира"} сдаётся 30 дн. (${weekly.toLocaleString("ru-RU")} ₽/нед, до ${income.toLocaleString("ru-RU")} ₽).`;
   appendPlayerFeed(p.user_id, "housing:live", `Сдача: ${prop?.title ?? "квартира"}`, now);
   return { ok: true, message: subletMsg };
 }

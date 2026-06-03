@@ -39,7 +39,58 @@ const config = JSON.parse(readFileSync(join(DATA_DIR, "housing.json"), "utf-8"))
 
 const MS_HOUR = 60 * 60 * 1000;
 const MS_DAY = 24 * MS_HOUR;
+const MS_WEEK = 7 * MS_DAY;
 const SUBLET_MONTH_MS = config.rentDays * MS_DAY;
+
+function weeklyNetForProperty(cityId: string, propertyId: string): number {
+  const prop = getHousingProperty(cityId, propertyId);
+  if (!prop) return 0;
+  return prop.weeklyNetIncomeRub ?? Math.round(prop.monthlyNetIncomeRub / 4);
+}
+
+function subletPeriodPatch(periodStart: number, periodEnd: number, incomeRub: number) {
+  return {
+    sublet_from: periodStart,
+    sublet_until: periodEnd,
+    sublet_income_rub: incomeRub,
+    sublet_paid_rub: 0,
+    sublet_next_payout_at: periodStart,
+    sublet_retry_at: null as null,
+    sublet_retry_chance: null as null,
+  };
+}
+
+/** Еженедельные выплаты по активной сдаче (догоняет пропущенные недели). */
+function creditWeeklySubletPayouts(row: OwnedHousingRow, userId: number, now: number): boolean {
+  if (!isSubletActive(row, now) || row.sublet_from == null || row.sublet_until == null) {
+    return false;
+  }
+  const weekly = weeklyNetForProperty(row.city_id, row.property_id);
+  if (weekly <= 0) return false;
+
+  let nextAt = row.sublet_next_payout_at ?? row.sublet_from;
+  let paidRub = row.sublet_paid_rub;
+  let totalCredited = 0;
+
+  while (now >= nextAt && nextAt < row.sublet_until) {
+    const remaining = row.sublet_income_rub - paidRub;
+    if (remaining <= 0) break;
+    const amount = Math.min(weekly, remaining);
+    totalCredited += amount;
+    paidRub += amount;
+    nextAt += MS_WEEK;
+  }
+
+  if (totalCredited <= 0) return false;
+
+  updateOwnedHousing(row.id, {
+    sublet_paid_rub: paidRub,
+    sublet_next_payout_at: nextAt,
+  });
+  const pl = getPlayer(userId);
+  if (pl) updatePlayer(userId, { rubles: pl.rubles + totalCredited });
+  return true;
+}
 
 export function getHousingPrices(cityId: string) {
   const city = getCity(cityId);
@@ -74,15 +125,7 @@ function processOwnedSubletTick(row: OwnedHousingRow, userId: number, now: numbe
     if (Math.random() < chance) {
       const periodEnd = now + SUBLET_MONTH_MS;
       const income = subletIncomeForOwned(row, SUBLET_MONTH_MS);
-      updateOwnedHousing(row.id, {
-        sublet_from: now,
-        sublet_until: periodEnd,
-        sublet_income_rub: income,
-        sublet_retry_at: null,
-        sublet_retry_chance: null,
-      });
-      const pl = getPlayer(userId);
-      if (pl) updatePlayer(userId, { rubles: pl.rubles + income });
+      updateOwnedHousing(row.id, subletPeriodPatch(now, periodEnd, income));
     } else {
       updateOwnedHousing(row.id, {
         sublet_retry_at: row.sublet_retry_at + MS_DAY,
@@ -96,15 +139,7 @@ function processOwnedSubletTick(row: OwnedHousingRow, userId: number, now: numbe
     if (Math.random() < 0.8) {
       const periodEnd = now + SUBLET_MONTH_MS;
       const income = subletIncomeForOwned(row, SUBLET_MONTH_MS);
-      updateOwnedHousing(row.id, {
-        sublet_from: now,
-        sublet_until: periodEnd,
-        sublet_income_rub: income,
-        sublet_retry_at: null,
-        sublet_retry_chance: null,
-      });
-      const pl = getPlayer(userId);
-      if (pl) updatePlayer(userId, { rubles: pl.rubles + income });
+      updateOwnedHousing(row.id, subletPeriodPatch(now, periodEnd, income));
     } else {
       updateOwnedHousing(row.id, {
         sublet_from: null,
@@ -131,9 +166,6 @@ function extendActiveSublets(player: PlayerRow, addMs: number, now: number): num
     });
     totalIncome += extra;
   }
-  if (totalIncome > 0) {
-    updatePlayer(player.user_id, { rubles: player.rubles + totalIncome });
-  }
   return totalIncome;
 }
 
@@ -156,7 +188,12 @@ export function syncPlayerHousing(player: PlayerRow, now = Date.now()): PlayerRo
     while (guard++ < 64) {
       const cur = getOwnedHousing(row.id, p.user_id);
       if (!cur) break;
-      if (!processOwnedSubletTick(cur, p.user_id, now)) break;
+      if (isSubletActive(cur, now) && creditWeeklySubletPayouts(cur, p.user_id, now)) {
+        rublesChanged = true;
+      }
+      const fresh = getOwnedHousing(row.id, p.user_id);
+      if (!fresh) break;
+      if (!processOwnedSubletTick(fresh, p.user_id, now)) break;
       rublesChanged = true;
     }
   }
@@ -197,17 +234,9 @@ function resolvePendingHousingBuyChoice(player: PlayerRow, now: number): PlayerR
 
   const periodEnd = now + SUBLET_MONTH_MS;
   const income = subletIncomeForOwned(row, SUBLET_MONTH_MS);
-  updateOwnedHousing(row.id, {
-    sublet_from: now,
-    sublet_until: periodEnd,
-    sublet_income_rub: income,
-    sublet_retry_at: null,
-    sublet_retry_chance: null,
-  });
-  updatePlayer(player.user_id, {
-    rubles: player.rubles + income,
-    housing_pending_owned_id: null,
-  });
+  updateOwnedHousing(row.id, subletPeriodPatch(now, periodEnd, income));
+  updatePlayer(player.user_id, { housing_pending_owned_id: null });
+  creditWeeklySubletPayouts(getOwnedHousing(row.id, player.user_id)!, player.user_id, now);
   return getPlayer(player.user_id) ?? player;
 }
 
@@ -247,17 +276,16 @@ export function restoreLastResidence(player: PlayerRow, now = Date.now()): Playe
   return getPlayer(player.user_id) ?? fresh;
 }
 
-/** Чистый доход за сдачу объекта: месячный чистый доход / 30 × дни периода. */
+/** Суммарный чистый доход за период сдачи (≈ недельные выплаты × недели). */
 export function subletIncomeForProperty(
   cityId: string,
   propertyId: string,
   periodMs: number,
 ): number {
   if (periodMs <= 0) return 0;
-  const prop = getHousingProperty(cityId, propertyId);
-  if (!prop) return 0;
-  const days = periodMs / MS_DAY;
-  return Math.max(0, Math.round((prop.monthlyNetIncomeRub * days) / 30));
+  const weekly = weeklyNetForProperty(cityId, propertyId);
+  if (weekly <= 0) return 0;
+  return Math.max(0, Math.round((weekly * periodMs) / MS_WEEK));
 }
 
 /** @deprecated Используйте subletIncomeForProperty — оставлено для обратной совместимости тестов. */
@@ -273,13 +301,10 @@ export function subletIncomeForOwned(row: OwnedHousingRow, periodMs: number): nu
 }
 
 /** Возврат жильцам при досрочном выезде (неиспользованная часть сдачи). */
+/** Возврат жильцам: неполученная часть договора сдачи (ещё не выплаченная игроку). */
 export function subletRepayAmount(row: OwnedHousingRow, now = Date.now()): number {
   if (!isSubletActive(row, now) || row.sublet_income_rub <= 0) return 0;
-  if (row.sublet_from == null || row.sublet_until == null) return row.sublet_income_rub;
-  const totalMs = row.sublet_until - row.sublet_from;
-  if (totalMs <= 0) return row.sublet_income_rub;
-  const remainingMs = Math.max(0, row.sublet_until - now);
-  return Math.round(row.sublet_income_rub * (remainingMs / totalMs));
+  return Math.max(0, row.sublet_income_rub - row.sublet_paid_rub);
 }
 
 /** Сдать на период; уже сдающиеся квартиры не трогаем. */
@@ -294,11 +319,7 @@ function startSubletPeriod(
   }
   const periodMs = periodEnd - periodStart;
   const income = subletIncomeForOwned(row, periodMs);
-  updateOwnedHousing(row.id, {
-    sublet_from: periodStart,
-    sublet_until: periodEnd,
-    sublet_income_rub: income,
-  });
+  updateOwnedHousing(row.id, subletPeriodPatch(periodStart, periodEnd, income));
   return { incomeRub: income, skipped: false };
 }
 
@@ -315,10 +336,13 @@ function subletVacantOwnedForPeriod(
   for (const row of listOwnedHousing(player.user_id)) {
     if (exceptId != null && row.id === exceptId) continue;
     const { incomeRub, skipped } = startSubletPeriod(row, periodStart, periodEnd, now);
-    if (!skipped) totalIncome += incomeRub;
-  }
-  if (creditPlayer && totalIncome > 0) {
-    updatePlayer(player.user_id, { rubles: player.rubles + totalIncome });
+    if (!skipped) {
+      totalIncome += incomeRub;
+      if (creditPlayer) {
+        const fresh = getOwnedHousing(row.id, player.user_id);
+        if (fresh) creditWeeklySubletPayouts(fresh, player.user_id, now);
+      }
+    }
   }
   return totalIncome;
 }
@@ -423,6 +447,9 @@ export function getHousingInfo(player: PlayerRow, now = Date.now()) {
         monthlyRentRub: prop.monthlyRentRub,
         monthlyExpensesRub: prop.monthlyExpensesRub,
         monthlyNetIncomeRub: prop.monthlyNetIncomeRub,
+        weeklyRentRub: prop.weeklyRentRub,
+        weeklyExpensesRub: prop.weeklyExpensesRub,
+        weeklyNetIncomeRub: prop.weeklyNetIncomeRub,
         expenseRatePct: prop.expenseRatePct,
         prestige: prop.prestige,
         moodBonus: prop.moodBonus,

@@ -147,6 +147,9 @@ export type HousingProperty = {
   monthlyRentRub?: number;
   monthlyExpensesRub?: number;
   monthlyNetIncomeRub?: number;
+  weeklyRentRub?: number;
+  weeklyExpensesRub?: number;
+  weeklyNetIncomeRub?: number;
   expenseRatePct?: number;
   listPriceRub?: number;
   netPriceRub?: number | null;

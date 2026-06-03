@@ -9,15 +9,20 @@ export type OwnedHousingRow = {
   sublet_from: number | null;
   sublet_until: number | null;
   sublet_income_rub: number;
+  sublet_paid_rub: number;
+  sublet_next_payout_at: number | null;
   sublet_retry_at: number | null;
   sublet_retry_chance: number | null;
 };
 
+const OWNED_SELECT = `SELECT id, user_id, city_id, property_id, acquired_at, sublet_from, sublet_until, sublet_income_rub,
+              COALESCE(sublet_paid_rub, 0) AS sublet_paid_rub, sublet_next_payout_at,
+              sublet_retry_at, sublet_retry_chance`;
+
 export function listOwnedHousing(userId: number): OwnedHousingRow[] {
   return getDb()
     .prepare(
-      `SELECT id, user_id, city_id, property_id, acquired_at, sublet_from, sublet_until, sublet_income_rub,
-              sublet_retry_at, sublet_retry_chance
+      `${OWNED_SELECT}
        FROM player_owned_housing WHERE user_id = ? ORDER BY acquired_at ASC`,
     )
     .all(userId) as OwnedHousingRow[];
@@ -26,8 +31,7 @@ export function listOwnedHousing(userId: number): OwnedHousingRow[] {
 export function getOwnedHousing(id: number, userId?: number): OwnedHousingRow | undefined {
   const row = getDb()
     .prepare(
-      `SELECT id, user_id, city_id, property_id, acquired_at, sublet_from, sublet_until, sublet_income_rub,
-              sublet_retry_at, sublet_retry_chance
+      `${OWNED_SELECT}
        FROM player_owned_housing WHERE id = ?`,
     )
     .get(id) as OwnedHousingRow | undefined;
@@ -43,8 +47,7 @@ export function findOwnedHousing(
 ): OwnedHousingRow | undefined {
   return getDb()
     .prepare(
-      `SELECT id, user_id, city_id, property_id, acquired_at, sublet_from, sublet_until, sublet_income_rub,
-              sublet_retry_at, sublet_retry_chance
+      `${OWNED_SELECT}
        FROM player_owned_housing WHERE user_id = ? AND city_id = ? AND property_id = ?`,
     )
     .get(userId, cityId, propertyId) as OwnedHousingRow | undefined;
@@ -70,7 +73,13 @@ export function updateOwnedHousing(
   patch: Partial<
     Pick<
       OwnedHousingRow,
-      "sublet_from" | "sublet_until" | "sublet_income_rub" | "sublet_retry_at" | "sublet_retry_chance"
+      | "sublet_from"
+      | "sublet_until"
+      | "sublet_income_rub"
+      | "sublet_paid_rub"
+      | "sublet_next_payout_at"
+      | "sublet_retry_at"
+      | "sublet_retry_chance"
     >
   >,
 ) {
@@ -89,6 +98,16 @@ export function updateOwnedHousing(
       .prepare("UPDATE player_owned_housing SET sublet_income_rub = ? WHERE id = ?")
       .run(patch.sublet_income_rub, id);
   }
+  if (patch.sublet_paid_rub !== undefined) {
+    getDb()
+      .prepare("UPDATE player_owned_housing SET sublet_paid_rub = ? WHERE id = ?")
+      .run(patch.sublet_paid_rub, id);
+  }
+  if (patch.sublet_next_payout_at !== undefined) {
+    getDb()
+      .prepare("UPDATE player_owned_housing SET sublet_next_payout_at = ? WHERE id = ?")
+      .run(patch.sublet_next_payout_at, id);
+  }
   if (patch.sublet_retry_at !== undefined) {
     getDb()
       .prepare("UPDATE player_owned_housing SET sublet_retry_at = ? WHERE id = ?")
@@ -106,6 +125,8 @@ export function clearSublet(id: number) {
     sublet_from: null,
     sublet_until: null,
     sublet_income_rub: 0,
+    sublet_paid_rub: 0,
+    sublet_next_payout_at: null,
     sublet_retry_at: null,
     sublet_retry_chance: null,
   });
