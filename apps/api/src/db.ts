@@ -10,10 +10,11 @@ export type PlayerRow = {
   travel_to_city_id: string | null;
   travel_arrives_at: number | null;
   job_id: string | null;
-  agility: number;
+  driving: number;
   stamina: number;
   charisma: number;
-  wit: number;
+  discipline: number;
+  skill_progress: string | null;
   side_gig_ready_at: number;
   shift_ready_at: number;
   last_work_at_by_job: string | null;
@@ -458,6 +459,28 @@ function migrate(database: Database.Database) {
     database.exec("ALTER TABLE players ADD COLUMN sleep_start_energy INTEGER");
   }
 
+  const colsSkills = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
+  if (colsSkills.some((c) => c.name === "wit") && !colsSkills.some((c) => c.name === "driving")) {
+    database.exec("ALTER TABLE players RENAME COLUMN wit TO driving");
+  }
+  const colsSkills2 = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
+  if (
+    colsSkills2.some((c) => c.name === "agility") &&
+    !colsSkills2.some((c) => c.name === "discipline")
+  ) {
+    database.exec("ALTER TABLE players RENAME COLUMN agility TO discipline");
+  }
+  const colsSkills3 = database.prepare("PRAGMA table_info(players)").all() as {
+    name: string;
+  }[];
+  if (!colsSkills3.some((c) => c.name === "skill_progress")) {
+    database.exec("ALTER TABLE players ADD COLUMN skill_progress TEXT");
+  }
+
   const colsPcPrice = database
     .prepare("PRAGMA table_info(player_cars)")
     .all() as { name: string }[];
@@ -598,7 +621,7 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
       `UPDATE players SET
         display_name = ?, rubles = ?, city_id = ?, status = ?,
         travel_to_city_id = ?, travel_arrives_at = ?, job_id = ?,
-        agility = ?, stamina = ?, charisma = ?, wit = ?,
+        driving = ?, stamina = ?, charisma = ?, discipline = ?, skill_progress = ?,
         side_gig_ready_at = ?, shift_ready_at = ?, last_work_at_by_job = ?,
         phone_number = ?, sim_operator = ?, sim_mid = ?, sim_last = ?, sim_balance_rub = ?,
         sim_tariff_id = ?, sim_tariff_paid_until = ?, sim_tariff_pending_id = ?,
@@ -625,10 +648,11 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
       next.travel_to_city_id,
       next.travel_arrives_at,
       next.job_id,
-      next.agility,
+      next.driving,
       next.stamina,
       next.charisma,
-      next.wit,
+      next.discipline,
+      next.skill_progress ?? null,
       next.side_gig_ready_at,
       next.shift_ready_at,
       next.last_work_at_by_job ?? null,

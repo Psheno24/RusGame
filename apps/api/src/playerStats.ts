@@ -1,5 +1,5 @@
 import type { PlayerRow } from "./db.js";
-import type { SkillKey } from "./auth.js";
+import type { SkillKey } from "./skills.js";
 
 export type VitalKey = "energy" | "mood" | "health";
 
