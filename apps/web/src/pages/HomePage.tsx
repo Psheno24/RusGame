@@ -150,10 +150,10 @@ export function HomePage() {
 
   if (showRest && !home.sleeping) {
     const startEnergy = p.vitals.energy;
-    const after = previewEnergy(startEnergy, sliderMs);
     const minMs = home.minSleepMs;
     const maxMs = home.maxSleepMs;
     const sliderMs = Math.min(durationMs, maxMs);
+    const after = previewEnergy(startEnergy, sliderMs);
 
     return (
       <div className="card home-rest-card">

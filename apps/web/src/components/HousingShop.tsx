@@ -119,6 +119,16 @@ export function HousingShop({
     return () => registerBack(null);
   }, [nav, registerBack]);
 
+  useEffect(() => {
+    if (nav !== "exchange" || !propertyId || exchangeIds.length === 0) {
+      setExchangeQuote(null);
+      return;
+    }
+    fetchHousingExchangeQuote(propertyId, exchangeIds)
+      .then(setExchangeQuote)
+      .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+  }, [nav, propertyId, exchangeIds, onToast]);
+
   const refresh = async () => {
     const data = await fetchHousing();
     setInfo(data);
@@ -223,6 +233,7 @@ export function HousingShop({
         confirmClassName: "btn-success",
       };
     }
+    if (pending.kind === "postBuy") return null;
     const moveNote = pending.quote.willMoveIn ? " Вы переедете сюда." : "";
     const sub =
       pending.quote.subletNewIncomeRub > 0
@@ -260,16 +271,6 @@ export function HousingShop({
       setBusy(false);
     }
   };
-
-  useEffect(() => {
-    if (nav !== "exchange" || !propertyId || exchangeIds.length === 0) {
-      setExchangeQuote(null);
-      return;
-    }
-    fetchHousingExchangeQuote(propertyId, exchangeIds)
-      .then(setExchangeQuote)
-      .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
-  }, [nav, propertyId, exchangeIds, onToast]);
 
   return (
     <>
