@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   buyCar,
+  buyUsedCar,
+  diagnoseUsedCar,
   fetchCarCategories,
   fetchCarQuote,
   fetchCarSellQuote,
   fetchPlateGarage,
   fetchPlateShopCar,
   fetchShopCars,
+  fetchUsedCarDetail,
+  fetchUsedCarMarket,
   sellCar,
   fetchVehicleRentals,
   plateRegister,
@@ -21,6 +25,9 @@ import {
   type OwnedCar,
   type PlateGarageCar,
   type PlateShopCarInfo,
+  type UsedCarDiagnosisRanges,
+  type UsedCarListing,
+  type UsedCarMarket,
   type User,
   type VehicleRental,
 } from "../api";
@@ -31,10 +38,13 @@ import { VehiclePlate } from "./VehiclePlate";
 
 type CarNav =
   | "hub"
+  | "buyChoice"
   | "buyCategories"
   | "buyList"
   | "buyDetail"
   | "tradeIn"
+  | "usedList"
+  | "usedDetail"
   | "rent"
   | "plate"
   | "plateDetail"
@@ -42,6 +52,7 @@ type CarNav =
 
 type Pending =
   | { kind: "buy"; carId: string; name: string; priceRub: number }
+  | { kind: "buyUsed"; listingId: string; name: string; priceRub: number }
   | { kind: "tradeIn"; carId: string; name: string; quote: CarPurchaseQuote; tradeInCarIds: number[] }
   | {
       kind: "sell";
@@ -63,6 +74,39 @@ type Props = {
 
 function rub(n: number) {
   return `${n.toLocaleString("ru-RU")} ₽`;
+}
+
+function formatRefreshAt(ts: number): string {
+  return new Date(ts).toLocaleString("ru-RU", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function diagnosisLine(label: string, range: { min: number; max: number }) {
+  return (
+    <div key={label}>
+      <dt>{label}</dt>
+      <dd>
+        {range.min}–{range.max}%
+      </dd>
+    </div>
+  );
+}
+
+function UsedDiagnosisSpecs({ diagnosis }: { diagnosis: UsedCarDiagnosisRanges }) {
+  return (
+    <dl className="phone-specs used-diagnosis">
+      {diagnosisLine("Двигатель", diagnosis.engine)}
+      {diagnosisLine("Шины", diagnosis.tires)}
+      {diagnosisLine("Сход-развал", diagnosis.alignment)}
+      {diagnosisLine("Электроника", diagnosis.electronics)}
+      {diagnosisLine("Кузов", diagnosis.body)}
+      {diagnosisLine("Салон", diagnosis.interior)}
+    </dl>
+  );
 }
 
 function tradeInPriceHint(c: CarModel): string | null {
@@ -97,6 +141,9 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
   const [plateSpin, setPlateSpin] = useState(false);
   const [tradeInIds, setTradeInIds] = useState<number[]>([]);
   const [tradeQuote, setTradeQuote] = useState<CarPurchaseQuote | null>(null);
+  const [usedMarket, setUsedMarket] = useState<UsedCarMarket | null>(null);
+  const [usedListingId, setUsedListingId] = useState<string | null>(null);
+  const [usedDetail, setUsedDetail] = useState<UsedCarListing | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [busy, setBusy] = useState(false);
   const p = user.player;
@@ -105,6 +152,8 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
   const category = categoryId ? categories.find((c) => c.id === categoryId) : null;
   const plateCar = platePlayerCarId ? plateGarage.find((c) => c.playerCarId === platePlayerCarId) : null;
   const ownedInstance = selected ? ownedCars.find((oc) => oc.modelId === selected.id) : null;
+  const usedSelected =
+    usedDetail ?? (usedListingId ? usedMarket?.listings.find((l) => l.id === usedListingId) : null);
 
   const go = (next: CarNav, opts?: { category?: string | null; car?: string | null }) => {
     setNav(next);
@@ -130,15 +179,26 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
   useEffect(() => {
     let title = "Авто";
     let backLabel = "Магазин";
-    if (nav === "buyCategories") {
+    if (nav === "buyChoice") {
       title = "Купить авто";
       backLabel = "Авто";
+    } else if (nav === "buyCategories") {
+      title = "Новые";
+      backLabel = "Купить";
+    } else if (nav === "usedList") {
+      title = "С пробегом";
+      backLabel = "Купить";
+    } else if (nav === "usedDetail" && usedSelected) {
+      title = `${usedSelected.brand} ${usedSelected.model}`;
+      backLabel = "С пробегом";
     } else if (nav === "buyList" && category) {
+      title = category.title;
+      backLabel = "Новые";
       title = category.title;
       backLabel = "Купить";
     } else if (nav === "buyDetail" && selected) {
       title = `${selected.brand} ${selected.model}`;
-      backLabel = category?.title ?? "Купить";
+      backLabel = category?.title ?? "Новые";
     } else if (nav === "tradeIn" && selected) {
       title = "Трейд-ин";
       backLabel = `${selected.brand} ${selected.model}`;
@@ -156,7 +216,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
       backLabel = "Авто";
     }
     onNavChange({ inSub: nav !== "hub", title, backLabel });
-  }, [nav, onNavChange, selected, category, plateCar]);
+  }, [nav, onNavChange, selected, category, plateCar, usedSelected]);
 
   useEffect(() => {
     const handler: NavBackHandler = () => {
@@ -178,6 +238,20 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
         setNav("buyCategories");
         return true;
       }
+      if (nav === "buyCategories" || nav === "usedList") {
+        setNav("buyChoice");
+        return true;
+      }
+      if (nav === "usedDetail") {
+        setNav("usedList");
+        setUsedListingId(null);
+        setUsedDetail(null);
+        return true;
+      }
+      if (nav === "buyChoice") {
+        setNav("hub");
+        return true;
+      }
       if (nav !== "hub") {
         setNav("hub");
         return true;
@@ -192,6 +266,16 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
     if (nav === "buyCategories") {
       fetchCarCategories()
         .then((r) => setCategories(r.categories))
+        .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+    }
+    if (nav === "usedList") {
+      fetchUsedCarMarket()
+        .then(setUsedMarket)
+        .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+    }
+    if (nav === "usedDetail" && usedListingId) {
+      fetchUsedCarDetail(usedListingId)
+        .then(setUsedDetail)
         .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
     }
     if (nav === "buyList" || nav === "buyDetail" || nav === "tradeIn") {
@@ -212,7 +296,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
         .then(setPlateInfo)
         .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
     }
-  }, [nav, reloadCategory, onToast, platePlayerCarId]);
+  }, [nav, reloadCategory, onToast, platePlayerCarId, usedListingId]);
 
   useEffect(() => {
     if (nav !== "tradeIn" || !carId) return;
@@ -262,6 +346,14 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
         setUser(r.user);
         onToast(`Куплено: ${r.carName}`);
         go("buyList");
+      } else if (pending.kind === "buyUsed") {
+        const r = await buyUsedCar(pending.listingId);
+        setUser(r.user);
+        onToast(`Куплено б/у: ${r.carName}. Реальное состояние узлов открыто в гараже.`);
+        setUsedMarket(null);
+        setUsedDetail(null);
+        setUsedListingId(null);
+        go("usedList");
       } else if (pending.kind === "tradeIn") {
         const r = await tradeInCar(pending.carId, pending.tradeInCarIds);
         setUser(r.user);
@@ -302,6 +394,14 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
       return {
         title: "Купить автомобиль?",
         text: `Купить ${pending.name} за ${rub(pending.priceRub)}? Ваши текущие машины останутся в гараже.`,
+        confirmLabel: "Купить",
+        confirmClassName: "btn-primary",
+      };
+    }
+    if (pending.kind === "buyUsed") {
+      return {
+        title: "Купить б/у?",
+        text: `${pending.name} за ${rub(pending.priceRub)}. После покупки откроются реальные показатели двигателя, КПП и электроники — сделка может оказаться выгодной или рискованной.`,
         confirmLabel: "Купить",
         confirmClassName: "btn-primary",
       };
@@ -355,9 +455,9 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
 
       {nav === "hub" && (
         <div className="city-grid shop-categories phone-hub">
-          <button type="button" className="city-grid-btn" onClick={() => go("buyCategories")}>
+          <button type="button" className="city-grid-btn" onClick={() => go("buyChoice")}>
             <span className="city-grid-title">Купить авто</span>
-            <span className="city-grid-hint">По категориям</span>
+            <span className="city-grid-hint">Новые и с пробегом</span>
           </button>
           <button type="button" className="city-grid-btn" onClick={() => go("rent")}>
             <span className="city-grid-title">Аренда</span>
@@ -370,6 +470,19 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
           <button type="button" className="city-grid-btn" onClick={() => go("tuning")}>
             <span className="city-grid-title">Тюнинг</span>
             <span className="city-grid-hint">Скоро</span>
+          </button>
+        </div>
+      )}
+
+      {nav === "buyChoice" && (
+        <div className="city-grid shop-categories phone-hub">
+          <button type="button" className="city-grid-btn" onClick={() => go("buyCategories")}>
+            <span className="city-grid-title">Новые</span>
+            <span className="city-grid-hint">Салон по категориям прав</span>
+          </button>
+          <button type="button" className="city-grid-btn" onClick={() => go("usedList")}>
+            <span className="city-grid-title">С пробегом (б/у)</span>
+            <span className="city-grid-hint">Рынок подержанных, диагностика</span>
           </button>
         </div>
       )}
@@ -390,6 +503,165 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
               </span>
             </button>
           ))}
+        </div>
+      )}
+
+      {nav === "usedList" && (
+        <div className="phone-catalog">
+          {usedMarket && (
+            <p className="shop-owned">
+              Рынок обновится {formatRefreshAt(usedMarket.nextRefreshAt)}. До класса «
+              {usedMarket.maxClassLabel}» (+2 к салону).
+            </p>
+          )}
+          {!usedMarket ? (
+            <p className="shop-stub">Загрузка…</p>
+          ) : usedMarket.listings.length === 0 ? (
+            <p className="shop-stub">Сейчас нет предложений — загляните после обновления рынка.</p>
+          ) : (
+            <ul className="phone-list">
+              {usedMarket.listings.map((l) => (
+                <li key={l.id}>
+                  <button
+                    type="button"
+                    className="phone-list-item"
+                    onClick={() => {
+                      setUsedListingId(l.id);
+                      setUsedDetail(null);
+                      go("usedDetail");
+                    }}
+                  >
+                    <span className="phone-list-thumb" style={{ background: l.accent }} aria-hidden />
+                    <span className="phone-list-info">
+                      <span className="phone-list-name">
+                        {l.brand} {l.model}
+                        <span className="phone-list-meta"> · {l.carClassLabel}</span>
+                      </span>
+                      <span className="phone-list-price">
+                        {rub(l.priceRub)} · {l.mileageLabel}
+                      </span>
+                      <span className="city-grid-hint">
+                        Кузов {l.bodyCondition}% · оценка {l.overallVisible}%
+                        {l.diagnosed ? " · диагностика" : ""}
+                      </span>
+                    </span>
+                    <span className="phone-list-badge">{l.priceVsNewPct}%</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {nav === "usedDetail" && !usedSelected && <p className="shop-stub">Загрузка…</p>}
+
+      {nav === "usedDetail" && usedSelected && (
+        <div className="phone-detail">
+          <CarVisual accent={usedSelected.accent} large />
+          <h3 className="phone-detail-title">
+            {usedSelected.brand} {usedSelected.model}
+          </h3>
+          <dl className="phone-specs">
+            <div>
+              <dt>Кузов</dt>
+              <dd>{usedSelected.body}</dd>
+            </div>
+            <div>
+              <dt>Год</dt>
+              <dd>{usedSelected.year}</dd>
+            </div>
+            <div>
+              <dt>Класс</dt>
+              <dd>{usedSelected.carClassLabel}</dd>
+            </div>
+            <div>
+              <dt>Пробег</dt>
+              <dd>{usedSelected.mileageLabel}</dd>
+            </div>
+            <div>
+              <dt>Кузов (состояние)</dt>
+              <dd>{usedSelected.bodyCondition}%</dd>
+            </div>
+            <div>
+              <dt>Общая оценка</dt>
+              <dd>{usedSelected.overallVisible}%</dd>
+            </div>
+            <div>
+              <dt>Права</dt>
+              <dd>
+                <span className={usedSelected.hasLicense ? "license-ok" : "license-miss"}>
+                  кат. {usedSelected.licenseCategory} — {usedSelected.hasLicense ? "есть" : "нет"}
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt>Цена нового в городе</dt>
+              <dd>{rub(usedSelected.newPriceRub)}</dd>
+            </div>
+          </dl>
+          {usedSelected.diagnosis && <UsedDiagnosisSpecs diagnosis={usedSelected.diagnosis} />}
+          {!usedSelected.diagnosis && (
+            <p className="shop-owned">
+              Двигатель, КПП и электроника скрыты до покупки. Диагностика ({rub(usedSelected.diagnoseCostRub)}) покажет
+              диапазоны состояния узлов — не точные значения.
+            </p>
+          )}
+          <div className="phone-detail-buy car-detail-actions">
+            <p className="shop-price">
+              Цена: <strong>{rub(usedSelected.priceRub)}</strong>
+              <span className="shop-owned"> ({usedSelected.priceVsNewPct}% от нового)</span>
+            </p>
+            {!usedSelected.hasLicense ? (
+              <p className="shop-owned">Сначала получите права категории {usedSelected.licenseCategory} в полиции.</p>
+            ) : (
+              <>
+                {!usedSelected.diagnosed && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={busy || p.rubles < usedSelected.diagnoseCostRub}
+                    onClick={async () => {
+                      setBusy(true);
+                      try {
+                        const r = await diagnoseUsedCar(usedSelected.id);
+                        setUser(r.user);
+                        onToast(
+                          r.costRub > 0
+                            ? `Диагностика: −${rub(r.costRub)}`
+                            : "Диагностика уже была заказана",
+                        );
+                        setUsedDetail(await fetchUsedCarDetail(usedSelected.id));
+                        const market = await fetchUsedCarMarket();
+                        setUsedMarket(market);
+                      } catch (e) {
+                        onToast(e instanceof Error ? e.message : "Ошибка", true);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Диагностика {rub(usedSelected.diagnoseCostRub)}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={busy || p.rubles < usedSelected.priceRub}
+                  onClick={() =>
+                    setPending({
+                      kind: "buyUsed",
+                      listingId: usedSelected.id,
+                      name: `${usedSelected.brand} ${usedSelected.model}`,
+                      priceRub: usedSelected.priceRub,
+                    })
+                  }
+                >
+                  Купить за {rub(usedSelected.priceRub)}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
 

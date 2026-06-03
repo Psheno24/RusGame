@@ -1,0 +1,37 @@
+{
+  "refreshIntervalMs": 28800000,
+  "usedMaxClassOffset": 2,
+  "listingCountByCity": {
+    "omsk": [5, 7],
+    "kazan": [8, 12],
+    "moscow": [12, 15]
+  },
+  "listingCountByMarketLevel": {
+    "1": [5, 7],
+    "2": [6, 9],
+    "3": [7, 10],
+    "4": [8, 11],
+    "5": [8, 12],
+    "6": [10, 13],
+    "7": [12, 15]
+  },
+  "mileageKmRanges": [
+    [0, 50000, 0.35],
+    [50000, 150000, 0.35],
+    [150000, 300000, 0.2],
+    [300000, 550000, 0.1]
+  ],
+  "mileageWearMultiplier": [
+    [0, 50000, 1.0],
+    [50000, 150000, 1.2],
+    [150000, 300000, 1.5],
+    [300000, 9999999, 1.8]
+  ],
+  "priceTierWeights": [
+    { "tier": "normal", "weight": 0.82, "minPct": 0.75, "maxPct": 1.0 },
+    { "tier": "bargain", "weight": 0.12, "minPct": 0.6, "maxPct": 0.75 },
+    { "tier": "overpriced", "weight": 0.06, "minPct": 1.0, "maxPct": 1.1 }
+  ],
+  "diagnoseCostPct": { "min": 0.01, "max": 0.02 },
+  "diagnoseAccuracy": { "tightChance": 0.35, "tightHalfWidth": 4, "looseHalfWidthMin": 20, "looseHalfWidthMax": 45 }
+}

@@ -5,6 +5,16 @@ import { computeResaleValue } from "./assetTrade.js";
 import { getCarShopPriceRub } from "./shopCatalog.js";
 import { getCarCooldownReducePct, getCarSpeed } from "./carStats.js";
 
+export type PlayerCarCondition = {
+  engine: number;
+  transmission: number;
+  tires: number;
+  alignment: number;
+  body: number;
+  electronics: number;
+  interior: number;
+};
+
 export type PlayerCarRow = {
   id: number;
   user_id: number;
@@ -16,12 +26,24 @@ export type PlayerCarRow = {
   plate_digits: string | null;
   plate_l2: string | null;
   plate_region: string | null;
+  mileage_km?: number | null;
+  is_used?: number | null;
+  cond_engine?: number | null;
+  cond_transmission?: number | null;
+  cond_suspension?: number | null;
+  cond_tires?: number | null;
+  cond_alignment?: number | null;
+  cond_body?: number | null;
+  cond_electronics?: number | null;
+  cond_interior?: number | null;
 };
 
 export function listPlayerCars(userId: number): PlayerCarRow[] {
   return getDb()
     .prepare(
-      `SELECT id, user_id, car_model_id, acquired_at, purchase_price_rub, plate_text, plate_l1, plate_digits, plate_l2, plate_region
+      `SELECT id, user_id, car_model_id, acquired_at, purchase_price_rub, plate_text, plate_l1, plate_digits, plate_l2, plate_region,
+              mileage_km, is_used, cond_engine, cond_transmission, cond_suspension, cond_tires, cond_alignment,
+              cond_body, cond_electronics, cond_interior
        FROM player_cars WHERE user_id = ? ORDER BY acquired_at ASC`,
     )
     .all(userId) as PlayerCarRow[];
@@ -30,7 +52,9 @@ export function listPlayerCars(userId: number): PlayerCarRow[] {
 export function getPlayerCarById(userId: number, playerCarId: number): PlayerCarRow | undefined {
   return getDb()
     .prepare(
-      `SELECT id, user_id, car_model_id, acquired_at, purchase_price_rub, plate_text, plate_l1, plate_digits, plate_l2, plate_region
+      `SELECT id, user_id, car_model_id, acquired_at, purchase_price_rub, plate_text, plate_l1, plate_digits, plate_l2, plate_region,
+              mileage_km, is_used, cond_engine, cond_transmission, cond_suspension, cond_tires, cond_alignment,
+              cond_body, cond_electronics, cond_interior
        FROM player_cars WHERE user_id = ? AND id = ?`,
     )
     .get(userId, playerCarId) as PlayerCarRow | undefined;
@@ -47,8 +71,8 @@ export function insertPlayerCar(
 ): number {
   const r = getDb()
     .prepare(
-      `INSERT INTO player_cars (user_id, car_model_id, acquired_at, purchase_price_rub, plate_text, plate_l1, plate_digits, plate_l2, plate_region)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO player_cars (user_id, car_model_id, acquired_at, purchase_price_rub, plate_text, plate_l1, plate_digits, plate_l2, plate_region, mileage_km, is_used)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)`,
     )
     .run(
       userId,
@@ -60,6 +84,91 @@ export function insertPlayerCar(
       plate?.plate_digits ?? null,
       plate?.plate_l2 ?? null,
       plate?.plate_region ?? null,
+    );
+  syncPlayerCarSummary(userId);
+  return Number(r.lastInsertRowid);
+}
+
+const FULL_CONDITION = 100;
+
+export function getPlayerCarCondition(row: PlayerCarRow): PlayerCarCondition {
+  if (!row.is_used) {
+    return {
+      engine: FULL_CONDITION,
+      transmission: FULL_CONDITION,
+      tires: FULL_CONDITION,
+      alignment: FULL_CONDITION,
+      body: FULL_CONDITION,
+      electronics: FULL_CONDITION,
+      interior: FULL_CONDITION,
+    };
+  }
+  return {
+    engine: row.cond_engine ?? FULL_CONDITION,
+    transmission: row.cond_transmission ?? FULL_CONDITION,
+    tires: row.cond_tires ?? row.cond_suspension ?? FULL_CONDITION,
+    alignment: row.cond_alignment ?? row.cond_suspension ?? FULL_CONDITION,
+    body: row.cond_body ?? FULL_CONDITION,
+    electronics: row.cond_electronics ?? FULL_CONDITION,
+    interior: row.cond_interior ?? FULL_CONDITION,
+  };
+}
+
+export function updatePlayerCarCondition(
+  userId: number,
+  playerCarId: number,
+  condition: PlayerCarCondition,
+) {
+  getDb()
+    .prepare(
+      `UPDATE player_cars SET
+         cond_engine = ?, cond_transmission = ?, cond_tires = ?, cond_alignment = ?,
+         cond_body = ?, cond_electronics = ?, cond_interior = ?
+       WHERE user_id = ? AND id = ?`,
+    )
+    .run(
+      condition.engine,
+      condition.transmission,
+      condition.tires,
+      condition.alignment,
+      condition.body,
+      condition.electronics,
+      condition.interior,
+      userId,
+      playerCarId,
+    );
+}
+
+export function insertUsedPlayerCar(
+  userId: number,
+  carModelId: string,
+  acquiredAt: number,
+  purchasePriceRub: number,
+  mileageKm: number,
+  condition: PlayerCarCondition,
+): number {
+  const r = getDb()
+    .prepare(
+      `INSERT INTO player_cars (
+         user_id, car_model_id, acquired_at, purchase_price_rub,
+         plate_text, plate_l1, plate_digits, plate_l2, plate_region,
+         mileage_km, is_used,
+         cond_engine, cond_transmission, cond_tires, cond_alignment, cond_body, cond_electronics, cond_interior
+       ) VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      userId,
+      carModelId,
+      acquiredAt,
+      purchasePriceRub,
+      mileageKm,
+      condition.engine,
+      condition.transmission,
+      condition.tires,
+      condition.alignment,
+      condition.body,
+      condition.electronics,
+      condition.interior,
     );
   syncPlayerCarSummary(userId);
   return Number(r.lastInsertRowid);

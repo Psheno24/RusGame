@@ -30,7 +30,8 @@ import {
   type VehiclePlateParts,
 } from "./licensePlate.js";
 import { quotePhoneSell, sellPhoneDevice } from "./game.js";
-import { getPlayerCarById } from "./playerCars.js";
+import { getPlayerCarById, getPlayerCarCondition } from "./playerCars.js";
+import { formatMileageKm } from "./usedCarMarket.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 import { findNextResidence } from "./housingStack.js";
 import { getOwnedHousing, isSubletActive } from "./playerOwnedHousing.js";
@@ -161,11 +162,28 @@ export function getPropertyDetail(
     const car = getCar(row.car_model_id);
     const plate = parsePlatePartsFromRow(row);
     const plateText = row.plate_text ?? (plate ? formatVehiclePlate(plate) : null);
+    const isUsed = Boolean(row.is_used);
+    const mileageKm = row.mileage_km ?? 0;
+    const cond = getPlayerCarCondition(row);
+    const wearSpecs = isUsed
+      ? [
+          { label: "Пробег", value: formatMileageKm(mileageKm) },
+          { label: "Двигатель", value: `${cond.engine}%` },
+          { label: "КПП", value: `${cond.transmission}%` },
+          { label: "Шины", value: `${cond.tires}%` },
+          { label: "Сход-развал", value: `${cond.alignment}%` },
+          { label: "Кузов", value: `${cond.body}%` },
+          { label: "Электроника", value: `${cond.electronics}%` },
+          { label: "Салон", value: `${cond.interior}%` },
+        ]
+      : [];
     return {
       id: propertyId,
       kind: "car",
       title: car ? `${car.brand} ${car.model}` : "Автомобиль",
-      subtitle: car ? `${car.year} · ${car.body}` : null,
+      subtitle: car
+        ? `${car.year} · ${car.body}${isUsed ? " · б/у" : ""}`
+        : null,
       accent: car?.accent ?? "#4a5568",
       specs: car
         ? [
@@ -185,8 +203,9 @@ export function getPropertyDetail(
             { label: "Кузов", value: car.body },
             { label: "Год", value: String(car.year) },
             { label: "Расход", value: `${car.fuelConsumption ?? 50}/100` },
+            ...wearSpecs,
           ]
-        : [],
+        : wearSpecs,
       status: plateText
         ? [{ label: "Госномер", value: plateText }]
         : [{ label: "Госномер", value: "не зарегистрирован" }],

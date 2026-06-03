@@ -879,6 +879,57 @@ export async function registerRoutes(app: FastifyInstance) {
     };
   });
 
+  app.get("/api/shop/used-cars", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const { getUsedCarMarket } = await import("./usedCarShop.js");
+    return getUsedCarMarket(player);
+  });
+
+  app.get<{ Querystring: { listingId?: string } }>("/api/shop/used-cars/detail", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const listingId = req.query.listingId ?? "";
+    if (!listingId) return reply.code(400).send({ error: "Укажите listingId" });
+    const { getUsedCarListingDetail } = await import("./usedCarShop.js");
+    const detail = getUsedCarListingDetail(player, listingId);
+    if ("error" in detail) return reply.code(400).send({ error: detail.error });
+    return detail;
+  });
+
+  app.post<{ Body: { listingId?: string } }>("/api/shop/used-cars/diagnose", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const listingId = req.body?.listingId ?? "";
+    if (!listingId) return reply.code(400).send({ error: "Укажите listingId" });
+    const { diagnoseUsedCar } = await import("./usedCarShop.js");
+    const result = diagnoseUsedCar(userId, listingId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { diagnosis: result.diagnosis, costRub: result.costRub, user };
+  });
+
+  app.post<{ Body: { listingId?: string } }>("/api/shop/used-cars/buy", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const listingId = req.body?.listingId ?? "";
+    if (!listingId) return reply.code(400).send({ error: "Укажите listingId" });
+    const { buyUsedCar } = await import("./usedCarShop.js");
+    const result = buyUsedCar(userId, listingId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return {
+      carName: result.carName,
+      playerCarId: result.playerCarId,
+      condition: result.condition,
+      user,
+    };
+  });
+
   app.get("/api/shop/vehicle-rentals", async () => ({ rentals: getVehicleRentals() }));
 
   app.get<{ Querystring: { carId?: string; tradeInIds?: string } }>(
@@ -1118,6 +1169,65 @@ export async function registerRoutes(app: FastifyInstance) {
       if (!result.ok) return reply.code(400).send({ error: result.error });
       const user = await getPublicUser(userId);
       return { carName: result.carName, excessRub: result.excessRub, user };
+    },
+  );
+
+  app.get<{ Querystring: { service?: string } }>("/api/places/car-repair", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const raw = req.query.service;
+    if (raw && raw !== "sto" && raw !== "tire") {
+      return reply.code(400).send({ error: "Некорректный service" });
+    }
+    const { getCarRepairShop } = await import("./carRepair.js");
+    const shop = getCarRepairShop(player, raw === "sto" || raw === "tire" ? raw : undefined);
+    if ("error" in shop) return reply.code(400).send({ error: shop.error });
+    return shop;
+  });
+
+  app.post<{ Body: { service?: string; playerCarId?: number; node?: string } }>(
+    "/api/places/car-repair",
+    async (req, reply) => {
+      const userId = await resolveUserId(req);
+      if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+      const service = req.body?.service;
+      const playerCarId = Number(req.body?.playerCarId);
+      const node = req.body?.node;
+      if (service !== "sto" && service !== "tire") {
+        return reply.code(400).send({ error: "Укажите service: sto или tire" });
+      }
+      if (!Number.isInteger(playerCarId) || playerCarId <= 0) {
+        return reply.code(400).send({ error: "Укажите playerCarId" });
+      }
+      const validNodes = [
+        "engine",
+        "transmission",
+        "tires",
+        "alignment",
+        "body",
+        "electronics",
+        "interior",
+      ] as const;
+      if (!node || !validNodes.includes(node as (typeof validNodes)[number])) {
+        return reply.code(400).send({ error: "Укажите узел для ремонта" });
+      }
+      const { repairCarNode } = await import("./carRepair.js");
+      const result = repairCarNode(
+        userId,
+        service,
+        playerCarId,
+        node as (typeof validNodes)[number],
+      );
+      if (!result.ok) return reply.code(400).send({ error: result.error });
+      const user = await getPublicUser(userId);
+      return {
+        costRub: result.costRub,
+        newPct: result.newPct,
+        carName: result.carName,
+        user,
+      };
     },
   );
 

@@ -1,7 +1,7 @@
 export type PlaceId =
   | "flea_market"
   | "cinema"
-  | "tire"
+  | "car_repair"
   | "phone_repair"
   | "police"
   | "ambulance"
@@ -10,7 +10,7 @@ export type PlaceId =
 export const CITY_PLACES: { id: PlaceId; title: string; hint: string }[] = [
   { id: "flea_market", title: "Барахолка", hint: "Объявления по городам" },
   { id: "cinema", title: "Кино", hint: "Отдохнуть и поднять настроение" },
-  { id: "tire", title: "Шиномонтаж", hint: "Шины и колёса" },
+  { id: "car_repair", title: "Ремонт авто", hint: "СТО и шиномонтаж" },
   { id: "phone_repair", title: "Ремонт телефона", hint: "Починка смартфона" },
   { id: "police", title: "Полиция", hint: "Обращения и справки" },
   { id: "ambulance", title: "Скорая", hint: "Медицинская помощь" },

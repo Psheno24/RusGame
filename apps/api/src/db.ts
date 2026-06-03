@@ -371,6 +371,43 @@ function migrate(database: Database.Database) {
     database.exec("ALTER TABLE player_cars ADD COLUMN purchase_price_rub INTEGER");
   }
 
+  const colsPcUsed = database.prepare("PRAGMA table_info(player_cars)").all() as { name: string }[];
+  if (colsPcUsed.length > 0 && !colsPcUsed.some((c) => c.name === "is_used")) {
+    database.exec("ALTER TABLE player_cars ADD COLUMN mileage_km INTEGER NOT NULL DEFAULT 0");
+    database.exec("ALTER TABLE player_cars ADD COLUMN is_used INTEGER NOT NULL DEFAULT 0");
+    database.exec("ALTER TABLE player_cars ADD COLUMN cond_engine INTEGER");
+    database.exec("ALTER TABLE player_cars ADD COLUMN cond_transmission INTEGER");
+    database.exec("ALTER TABLE player_cars ADD COLUMN cond_suspension INTEGER");
+    database.exec("ALTER TABLE player_cars ADD COLUMN cond_body INTEGER");
+    database.exec("ALTER TABLE player_cars ADD COLUMN cond_electronics INTEGER");
+    database.exec("ALTER TABLE player_cars ADD COLUMN cond_interior INTEGER");
+  }
+
+  const colsPcTires = database.prepare("PRAGMA table_info(player_cars)").all() as { name: string }[];
+  if (colsPcTires.length > 0 && !colsPcTires.some((c) => c.name === "cond_tires")) {
+    database.exec("ALTER TABLE player_cars ADD COLUMN cond_tires INTEGER");
+    database.exec("ALTER TABLE player_cars ADD COLUMN cond_alignment INTEGER");
+    database.exec(
+      `UPDATE player_cars SET cond_tires = cond_suspension, cond_alignment = cond_suspension
+       WHERE cond_suspension IS NOT NULL`,
+    );
+  }
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS city_used_car_markets (
+      city_id TEXT PRIMARY KEY,
+      refreshed_at INTEGER NOT NULL,
+      listings_json TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS used_car_diagnostics (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      listing_id TEXT NOT NULL,
+      diagnosed_at INTEGER NOT NULL,
+      ranges_json TEXT NOT NULL,
+      PRIMARY KEY (user_id, listing_id)
+    );
+  `);
+
   database.exec(`
     CREATE TABLE IF NOT EXISTS player_feed (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

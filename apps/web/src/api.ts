@@ -752,6 +752,120 @@ export async function fetchShopCars(category: string) {
   );
 }
 
+export type UsedCarDiagnosisRanges = {
+  engine: { min: number; max: number };
+  tires: { min: number; max: number };
+  alignment: { min: number; max: number };
+  electronics: { min: number; max: number };
+  body: { min: number; max: number };
+  interior: { min: number; max: number };
+};
+
+export type UsedCarListing = {
+  id: string;
+  carModelId: string;
+  brand: string;
+  model: string;
+  accent: string;
+  year: number;
+  body: string;
+  carClassLabel: string;
+  licenseCategory: string;
+  hasLicense: boolean;
+  mileageKm: number;
+  mileageLabel: string;
+  bodyCondition: number;
+  overallVisible: number;
+  priceRub: number;
+  newPriceRub: number;
+  priceVsNewPct: number;
+  diagnosed: boolean;
+  diagnosis: UsedCarDiagnosisRanges | null;
+  diagnoseCostRub: number;
+};
+
+export type UsedCarMarket = {
+  refreshedAt: number;
+  nextRefreshAt: number;
+  maxClassLabel: string;
+  listings: UsedCarListing[];
+};
+
+export type UsedCarCondition = {
+  engine: number;
+  transmission: number;
+  tires: number;
+  alignment: number;
+  body: number;
+  electronics: number;
+  interior: number;
+};
+
+export async function fetchUsedCarMarket() {
+  return api<UsedCarMarket>("/api/shop/used-cars");
+}
+
+export async function fetchUsedCarDetail(listingId: string) {
+  return api<UsedCarListing>(`/api/shop/used-cars/detail?listingId=${encodeURIComponent(listingId)}`);
+}
+
+export async function diagnoseUsedCar(listingId: string) {
+  return api<{ diagnosis: UsedCarDiagnosisRanges; costRub: number; user: User }>(
+    "/api/shop/used-cars/diagnose",
+    { method: "POST", body: JSON.stringify({ listingId }) },
+  );
+}
+
+export async function buyUsedCar(listingId: string) {
+  return api<{ carName: string; playerCarId: number; condition: UsedCarCondition; user: User }>(
+    "/api/shop/used-cars/buy",
+    { method: "POST", body: JSON.stringify({ listingId }) },
+  );
+}
+
+export type CarRepairServiceId = "sto" | "tire";
+
+export type CarRepairNodeView = {
+  id: keyof UsedCarCondition;
+  label: string;
+  currentPct: number;
+  costToMaxRub: number;
+  canRepair: boolean;
+};
+
+export type CarRepairCarView = {
+  playerCarId: number;
+  brand: string;
+  model: string;
+  accent: string;
+  isUsed: boolean;
+  mileageLabel: string | null;
+  nodes: CarRepairNodeView[];
+};
+
+export type CarRepairShopView = {
+  cityId: string;
+  services: { id: CarRepairServiceId; title: string; hint: string }[];
+  service: CarRepairServiceId | null;
+  cars: CarRepairCarView[];
+};
+
+export async function fetchCarRepairShop(service?: CarRepairServiceId) {
+  const q = service ? `?service=${encodeURIComponent(service)}` : "";
+  return api<CarRepairShopView>(`/api/places/car-repair${q}`);
+}
+
+export async function repairCarNode(
+  service: CarRepairServiceId,
+  playerCarId: number,
+  node: keyof UsedCarCondition,
+) {
+  return api<{ costRub: number; newPct: number; carName: string; user: User }>(
+    "/api/places/car-repair",
+    { method: "POST", body: JSON.stringify({ service, playerCarId, node }) },
+  );
+}
+
 export async function fetchCarQuote(carId: string, tradeInCarIds: number[] = []) {
   const ids = tradeInCarIds.length ? `&tradeInIds=${tradeInCarIds.join(",")}` : "";
   return api<CarPurchaseQuote>(
