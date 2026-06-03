@@ -4,6 +4,7 @@ import {
   SLEEP_MS_FOR_FULL_ENERGY,
   currentSleepEnergy,
   energyFromSleep,
+  maxSleepMsForEnergy,
   previewEnergyAfterSleep,
 } from "./playerSleep.js";
 
@@ -23,6 +24,12 @@ describe("playerSleep energy", () => {
       sleep_start_energy: 90,
     } as import("./db.js").PlayerRow;
     assert.equal(previewEnergyAfterSleep(p, SLEEP_MS_FOR_FULL_ENERGY), 100);
+  });
+
+  it("maxSleepMsForEnergy caps at 4h and shrinks when energy is high", () => {
+    assert.equal(maxSleepMsForEnergy(0), SLEEP_MS_FOR_FULL_ENERGY);
+    assert.equal(maxSleepMsForEnergy(50), SLEEP_MS_FOR_FULL_ENERGY / 2);
+    assert.equal(maxSleepMsForEnergy(100), 15 * 60 * 1000);
   });
 
   it("currentSleepEnergy grows with elapsed time", () => {

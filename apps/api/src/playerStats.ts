@@ -1,6 +1,5 @@
 import type { PlayerRow } from "./db.js";
 import type { SkillKey } from "./auth.js";
-import { effectiveMood } from "./housingMood.js";
 
 export type VitalKey = "energy" | "mood" | "health";
 
@@ -41,20 +40,11 @@ export function getPlayerVitals(player: PlayerRow) {
   };
 }
 
+/** Пока экономика показателей не настроена — проверяем только деньги. */
 export function canAffordCosts(player: PlayerRow, costs?: StatCosts): string | null {
   if (!costs) return null;
-  const v = getPlayerVitals(player);
   if (costs.rubles != null && player.rubles < costs.rubles) {
     return `Не хватает денег (нужно ${costs.rubles.toLocaleString("ru-RU")} ₽)`;
-  }
-  if (costs.energy != null && v.energy < costs.energy) {
-    return `Мало энергии (нужно ${costs.energy}, у вас ${v.energy})`;
-  }
-  if (costs.mood != null && effectiveMood(player) < costs.mood) {
-    return `Слишком плохое настроение`;
-  }
-  if (costs.health != null && v.health < costs.health) {
-    return `Слишком плохое здоровье`;
   }
   return null;
 }
@@ -68,9 +58,6 @@ export function applyStatChanges(
   const patch: Partial<PlayerRow> = {};
 
   if (costs?.rubles != null) patch.rubles = player.rubles - costs.rubles;
-  if (costs?.energy != null) patch.energy = clampVital("energy", v.energy - costs.energy);
-  if (costs?.mood != null) patch.mood = clampVital("mood", v.mood - costs.mood);
-  if (costs?.health != null) patch.health = clampVital("health", v.health - costs.health);
 
   const afterCosts = {
     energy: patch.energy ?? v.energy,
@@ -106,34 +93,18 @@ export function applyStatChanges(
   return patch;
 }
 
-/** Множитель выплаты от усталости и настроения. */
-export function workPayoutMultiplier(player: PlayerRow): number {
-  const v = getPlayerVitals(player);
-  let mult = 1;
-  if (v.energy < 20) mult *= 0.85;
-  if (effectiveMood(player) < 25) mult *= 0.9;
-  return mult;
+/** Пока без штрафов за показатели. */
+export function workPayoutMultiplier(_player: PlayerRow): number {
+  return 1;
 }
 
-export function scaleWorkCosts(player: PlayerRow, costs?: StatCosts): StatCosts | undefined {
+export function scaleWorkCosts(_player: PlayerRow, costs?: StatCosts): StatCosts | undefined {
   return costs;
 }
 
-/** Штраф здоровью после работы при сильной усталости. */
 export function applyPostWorkPassives(
-  player: PlayerRow,
-  afterWork: Partial<PlayerRow>,
+  _player: PlayerRow,
+  _afterWork: Partial<PlayerRow>,
 ): Partial<PlayerRow> {
-  const merged = { ...player, ...afterWork } as PlayerRow;
-  const v = getPlayerVitals(merged);
-  const patch: Partial<PlayerRow> = {};
-
-  if (v.energy < 15) {
-    patch.health = clampVital("health", v.health - 1);
-  }
-  if (v.energy < 8) {
-    patch.health = clampVital("health", (patch.health ?? v.health) - 1);
-  }
-
-  return patch;
+  return {};
 }

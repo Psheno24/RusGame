@@ -33,7 +33,7 @@ export function HomePage() {
   const [housingLabel, setHousingLabel] = useState("");
   const [traveling, setTraveling] = useState(false);
   const [arrivesAt, setArrivesAt] = useState<number | null>(null);
-  const [durationMs, setDurationMs] = useState(SLEEP_MS_FOR_FULL_ENERGY / 2);
+  const [durationMs, setDurationMs] = useState(SLEEP_MS_FOR_FULL_ENERGY);
   const [showRest, setShowRest] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
@@ -81,10 +81,10 @@ export function HomePage() {
     return Math.max(0, home.sleepPlannedEndAt - Date.now());
   }, [home, tick]);
 
-  const onSleep = async () => {
+  const onSleep = async (ms: number) => {
     setBusy(true);
     try {
-      const r = await startHomeSleep(durationMs);
+      const r = await startHomeSleep(ms);
       setUser(r.user);
       showNotice(r.message);
       setShowRest(false);
@@ -150,18 +150,19 @@ export function HomePage() {
 
   if (showRest && !home.sleeping) {
     const startEnergy = p.vitals.energy;
-    const after = previewEnergy(startEnergy, durationMs);
+    const after = previewEnergy(startEnergy, sliderMs);
     const minMs = home.minSleepMs;
     const maxMs = home.maxSleepMs;
+    const sliderMs = Math.min(durationMs, maxMs);
 
     return (
       <div className="card home-rest-card">
         <h2>Отдохнуть</h2>
         <p className="home-rest-hint">
-          За 4 часа сна можно восстановить до 100 энергии. Выберите, сколько будете спать.
+          4 часа сна дают +100 энергии. Сейчас достаточно до {formatHours(maxMs)} — дальше смысла нет.
         </p>
         <label className="home-sleep-slider-label">
-          Длительность: <strong>{formatHours(durationMs)}</strong>
+          Длительность: <strong>{formatHours(sliderMs)}</strong>
         </label>
         <input
           type="range"
@@ -169,7 +170,7 @@ export function HomePage() {
           min={minMs}
           max={maxMs}
           step={15 * 60 * 1000}
-          value={durationMs}
+          value={sliderMs}
           onChange={(e) => setDurationMs(Number(e.target.value))}
         />
         <p className="home-sleep-preview">
@@ -179,7 +180,12 @@ export function HomePage() {
           <button type="button" className="btn btn-secondary" onClick={() => setShowRest(false)}>
             Назад
           </button>
-          <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void onSleep()}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={busy}
+            onClick={() => void onSleep(sliderMs)}
+          >
             {busy ? "…" : "Лечь спать"}
           </button>
         </div>
@@ -227,7 +233,10 @@ export function HomePage() {
           <button
             type="button"
             className="btn btn-primary btn-block"
-            onClick={() => setShowRest(true)}
+            onClick={() => {
+              setDurationMs(home.maxSleepMs);
+              setShowRest(true);
+            }}
             disabled={p.vitals.energy >= 100}
           >
             Отдохнуть

@@ -7,8 +7,7 @@
     "requiresPhone": true,
     "requiresSimTariff": "unlimited",
     "skill": "stamina",
-    "skillGain": 1,
-    "workCosts": { "energy": 14, "mood": 2 }
+    "skillGain": 1
   },
   "taxi": {
     "title": "Таксист",
@@ -19,8 +18,7 @@
     "requiresSimTariff": "unlimited",
     "requiresCar": true,
     "skill": "wit",
-    "skillGain": 1,
-    "workCosts": { "energy": 6, "mood": 2 }
+    "skillGain": 1
   },
   "cashier": {
     "title": "Кассир «Пятёрочка»",
@@ -28,8 +26,7 @@
     "kind": "cooldown",
     "shiftHours": 4,
     "skill": "charisma",
-    "skillGain": 1,
-    "workCosts": { "energy": 12, "mood": 2 }
+    "skillGain": 1
   },
   "night_guard": {
     "title": "Ночной охранник",
@@ -38,7 +35,6 @@
     "shiftEndsAtHour": 8,
     "schedule": { "mode": "night", "nightStartHour": 22, "dayStartHour": 8 },
     "skill": "stamina",
-    "skillGain": 1,
-    "workCosts": { "energy": 20, "mood": 4 }
+    "skillGain": 1
   }
 }

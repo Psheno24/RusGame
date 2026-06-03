@@ -6,7 +6,15 @@ import { clampVital } from "./playerStats.js";
 /** За 4 часа сна можно восстановить до 100 единиц энергии (линейно). */
 export const SLEEP_MS_FOR_FULL_ENERGY = 4 * 60 * 60 * 1000;
 export const SLEEP_MIN_MS = 15 * 60 * 1000;
-export const SLEEP_MAX_MS = 8 * 60 * 60 * 1000;
+/** Максимум сна за раз — 4 ч (полное восстановление энергии). */
+export const SLEEP_MAX_MS = SLEEP_MS_FOR_FULL_ENERGY;
+
+/** Сколько мс сна нужно, чтобы с текущей энергии дойти до 100. */
+export function maxSleepMsForEnergy(energy: number): number {
+  if (energy >= 100) return SLEEP_MIN_MS;
+  const need = Math.ceil(((100 - energy) / 100) * SLEEP_MS_FOR_FULL_ENERGY);
+  return Math.max(SLEEP_MIN_MS, Math.min(SLEEP_MAX_MS, need));
+}
 
 export function isPlayerSleeping(player: PlayerRow): boolean {
   return player.sleep_started_at != null;
@@ -62,13 +70,17 @@ export function startSleep(userId: number, durationMs: number, now = Date.now())
   if (ms < SLEEP_MIN_MS) {
     return { ok: false, error: "Минимальный сон — 15 минут" };
   }
-  if (ms > SLEEP_MAX_MS) {
-    return { ok: false, error: "Максимум — 8 часов за один раз" };
-  }
-
   const startEnergy = player.energy ?? 80;
   if (startEnergy >= 100) {
     return { ok: false, error: "Энергия уже на максимуме" };
+  }
+
+  const maxMs = maxSleepMsForEnergy(startEnergy);
+  if (ms > maxMs) {
+    return {
+      ok: false,
+      error: `Для полного отдыха достаточно ${(maxMs / (60 * 60 * 1000)).toFixed(1).replace(/\.0$/, "")} ч`,
+    };
   }
 
   updatePlayer(userId, {
@@ -136,7 +148,7 @@ export function homeStatusForPlayer(player: PlayerRow, now = Date.now()) {
           plannedMs,
         ),
     minSleepMs: SLEEP_MIN_MS,
-    maxSleepMs: SLEEP_MAX_MS,
+    maxSleepMs: maxSleepMsForEnergy(player.energy ?? 80),
     msPerFullEnergy: SLEEP_MS_FOR_FULL_ENERGY,
   };
 }

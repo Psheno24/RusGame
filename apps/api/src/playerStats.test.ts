@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { PlayerRow } from "./db.js";
-import { applyPostWorkPassives, scaleWorkCosts, workPayoutMultiplier } from "./playerStats.js";
+import {
+  applyPostWorkPassives,
+  applyStatChanges,
+  canAffordCosts,
+  scaleWorkCosts,
+  workPayoutMultiplier,
+} from "./playerStats.js";
 
 function player(partial: Partial<PlayerRow>): PlayerRow {
   return {
@@ -70,18 +76,29 @@ function player(partial: Partial<PlayerRow>): PlayerRow {
   };
 }
 
-describe("playerStats passives", () => {
-  it("scaleWorkCosts passes through", () => {
-    const scaled = scaleWorkCosts(player({ energy: 15 }), { energy: 12, mood: 2 });
-    assert.deepEqual(scaled, { energy: 12, mood: 2 });
+describe("playerStats", () => {
+  it("workPayoutMultiplier is always 1", () => {
+    assert.equal(workPayoutMultiplier(player({ energy: 5, mood: 10 })), 1);
   });
 
-  it("workPayoutMultiplier penalizes low energy", () => {
-    assert.equal(workPayoutMultiplier(player({ energy: 10, mood: 80 })), 0.85);
-  });
-
-  it("applyPostWorkPassives drains health when exhausted", () => {
+  it("applyPostWorkPassives does nothing", () => {
     const patch = applyPostWorkPassives(player({ energy: 5, health: 100 }), { energy: 3 });
-    assert.ok(patch.health != null && patch.health < 100);
+    assert.deepEqual(patch, {});
+  });
+
+  it("canAffordCosts ignores vital costs", () => {
+    assert.equal(canAffordCosts(player({ energy: 1 }), { energy: 50 }), null);
+    assert.ok(canAffordCosts(player({ rubles: 10 }), { rubles: 100 }));
+  });
+
+  it("applyStatChanges does not spend vitals", () => {
+    const patch = applyStatChanges(player({ energy: 80, mood: 70 }), { energy: 20, mood: 10 }, undefined);
+    assert.equal(patch.energy, undefined);
+    assert.equal(patch.mood, undefined);
+  });
+
+  it("scaleWorkCosts passes through", () => {
+    const scaled = scaleWorkCosts(player({}), { energy: 12, mood: 2 });
+    assert.deepEqual(scaled, { energy: 12, mood: 2 });
   });
 });

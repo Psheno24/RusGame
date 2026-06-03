@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
-import { applyWorkStatCosts } from "./actions.js";
 import { appendPlayerFeed } from "./playerFeed.js";
 import { DATA_DIR } from "./config.js";
 import { randInt } from "./random.js";
@@ -20,7 +19,7 @@ import {
   type TaxiState,
 } from "./playerTaxi.js";
 import { sleepBlockMessage } from "./playerSleep.js";
-import { canAffordCosts, clampVital, scaleWorkCosts } from "./playerStats.js";
+import { clampVital } from "./playerStats.js";
 import { jobCityId } from "./jobLocation.js";
 
 type TaxiConfig = {
@@ -223,29 +222,9 @@ function completeActiveTrip(
     rating = clampRating(rating - taxiConfig.ratingBadTripPenalty);
   }
 
-  let energyCost = taxiConfig.energyPerOrderBase;
-  if (order.tripMinutes >= taxiConfig.longTripMinutes) energyCost += taxiConfig.energyLongTripExtra;
-  if (order.passengerRating < 3.5) energyCost += taxiConfig.energyConflictExtra;
-
-  const costs = scaleWorkCosts(player, {
-    energy: energyCost,
-    mood: 0,
-  });
-  const lifeErr = canAffordCosts(player, costs);
-  if (lifeErr) {
-    return {
-      state: { ...state, activeTrip: trip },
-      payoutRub: 0,
-      message: lifeErr,
-      moodDelta: 0,
-    };
-  }
-
-  const statPatch = applyWorkStatCosts(player, scaleWorkCosts(player, costs)!);
-  const mood = clampVital("mood", (statPatch.mood ?? player.mood ?? 70) + moodDelta);
+  const mood = clampVital("mood", (player.mood ?? 70) + moodDelta);
   const witGain = Math.random() < 0.4 ? 1 : 0;
   updatePlayer(player.user_id, {
-    ...statPatch,
     mood,
     rubles: player.rubles + payoutRub,
     wit: player.wit + witGain,
@@ -512,13 +491,6 @@ export function taxiAcceptOrder(
 
   const order = state.availableOrders.find((o) => o.id === orderId);
   if (!order) return { ok: false, error: "Заказ не найден или устарел" };
-
-  const costs = scaleWorkCosts(player, {
-    energy: taxiConfig.energyPerOrderBase,
-    mood: 0,
-  });
-  const lifeErr = canAffordCosts(player, costs);
-  if (lifeErr) return { ok: false, error: lifeErr };
 
   const tripMs = order.tripMinutes * MS_MIN;
   const activeTrip: TaxiActiveTrip = {

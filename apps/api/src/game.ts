@@ -35,15 +35,10 @@ import {
   type JobDef,
 } from "./gameData.js";
 import type { TravelMode } from "./travelCalc.js";
-import { applyWorkStatCosts } from "./actions.js";
 import { isCityResident, requireCityResident, syncPlayerHousing } from "./housing.js";
 import { jobCityId, validateJobWorkAccess } from "./jobLocation.js";
 import {
-  applyPostWorkPassives,
-  canAffordCosts,
   clampReputation,
-  scaleWorkCosts,
-  type StatCosts,
   workPayoutMultiplier,
 } from "./playerStats.js";
 import { applyCarCooldownReduction, hasDriverLicense } from "./playerCars.js";
@@ -197,19 +192,6 @@ function calculateDurationJobPayout(
   const vitalMult = workPayoutMultiplier(player);
   const multiplier = timeMult * vitalMult;
   return { payout: Math.floor(perHour * hours * multiplier), multiplier };
-}
-
-function scaleWorkCostsByHours(
-  costs: StatCosts | undefined,
-  hours: number,
-  baselineHours = 8,
-): StatCosts | undefined {
-  if (!costs) return undefined;
-  const factor = hours / baselineHours;
-  const scaled: StatCosts = {};
-  if (costs.energy != null) scaled.energy = Math.ceil(costs.energy * factor);
-  if (costs.mood != null) scaled.mood = Math.ceil(costs.mood * factor);
-  return scaled;
 }
 
 function payoutMessage(job: JobDef, payout: number, multiplier: number): string {
@@ -389,7 +371,6 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
 
   let shiftHours: number;
   let cooldownMs: number;
-  let workCosts = job.workCosts;
 
   if (job.kind === "duration") {
     const minH = job.shiftHoursMin ?? 4;
@@ -399,7 +380,6 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
     }
     shiftHours = hours;
     cooldownMs = applyCarCooldownReduction(userId, hours * 3600000);
-    workCosts = scaleWorkCostsByHours(job.workCosts, hours);
   } else if (isNightGuardJob(job)) {
     if (hours != null) {
       return { ok: false, error: "Для этой работы длительность смены не выбирается" };
@@ -419,7 +399,6 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
       };
     }
     shiftHours = shiftMinutes / 60;
-    workCosts = scaleWorkCostsByHours(job.workCosts, shiftHours, 10);
     cooldownMs = applyCarCooldownReduction(userId, shiftMinutes * 60_000);
   } else {
     if (hours != null) {
@@ -427,14 +406,7 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
     }
     shiftHours = job.shiftHours ?? 0;
     cooldownMs = applyCarCooldownReduction(userId, jobNominalCooldownMs(job));
-    if (shiftHours > 0) {
-      workCosts = scaleWorkCostsByHours(job.workCosts, shiftHours, shiftHours);
-    }
   }
-
-  const scaledCosts = scaleWorkCosts(player, workCosts);
-  const lifeErr = canAffordCosts(player, scaledCosts);
-  if (lifeErr) return { ok: false, error: lifeErr };
 
   const cd = jobCooldownState(player, job, now);
   if (!cd.ready) {
@@ -452,10 +424,7 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
         ? calculateNightGuardPayout(player, job, schedule.localTime, shiftHours)
         : calculateCooldownJobPayout(player, job, schedule.localTime);
 
-  const statPatch = applyWorkStatCosts(player, scaledCosts);
   const patch: Partial<PlayerRow> = {
-    ...statPatch,
-    ...applyPostWorkPassives(player, statPatch),
     rubles: player.rubles + payoutResult.payout,
     last_work_at_by_job: serializeLastWorkByJob(withLastWork(player, job.id, now, cooldownMs)),
   };
