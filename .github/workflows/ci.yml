@@ -70,5 +70,5 @@ jobs:
           script: |
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
-            bash deploy/update.sh
+            bash update.sh
             docker image prune -f

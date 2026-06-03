@@ -6,10 +6,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-chmod +x deploy/update.sh deploy/caddy-entrypoint.sh 2>/dev/null || true
+chmod +x update.sh deploy/update.sh deploy/setup-server-command.sh deploy/caddy-entrypoint.sh 2>/dev/null || true
 
 MARK="# RusGame deploy"
-LINE="alias rusgame-update='cd ${ROOT} && bash deploy/update.sh'"
+LINE="alias rusgame-update='cd ${ROOT} && bash update.sh'"
 
 if ! grep -qF "$MARK" ~/.bashrc 2>/dev/null; then
   {
@@ -23,6 +23,5 @@ else
 fi
 
 echo ""
-echo "Сейчас: source ~/.bashrc   (или новый SSH)"
-echo "Потом всегда:  rusgame-update"
-echo "(то же самое: cd ${ROOT} && bash deploy/update.sh)"
+echo "Готово. После push на сервере:  rusgame-update"
+echo "(git pull + docker, в конце будет [OK] или [FAIL])"

@@ -15,11 +15,19 @@ npm run dev
 
 В Cursor: **Terminal → Run Task → Dev: localhost** (или `Ctrl+Shift+B`).
 
-### 2. На сервер — GitHub Desktop → Push
+### 2. На сервер
 
-Commit → **Push origin** → GitHub Actions собирает и деплоит на VPS (~2–3 мин).
-
+**Вариант А — автоматически (рекомендуется):** GitHub Desktop → **Push origin**.  
+GitHub Actions сам выполнит на VPS `git pull` + `docker compose up -d --build` (~2–3 мин).  
 Секреты один раз: [deploy/GITHUB-ACTIONS.md](deploy/GITHUB-ACTIONS.md)
+
+**Вариант Б — вручную по SSH, одна команда:**
+
+```bash
+cd /opt/rusgame && bash update.sh
+```
+
+Короткий алиас (один раз `bash deploy/setup-server-command.sh`): **`rusgame-update`**
 
 ---
 
