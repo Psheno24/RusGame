@@ -801,9 +801,21 @@ export async function registerRoutes(app: FastifyInstance) {
     },
   );
 
-  app.get("/api/shop/car-categories", async () => ({
-    categories: listCarCategoriesWithCounts(),
-  }));
+  app.get("/api/shop/car-categories", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = getPlayer(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const { getCityCarMarketLevel, getCarClassLabel, getMaxCarClassForMarketLevel } = await import(
+      "./carMarket.js",
+    );
+    const level = getCityCarMarketLevel(player.city_id);
+    return {
+      categories: listCarCategoriesWithCounts(player),
+      marketLevel: level,
+      maxClassLabel: getCarClassLabel(getMaxCarClassForMarketLevel(level)),
+    };
+  });
 
   app.get<{ Querystring: { category?: string } }>("/api/shop/cars", async (req, reply) => {
     const userId = await resolveUserId(req);

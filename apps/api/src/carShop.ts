@@ -3,6 +3,17 @@ import { getPlayer, updatePlayer } from "./db.js";
 import { computeResaleValue } from "./assetTrade.js";
 import { appendPlayerFeed } from "./playerFeed.js";
 import {
+  getCarClassLabel,
+  getCarCityPriceRub,
+  getCarBasePriceRub,
+  isCarClassAvailableInCity,
+  getCityCarMarketLevel,
+} from "./carMarket.js";
+import {
+  getCarCooldownReducePct,
+  monthlyMaintenanceRub,
+} from "./carStats.js";
+import {
   getCar,
   getCarCategories,
   getCarsByCategory,
@@ -14,7 +25,6 @@ import {
   hasDriverLicense,
   insertPlayerCar,
   listPlayerCars,
-  parseDriverLicenses,
   tradeInValueForPlayerCar,
 } from "./playerCars.js";
 import {
@@ -50,9 +60,17 @@ export type OwnedCarView = {
   plate: VehiclePlateParts | null;
   plateText: string | null;
   tradeInRub: number;
+  carClass?: string;
+  carClassLabel?: string;
 };
 
 export type CarCatalogItem = CarModel & {
+  basePriceRub: number;
+  listPriceRub: number;
+  marketAvailable: boolean;
+  carClassLabel: string;
+  cooldownReducePct: number;
+  maintenanceMonthlyRub: number;
   isOwned: boolean;
   ownedCount: number;
   hasLicense: boolean;
@@ -74,11 +92,14 @@ export type CarPurchaseQuote = {
   tradeInCars: { id: number; modelName: string; amountRub: number }[];
 };
 
-export function listCarCategoriesWithCounts() {
-  const owned = new Set<string>();
+export function listCarCategoriesWithCounts(player: PlayerRow) {
+  const cityId = player.city_id;
   return getCarCategories().map((cat) => ({
     ...cat,
-    carCount: getCarsByCategory(cat.id).length,
+    carCount: getCarsByCategory(cat.id).filter((c) =>
+      isCarClassAvailableInCity(cityId, c.carClass ?? "economy"),
+    ).length,
+    marketLevel: getCityCarMarketLevel(cityId),
   }));
 }
 
@@ -90,10 +111,36 @@ function ownedModelCounts(userId: number): Map<string, number> {
   return m;
 }
 
-function tradeInValuesForOwned(userId: number, now: number): number[] {
-  return listPlayerCars(userId)
-    .map((row) => tradeInValueForPlayerCar(row, now))
+function tradeInValuesForOwned(player: PlayerRow, now: number): number[] {
+  return listPlayerCars(player.user_id)
+    .map((row) => tradeInValueForPlayerCar(row, player.city_id, now))
     .filter((v): v is number => v != null);
+}
+
+function enrichCatalogCar(player: PlayerRow, c: CarModel): CarCatalogItem | null {
+  const cityId = player.city_id;
+  const carClass = c.carClass ?? "economy";
+  const marketAvailable = isCarClassAvailableInCity(cityId, carClass);
+  const listPriceRub = marketAvailable ? getCarCityPriceRub(cityId, c) : 0;
+  const basePriceRub = getCarBasePriceRub(c);
+
+  return {
+    ...c,
+    priceRub: listPriceRub || basePriceRub,
+    basePriceRub,
+    listPriceRub,
+    marketAvailable,
+    carClassLabel: getCarClassLabel(carClass),
+    cooldownReducePct: getCarCooldownReducePct(c),
+    maintenanceMonthlyRub: monthlyMaintenanceRub(c, listPriceRub || basePriceRub),
+    isOwned: false,
+    ownedCount: 0,
+    hasLicense: hasDriverLicense(player, c.licenseCategory),
+    licenseCategory: c.licenseCategory,
+    payFromRub: null,
+    payToRub: null,
+    singleTradeInRub: null,
+  };
 }
 
 export function listCarsInCategory(
@@ -103,31 +150,29 @@ export function listCarsInCategory(
 ): CarCatalogItem[] {
   const userId = player.user_id;
   const owned = ownedModelCounts(userId);
-  const tradeValues = tradeInValuesForOwned(userId, now);
+  const tradeValues = tradeInValuesForOwned(player, now);
   const sumTrade = tradeValues.reduce((a, b) => a + b, 0);
   const minSingleTrade = tradeValues.length ? Math.min(...tradeValues) : 0;
 
-  return getCarsByCategory(categoryId).map((c) => {
-    const listPriceRub = c.priceRub;
-    let payFromRub: number | null = null;
-    let payToRub: number | null = null;
-
-    if (tradeValues.length >= 1) {
-      payFromRub = Math.max(0, listPriceRub - sumTrade);
-      payToRub = Math.max(0, listPriceRub - minSingleTrade);
-    }
-
-    return {
-      ...c,
-      isOwned: (owned.get(c.id) ?? 0) > 0,
-      ownedCount: owned.get(c.id) ?? 0,
-      hasLicense: hasDriverLicense(player, c.licenseCategory),
-      licenseCategory: c.licenseCategory,
-      payFromRub,
-      payToRub,
-      singleTradeInRub: null,
-    };
-  });
+  return getCarsByCategory(categoryId)
+    .map((c) => enrichCatalogCar(player, c))
+    .filter((x): x is CarCatalogItem => x != null)
+    .map((item) => {
+      if (!item.marketAvailable) return item;
+      let payFromRub: number | null = null;
+      let payToRub: number | null = null;
+      if (tradeValues.length >= 1) {
+        payFromRub = Math.max(0, item.listPriceRub - sumTrade);
+        payToRub = Math.max(0, item.listPriceRub - minSingleTrade);
+      }
+      return {
+        ...item,
+        isOwned: (owned.get(item.id) ?? 0) > 0,
+        ownedCount: owned.get(item.id) ?? 0,
+        payFromRub,
+        payToRub,
+      };
+    });
 }
 
 export function listOwnedCars(player: PlayerRow, now = Date.now()): OwnedCarView[] {
@@ -135,8 +180,9 @@ export function listOwnedCars(player: PlayerRow, now = Date.now()): OwnedCarView
     .map((row) => {
       const car = getCar(row.car_model_id);
       if (!car) return null;
-      const tradeInRub = tradeInValueForPlayerCar(row, now) ?? 0;
-      return {
+      const tradeInRub = tradeInValueForPlayerCar(row, player.city_id, now) ?? 0;
+      const cls = car.carClass ?? "economy";
+      const view: OwnedCarView = {
         id: row.id,
         modelId: row.car_model_id,
         brand: car.brand,
@@ -147,7 +193,10 @@ export function listOwnedCars(player: PlayerRow, now = Date.now()): OwnedCarView
         plate: parsePlatePartsFromRow(row),
         plateText: plateTextForCarRow(row),
         tradeInRub,
+        carClass: cls,
+        carClassLabel: getCarClassLabel(cls),
       };
+      return view;
     })
     .filter((x): x is OwnedCarView => x != null);
 }
@@ -158,8 +207,8 @@ export function quoteCarPurchase(
   tradeInCarIds: number[] = [],
   now = Date.now(),
 ): CarPurchaseQuote | { error: string } {
-  const listPriceRub = getCarShopPriceRub(carId);
-  if (listPriceRub == null) return { error: "Модель не найдена" };
+  const listPriceRub = getCarShopPriceRub(carId, player.city_id);
+  if (listPriceRub == null) return { error: "Модель недоступна в этом городе" };
   const car = getCar(carId);
   if (!car) return { error: "Модель не найдена" };
 
@@ -172,7 +221,7 @@ export function quoteCarPurchase(
     seen.add(pid);
     const row = getPlayerCarById(player.user_id, pid);
     if (!row) return { error: "Автомобиль для зачёта не найден" };
-    const amountRub = tradeInValueForPlayerCar(row, now);
+    const amountRub = tradeInValueForPlayerCar(row, player.city_id, now);
     if (amountRub == null) return { error: "Не удалось оценить автомобиль для зачёта" };
     const c = getCar(row.car_model_id);
     tradeInRub += amountRub;
@@ -218,13 +267,16 @@ export function buyCar(
   if (playerOwnsModel(userId, carId)) {
     return { ok: false, error: "Эта модель уже куплена" };
   }
-  const listPriceRub = car.priceRub;
+  const listPriceRub = getCarShopPriceRub(carId, player.city_id);
+  if (listPriceRub == null) {
+    return { ok: false, error: "Эта модель не продаётся в вашем городе" };
+  }
   if (player.rubles < listPriceRub) {
     return { ok: false, error: `Нужно ${listPriceRub.toLocaleString("ru-RU")} ₽` };
   }
   const now = Date.now();
   updatePlayer(userId, { rubles: player.rubles - listPriceRub });
-  insertPlayerCar(userId, carId, now);
+  insertPlayerCar(userId, carId, now, listPriceRub);
   const carName = `${car.brand} ${car.model}`;
   appendPlayerFeed(userId, "shop:car", `Купили ${carName}`, now);
   return { ok: true, carName };
@@ -252,12 +304,16 @@ export function tradeInForCar(
   }
   const car = getCar(carId);
   if (!car) return { ok: false, error: "Модель не найдена" };
+  const listPriceRub = getCarShopPriceRub(carId, player.city_id);
+  if (listPriceRub == null) {
+    return { ok: false, error: "Эта модель не продаётся в вашем городе" };
+  }
   const now = Date.now();
   deletePlayerCars(userId, tradeInCarIds);
   updatePlayer(userId, {
     rubles: player.rubles - quote.netPriceRub + quote.excessRub,
   });
-  insertPlayerCar(userId, carId, now);
+  insertPlayerCar(userId, carId, now, listPriceRub);
   const carName = `${car.brand} ${car.model}`;
   appendPlayerFeed(userId, "shop:car", `Обменяли авто на ${carName}`, now);
   return { ok: true, carName, excessRub: quote.excessRub };
@@ -272,7 +328,8 @@ export function quoteCarSell(
   | { error: string } {
   const row = getPlayerCarById(player.user_id, playerCarId);
   if (!row) return { error: "Автомобиль не найден" };
-  const catalogPriceRub = getCarShopPriceRub(row.car_model_id);
+  const catalogPriceRub =
+    row.purchase_price_rub ?? getCarShopPriceRub(row.car_model_id, player.city_id);
   if (catalogPriceRub == null) return { error: "Модель не найдена в каталоге" };
   const car = getCar(row.car_model_id);
   return {

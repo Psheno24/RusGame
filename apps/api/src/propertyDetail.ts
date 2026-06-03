@@ -2,6 +2,16 @@ import type { PlayerRow } from "./db.js";
 import { getPlayer } from "./db.js";
 import { formatMarketLossLossLine } from "./assetTrade.js";
 import { quoteCarSell, sellCar } from "./carShop.js";
+import { getCarClassLabel } from "./carMarket.js";
+import {
+  getCarComfort,
+  getCarCooldownReducePct,
+  getCarPrestige,
+  getCarReliability,
+  getCarSpeed,
+  monthlyMaintenanceRub,
+  prestigeToMoodBonus,
+} from "./carStats.js";
 import { getCar, getPhone, getVehicleRental } from "./gameData.js";
 import { getCity } from "./gameData.js";
 import {
@@ -145,14 +155,24 @@ export function getPropertyDetail(
       title: car ? `${car.brand} ${car.model}` : "Автомобиль",
       subtitle: car ? `${car.year} · ${car.body}` : null,
       accent: car?.accent ?? "#4a5568",
-      specs: [
-        { label: "Пробег", value: "0 км" },
-        { label: "Износ шин", value: pct(0) },
-      ],
+      specs: car
+        ? [
+            { label: "Класс", value: getCarClassLabel(car.carClass ?? "economy") },
+            { label: "Скорость", value: `${getCarSpeed(car)} (−${getCarCooldownReducePct(car)}% КД доставки)` },
+            { label: "Комфорт", value: String(getCarComfort(car)) },
+            { label: "Надёжность", value: String(getCarReliability(car)) },
+            { label: "Престиж", value: `${getCarPrestige(car)} (+${prestigeToMoodBonus(getCarPrestige(car))} настроения)` },
+            {
+              label: "ТО в месяц",
+              value: `${monthlyMaintenanceRub(car, row.purchase_price_rub ?? car.priceRub).toLocaleString("ru-RU")} ₽`,
+            },
+          ]
+        : [],
       features: car
         ? [
             { label: "Кузов", value: car.body },
             { label: "Год", value: String(car.year) },
+            { label: "Расход", value: `${car.fuelConsumption ?? 50}/100` },
           ]
         : [],
       status: plateText

@@ -59,6 +59,7 @@ export type PlayerRow = {
   reputation: number;
   education: string;
   taxi_state: string | null;
+  last_car_maintenance_at: number | null;
 };
 
 export type HousingType = "dorm" | "rent" | "owned";
@@ -348,6 +349,16 @@ function migrate(database: Database.Database) {
   const colsTaxi = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
   if (!colsTaxi.some((c) => c.name === "taxi_state")) {
     database.exec("ALTER TABLE players ADD COLUMN taxi_state TEXT");
+  }
+
+  const colsCarMaint = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!colsCarMaint.some((c) => c.name === "last_car_maintenance_at")) {
+    database.exec("ALTER TABLE players ADD COLUMN last_car_maintenance_at INTEGER");
+  }
+
+  const colsPcPrice = database.prepare("PRAGMA table_info(player_cars)").all() as { name: string }[];
+  if (colsPcPrice.length > 0 && !colsPcPrice.some((c) => c.name === "purchase_price_rub")) {
+    database.exec("ALTER TABLE player_cars ADD COLUMN purchase_price_rub INTEGER");
   }
 
   database.exec(`

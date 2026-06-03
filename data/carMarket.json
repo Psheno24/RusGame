@@ -1,0 +1,62 @@
+{
+  "cityMarketLevel": {
+    "omsk": 1,
+    "volgograd": 1,
+    "voronezh": 1,
+    "perm": 2,
+    "krasnoyarsk": 2,
+    "ufa": 2,
+    "rostov": 2,
+    "samara": 3,
+    "chelyabinsk": 3,
+    "nn": 3,
+    "krasnodar": 4,
+    "novosibirsk": 4,
+    "ekb": 5,
+    "kazan": 5,
+    "spb": 6,
+    "moscow": 7
+  },
+  "maxClassByMarketLevel": {
+    "1": "economy",
+    "2": "comfort",
+    "3": "comfort_plus",
+    "4": "business",
+    "5": "premium",
+    "6": "luxury",
+    "7": "hypercar"
+  },
+  "classOrder": [
+    "economy",
+    "comfort",
+    "comfort_plus",
+    "business",
+    "premium",
+    "luxury",
+    "hypercar"
+  ],
+  "classLabels": {
+    "economy": "Эконом",
+    "comfort": "Комфорт",
+    "comfort_plus": "Комфорт+",
+    "business": "Бизнес",
+    "premium": "Премиум",
+    "luxury": "Люкс",
+    "hypercar": "Гиперкар"
+  },
+  "maintenanceRatePctMonthly": {
+    "economy": 0.005,
+    "comfort": 0.007,
+    "comfort_plus": 0.01,
+    "business": 0.015,
+    "premium": 0.02,
+    "luxury": 0.03,
+    "hypercar": 0.05
+  },
+  "cheapClasses": ["economy", "comfort"],
+  "expensiveClasses": ["premium", "luxury", "hypercar"],
+  "cheapPriceMultiplier": { "min": 0.95, "max": 1 },
+  "midPriceMultiplier": { "min": 1.15, "max": 1 },
+  "expensivePriceMultiplier": { "min": 1.4, "max": 1 },
+  "maintenanceIntervalMs": 2592000000
+}
