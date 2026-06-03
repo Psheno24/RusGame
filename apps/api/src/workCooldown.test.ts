@@ -25,7 +25,8 @@ describe("workCooldown", () => {
   });
 
   it("activeJobShiftBlock when cooldown not ready", () => {
-    const workAt = Date.now() - 60_000;
+    const workAt = new Date("2026-06-02T23:30:00+05:00").getTime();
+    const now = workAt + 60_000;
     const player = {
       city_id: "ekb",
       job_id: "ekb_night_guard",
@@ -33,7 +34,7 @@ describe("workCooldown", () => {
         ekb_night_guard: { at: workAt, cooldownMs: 3_600_000 },
       }),
     } as import("./db.js").PlayerRow;
-    const block = activeJobShiftBlock(player);
+    const block = activeJobShiftBlock(player, now);
     assert.equal(block.blocked, true);
     assert.ok(block.remainingMs > 0);
   });

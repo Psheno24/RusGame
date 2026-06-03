@@ -113,6 +113,8 @@ export type CarModel = {
   reliability: number;
   prestige: number;
   fuelConsumption: number;
+  /** false — только б/у рынок, не продаётся в салоне как новый */
+  salonNew?: boolean;
   /** @deprecated вычисляется из speed */
   cooldownReducePct?: number;
 };

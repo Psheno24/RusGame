@@ -96,8 +96,8 @@ export function listCarCategoriesWithCounts(player: PlayerRow) {
   const cityId = player.city_id;
   return getCarCategories().map((cat) => ({
     ...cat,
-    carCount: getCarsByCategory(cat.id).filter((c) =>
-      isCarClassAvailableInCity(cityId, c.carClass ?? "economy"),
+    carCount: getCarsByCategory(cat.id).filter(
+      (c) => c.salonNew !== false && isCarClassAvailableInCity(cityId, c.carClass ?? "economy"),
     ).length,
     marketLevel: getCityCarMarketLevel(cityId),
   }));
@@ -155,6 +155,7 @@ export function listCarsInCategory(
   const minSingleTrade = tradeValues.length ? Math.min(...tradeValues) : 0;
 
   return getCarsByCategory(categoryId)
+    .filter((c) => c.salonNew !== false)
     .map((c) => enrichCatalogCar(player, c))
     .filter((x): x is CarCatalogItem => x != null)
     .map((item) => {
@@ -264,6 +265,9 @@ export function buyCar(
   if (licErr) return { ok: false, error: licErr };
   const car = getCar(carId);
   if (!car) return { ok: false, error: "Модель не найдена" };
+  if (car.salonNew === false) {
+    return { ok: false, error: "Эта модель доступна только на рынке б/у" };
+  }
   if (playerOwnsModel(userId, carId)) {
     return { ok: false, error: "Эта модель уже куплена" };
   }
@@ -304,6 +308,9 @@ export function tradeInForCar(
   }
   const car = getCar(carId);
   if (!car) return { ok: false, error: "Модель не найдена" };
+  if (car.salonNew === false) {
+    return { ok: false, error: "Эта модель доступна только на рынке б/у" };
+  }
   const listPriceRub = getCarShopPriceRub(carId, player.city_id);
   if (listPriceRub == null) {
     return { ok: false, error: "Эта модель не продаётся в вашем городе" };

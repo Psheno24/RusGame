@@ -8,10 +8,18 @@
   "ratingDeclinePenalty": 0.02,
   "ratingGoodTripBonus": 0.01,
   "ratingBadTripPenalty": 0.03,
-  "cashPartialPayChance": 0.12,
-  "cashNoPayChance": 0.04,
+  "cashNoPayBaseChance": 0.012,
+  "cashPartialPayBaseChance": 0.035,
+  "cashNoPayPerRatingBelow45": 0.006,
+  "cashPartialPayPerRatingBelow45": 0.01,
   "cashPartialPayFraction": 0.6,
   "parkCompensationFraction": 0.5,
+  "tripMinutesMin": 5,
+  "tripMinutesMax": 45,
+  "midTripMinutes": 30,
+  "hourlyAtMinTrip": 8000,
+  "hourlyAtMidTrip": 5000,
+  "hourlyAtMaxTrip": 4000,
   "energyPerOrderBase": 8,
   "energyConflictExtra": 6,
   "energyLongTripExtra": 4,
@@ -24,9 +32,9 @@
     "premium": { "title": "Премиум", "orderMult": 2.2, "minCityMultiplier": 1.8 }
   },
   "carClassByPrice": [
-    { "maxPriceRub": 400000, "class": "economy" },
-    { "maxPriceRub": 700000, "class": "comfort" },
-    { "maxPriceRub": 1100000, "class": "comfort_plus" },
+    { "maxPriceRub": 600000, "class": "economy" },
+    { "maxPriceRub": 1100000, "class": "comfort" },
+    { "maxPriceRub": 2300000, "class": "comfort_plus" },
     { "maxPriceRub": null, "class": "business" }
   ],
   "cityTariffs": {
@@ -46,6 +54,5 @@
     "kazan": ["economy", "comfort", "comfort_plus", "business", "premium"],
     "spb": ["economy", "comfort", "comfort_plus", "business", "premium"],
     "moscow": ["economy", "comfort", "comfort_plus", "business", "premium"]
-  },
-  "orderBaseRubOmsk": 1000
+  }
 }

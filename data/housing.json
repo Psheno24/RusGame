@@ -1,9 +1,9 @@
 {
   "byTier": {
-    "2": { "dormRub": 800, "rentRub": 18000, "buyRub": 2500000 },
-    "3": { "dormRub": 1200, "rentRub": 35000, "buyRub": 4200000 },
-    "4": { "dormRub": 1800, "rentRub": 65000, "buyRub": 7200000 },
-    "5": { "dormRub": 3000, "rentRub": 100000, "buyRub": 12000000 }
+    "2": { "dormRub": 500, "rentRub": 6000, "buyRub": 150000 },
+    "3": { "dormRub": 800, "rentRub": 10000, "buyRub": 180000 },
+    "4": { "dormRub": 1200, "rentRub": 18000, "buyRub": 350000 },
+    "5": { "dormRub": 2000, "rentRub": 30000, "buyRub": 10500000 }
   },
   "dormHours": 24,
   "rentDays": 30,

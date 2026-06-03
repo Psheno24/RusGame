@@ -18,10 +18,10 @@
     "moscow": 4
   },
   "omskBasePayouts": {
-    "delivery": 6000,
-    "taxi": 10000,
-    "cashier": 5000,
-    "night_guard": 12000
+    "delivery": 8000,
+    "taxi": 5000,
+    "cashier": 12000,
+    "night_guard": 25000
   },
   "skillWeights": {
     "delivery": { "stamina": 0.7, "agility": 0.3 },

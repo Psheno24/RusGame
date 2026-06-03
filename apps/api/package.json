@@ -7,7 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "node --import tsx --test src/assetTrade.test.ts src/carMarket.test.ts src/usedCarMarket.test.ts src/carRepair.test.ts src/carStats.test.ts src/taxiTariff.test.ts src/cityTime.test.ts src/jobShift.test.ts src/workCooldown.test.ts src/playerReset.test.ts src/simTariff.test.ts src/formatDuration.test.ts src/formatLocaleDate.test.ts src/housing.test.ts src/housing.sublet.test.ts src/housingEconomy.test.ts src/jobSalaries.test.ts src/playerStats.test.ts src/playerSleep.test.ts src/vehicleRental.test.ts src/vehicleRentalDisplay.test.ts src/taxiCarSelection.test.ts src/testAccount.test.ts src/travelCalc.test.ts"
+    "test": "node --import tsx --test src/assetTrade.test.ts src/carMarket.test.ts src/usedCarMarket.test.ts src/carRepair.test.ts src/carStats.test.ts src/taxiPayout.test.ts src/taxiTariff.test.ts src/cityTime.test.ts src/jobShift.test.ts src/workCooldown.test.ts src/playerReset.test.ts src/simTariff.test.ts src/formatDuration.test.ts src/formatLocaleDate.test.ts src/housing.test.ts src/housing.sublet.test.ts src/housingEconomy.test.ts src/jobSalaries.test.ts src/playerStats.test.ts src/playerSleep.test.ts src/vehicleRental.test.ts src/vehicleRentalDisplay.test.ts src/taxiCarSelection.test.ts src/testAccount.test.ts src/travelCalc.test.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",

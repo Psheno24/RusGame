@@ -80,11 +80,11 @@ describe("jobSalaries", () => {
     assert.equal(getCitySalaryMultiplier("moscow"), 4);
   });
 
-  it("moscow courier payout is 24000 base range", () => {
+  it("moscow courier payout is 32000 base range", () => {
     const job = getCityJobs("moscow").find((j) => j.templateKey === "delivery");
     assert.ok(job);
-    assert.equal(job!.payoutMin, 22_800);
-    assert.equal(job!.payoutMax, 25_200);
+    assert.equal(job!.payoutMin, 30_400);
+    assert.equal(job!.payoutMax, 33_600);
   });
 
   it("skill at reference gives ~1.0 multiplier", () => {

@@ -28,6 +28,13 @@ import {
 import { clampVital } from "./playerStats.js";
 import { jobCityId } from "./jobLocation.js";
 import { isVehicleRentalActive } from "./vehicleRental.js";
+import {
+  cashPaymentRiskChances,
+  rollTripMinutes,
+  tripPayoutRub,
+  type TaxiCashRiskConfig,
+  type TaxiPayoutCurve,
+} from "./taxiPayout.js";
 
 type TaxiConfig = {
   idleOfflineMs: number;
@@ -39,10 +46,18 @@ type TaxiConfig = {
   ratingDeclinePenalty: number;
   ratingGoodTripBonus: number;
   ratingBadTripPenalty: number;
-  cashPartialPayChance: number;
-  cashNoPayChance: number;
+  cashNoPayBaseChance: number;
+  cashPartialPayBaseChance: number;
+  cashNoPayPerRatingBelow45: number;
+  cashPartialPayPerRatingBelow45: number;
   cashPartialPayFraction: number;
   parkCompensationFraction: number;
+  tripMinutesMin: number;
+  tripMinutesMax: number;
+  midTripMinutes: number;
+  hourlyAtMinTrip: number;
+  hourlyAtMidTrip: number;
+  hourlyAtMaxTrip: number;
   energyPerOrderBase: number;
   energyConflictExtra: number;
   energyLongTripExtra: number;
@@ -50,12 +65,29 @@ type TaxiConfig = {
   tariffs: Record<string, { title: string; orderMult: number; minCityMultiplier: number }>;
   carClassByPrice: { maxPriceRub: number | null; class: string }[];
   cityTariffs: Record<string, string[]>;
-  orderBaseRubOmsk: number;
 };
 
 const taxiConfig = JSON.parse(
   readFileSync(join(DATA_DIR, "taxiConfig.json"), "utf-8"),
 ) as TaxiConfig;
+
+const payoutCurve: TaxiPayoutCurve = {
+  tripMinutesMin: taxiConfig.tripMinutesMin,
+  tripMinutesMax: taxiConfig.tripMinutesMax,
+  midTripMinutes: taxiConfig.midTripMinutes,
+  hourlyAtMinTrip: taxiConfig.hourlyAtMinTrip,
+  hourlyAtMidTrip: taxiConfig.hourlyAtMidTrip,
+  hourlyAtMaxTrip: taxiConfig.hourlyAtMaxTrip,
+};
+
+const cashRiskConfig: TaxiCashRiskConfig = {
+  cashNoPayBaseChance: taxiConfig.cashNoPayBaseChance,
+  cashPartialPayBaseChance: taxiConfig.cashPartialPayBaseChance,
+  cashNoPayPerRatingBelow45: taxiConfig.cashNoPayPerRatingBelow45,
+  cashPartialPayPerRatingBelow45: taxiConfig.cashPartialPayPerRatingBelow45,
+  cashPartialPayFraction: taxiConfig.cashPartialPayFraction,
+  parkCompensationFraction: taxiConfig.parkCompensationFraction,
+};
 
 const MS_MIN = 60_000;
 
@@ -123,12 +155,10 @@ export function listTaxiCarOptions(player: PlayerRow, now = Date.now()): TaxiCar
   return options;
 }
 
-function generateOrder(player: PlayerRow, orderTariff: string, driverRating: number): TaxiOrder {
+function generateOrder(player: PlayerRow, orderTariff: string): TaxiOrder {
   const cityMult = getCitySalaryMultiplier(player.city_id);
   const tariffDef = taxiConfig.tariffs[orderTariff] ?? taxiConfig.tariffs.economy!;
-  const ratingMult =
-    0.88 + ((driverRating - taxiConfig.ratingMin) / (taxiConfig.ratingMax - taxiConfig.ratingMin)) * 0.22;
-  const tripMinutes = randInt(6, 38);
+  const tripMinutes = rollTripMinutes(payoutCurve);
   const passengerRating =
     Math.random() < 0.65
       ? randInt(42, 50) / 10
@@ -136,13 +166,12 @@ function generateOrder(player: PlayerRow, orderTariff: string, driverRating: num
         ? randInt(35, 41) / 10
         : randInt(30, 34) / 10;
   const payment: "card" | "cash" = Math.random() < 0.38 ? "cash" : "card";
-  const tripFactor = 0.75 + tripMinutes / 40;
-  const variance = 0.88 + Math.random() * 0.24;
-  const baseRub = Math.round(
-    taxiConfig.orderBaseRubOmsk * cityMult * tariffDef.orderMult * ratingMult * tripFactor * variance,
-  );
+  const omskRub = tripPayoutRub(tripMinutes, payoutCurve);
   const skillMult = skillPayoutMultiplier(player, "taxi");
-  const payoutRub = Math.max(150, Math.round(baseRub * skillMult));
+  const payoutRub = Math.max(
+    150,
+    Math.round(omskRub * cityMult * tariffDef.orderMult * skillMult),
+  );
 
   return {
     id: `o-${Date.now()}-${randInt(1000, 9999)}`,
@@ -164,7 +193,7 @@ function generateOrderPool(player: PlayerRow, state: TaxiState): TaxiOrder[] {
   const usedIds = new Set<string>();
   while (orders.length < count) {
     const orderTariff = pickWeightedOrderTariff(allowedTariffs);
-    const o = generateOrder(player, orderTariff, state.rating);
+    const o = generateOrder(player, orderTariff);
     if (!usedIds.has(o.id)) {
       usedIds.add(o.id);
       orders.push(o);
@@ -211,13 +240,17 @@ function completeActiveTrip(
   if (order.passengerRating >= 4.5) moodDelta += randInt(0, 2);
   else if (order.passengerRating < 3.5) moodDelta -= randInt(1, 3);
 
-  if (order.payment === "cash" && order.passengerRating < 4) {
-    if (Math.random() < taxiConfig.cashNoPayChance) {
-      payoutRub = Math.floor(payoutRub * taxiConfig.parkCompensationFraction);
+  if (order.payment === "cash") {
+    const { noPayChance, partialPayChance } = cashPaymentRiskChances(
+      order.passengerRating,
+      cashRiskConfig,
+    );
+    if (Math.random() < noPayChance) {
+      payoutRub = Math.floor(payoutRub * cashRiskConfig.parkCompensationFraction);
       payNote = " Пассажир не заплатил — таксопарк компенсировал часть.";
       moodDelta -= 2;
-    } else if (Math.random() < taxiConfig.cashPartialPayChance) {
-      payoutRub = Math.floor(payoutRub * taxiConfig.cashPartialPayFraction);
+    } else if (Math.random() < partialPayChance) {
+      payoutRub = Math.floor(payoutRub * cashRiskConfig.cashPartialPayFraction);
       payNote = " Неполная оплата наличными.";
       moodDelta -= 1;
     }
