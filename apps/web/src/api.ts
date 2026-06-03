@@ -9,7 +9,6 @@ export type Skills = {
 
 export type Vitals = {
   energy: number;
-  hunger: number;
   mood: number;
   health: number;
   reputation: number;
@@ -21,8 +20,8 @@ export type ActionPreview = {
   description: string;
   canDo: boolean;
   blockReason: string | null;
-  costs?: { rubles?: number; energy?: number; hunger?: number; mood?: number };
-  gains?: { energy?: number; hunger?: number; mood?: number; health?: number; rubles?: number };
+  costs?: { rubles?: number; energy?: number; mood?: number };
+  gains?: { energy?: number; mood?: number; health?: number; rubles?: number };
 };
 
 export type Player = {
@@ -61,6 +60,21 @@ export type Player = {
   housingStatusLabel: string;
   vitals: Vitals;
   education: string;
+  sleeping?: boolean;
+};
+
+export type HomeStatus = {
+  isResident: boolean;
+  sleeping: boolean;
+  sleepStartedAt: number | null;
+  sleepPlannedMs: number;
+  sleepPlannedEndAt: number | null;
+  sleepStartEnergy: number;
+  currentEnergy: number;
+  previewEnergyAtPlanEnd: number;
+  minSleepMs: number;
+  maxSleepMs: number;
+  msPerFullEnergy: number;
 };
 
 export type HousingPrices = {
@@ -954,7 +968,7 @@ export type ProductPreview = {
   priceRub: number;
   canBuy: boolean;
   blockReason: string | null;
-  gains?: { energy?: number; hunger?: number; mood?: number; health?: number };
+  gains?: { energy?: number; mood?: number; health?: number };
 };
 
 export async function fetchShopProducts() {
@@ -966,6 +980,25 @@ export async function buyProduct(productId: string) {
     method: "POST",
     body: JSON.stringify({ productId }),
   });
+}
+
+export async function fetchHome() {
+  return api<{
+    home: HomeStatus;
+    housing: { statusLabel: string; isResident: boolean };
+    player: Player;
+  }>("/api/home");
+}
+
+export async function startHomeSleep(durationMs: number) {
+  return api<{ message: string; user: User }>("/api/home/sleep", {
+    method: "POST",
+    body: JSON.stringify({ durationMs }),
+  });
+}
+
+export async function wakeUpHome() {
+  return api<{ message: string; user: User }>("/api/home/wake", { method: "POST" });
 }
 
 export async function fetchHousing() {

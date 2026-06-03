@@ -74,6 +74,7 @@ import {
 } from "./simTariff.js";
 import { listActionPreviews, performAction } from "./actions.js";
 import { buyProduct, listProductPreviews, listProducts } from "./products.js";
+import { homeStatusForPlayer, startSleep, wakeUp } from "./playerSleep.js";
 import {
   getHousingInfo,
   housingStatusForPlayer,
@@ -532,6 +533,42 @@ export async function registerRoutes(app: FastifyInstance) {
     player = resolveTravel(player);
     const ownedId = req.body?.ownedId != null ? Number(req.body.ownedId) : undefined;
     const result = sellOwnedHousing(player, ownedId);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
+  });
+
+  app.get("/api/home", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const now = Date.now();
+    const player = refreshPlayerState(userId, now);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const housing = housingStatusForPlayer(player, now);
+    return {
+      home: homeStatusForPlayer(player, now),
+      housing,
+      player: serializePlayer(player),
+    };
+  });
+
+  app.post<{ Body: { durationMs?: number } }>("/api/home/sleep", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const durationMs = Number(req.body?.durationMs);
+    if (!Number.isFinite(durationMs) || durationMs <= 0) {
+      return reply.code(400).send({ error: "Укажите длительность сна" });
+    }
+    const result = startSleep(userId, durationMs);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
+  });
+
+  app.post("/api/home/wake", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const result = wakeUp(userId);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
     return { message: result.message, user };

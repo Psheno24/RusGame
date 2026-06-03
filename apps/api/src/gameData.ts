@@ -57,7 +57,6 @@ export type JobTemplate = {
   payoutPeriods?: PayoutPeriod[];
   workCosts?: {
     energy?: number;
-    hunger?: number;
     mood?: number;
   };
 };

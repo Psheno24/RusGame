@@ -60,6 +60,9 @@ export type PlayerRow = {
   education: string;
   taxi_state: string | null;
   last_car_maintenance_at: number | null;
+  sleep_started_at: number | null;
+  sleep_planned_ms: number | null;
+  sleep_start_energy: number | null;
 };
 
 export type HousingType = "dorm" | "rent" | "owned";
@@ -356,6 +359,13 @@ function migrate(database: Database.Database) {
     database.exec("ALTER TABLE players ADD COLUMN last_car_maintenance_at INTEGER");
   }
 
+  const colsSleep = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!colsSleep.some((c) => c.name === "sleep_started_at")) {
+    database.exec("ALTER TABLE players ADD COLUMN sleep_started_at INTEGER");
+    database.exec("ALTER TABLE players ADD COLUMN sleep_planned_ms INTEGER");
+    database.exec("ALTER TABLE players ADD COLUMN sleep_start_energy INTEGER");
+  }
+
   const colsPcPrice = database.prepare("PRAGMA table_info(player_cars)").all() as { name: string }[];
   if (colsPcPrice.length > 0 && !colsPcPrice.some((c) => c.name === "purchase_price_rub")) {
     database.exec("ALTER TABLE player_cars ADD COLUMN purchase_price_rub INTEGER");
@@ -435,6 +445,8 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
         housing_last_owned_id = ?, housing_last_property_id = ?, housing_stack = ?,
         housing_pending_owned_id = ?,
         taxi_state = ?,
+        last_car_maintenance_at = ?,
+        sleep_started_at = ?, sleep_planned_ms = ?, sleep_start_energy = ?,
         energy = ?, hunger = ?, mood = ?, health = ?, reputation = ?, education = ?
       WHERE user_id = ?`,
     )
@@ -489,6 +501,10 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
       next.housing_stack ?? null,
       next.housing_pending_owned_id ?? null,
       next.taxi_state ?? null,
+      next.last_car_maintenance_at ?? null,
+      next.sleep_started_at ?? null,
+      next.sleep_planned_ms ?? null,
+      next.sleep_start_energy ?? null,
       next.energy ?? 80,
       next.hunger ?? 80,
       next.mood ?? 70,

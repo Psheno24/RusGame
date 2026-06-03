@@ -70,6 +70,9 @@ function player(partial: Partial<PlayerRow>): PlayerRow {
     education: "none",
     taxi_state: null,
     last_car_maintenance_at: null,
+    sleep_started_at: null,
+    sleep_planned_ms: null,
+    sleep_start_energy: null,
     ...partial,
   };
 }

@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { PlayerRow } from "./db.js";
-import { applyPostWorkPassives, scaleWorkCosts, workPayoutMultiplier } from "./playerStats.js";
+import {
+  applyPostWorkPassives,
+  applyStatChanges,
+  canAffordCosts,
+  scaleWorkCosts,
+  workPayoutMultiplier,
+} from "./playerStats.js";
 
 function player(partial: Partial<PlayerRow>): PlayerRow {
   return {
@@ -63,30 +69,36 @@ function player(partial: Partial<PlayerRow>): PlayerRow {
     education: "none",
     taxi_state: null,
     last_car_maintenance_at: null,
+    sleep_started_at: null,
+    sleep_planned_ms: null,
+    sleep_start_energy: null,
     ...partial,
   };
 }
 
-describe("playerStats passives", () => {
-  it("scaleWorkCosts adds energy when hungry", () => {
-    const scaled = scaleWorkCosts(player({ hunger: 15 }), { energy: 12, hunger: 8 });
-    assert.equal(scaled?.energy, 15);
+describe("playerStats", () => {
+  it("workPayoutMultiplier is always 1", () => {
+    assert.equal(workPayoutMultiplier(player({ energy: 5, mood: 10 })), 1);
   });
 
-  it("scaleWorkCosts unchanged when fed", () => {
-    const scaled = scaleWorkCosts(player({ hunger: 50 }), { energy: 12 });
-    assert.equal(scaled?.energy, 12);
+  it("applyPostWorkPassives does nothing", () => {
+    const patch = applyPostWorkPassives(player({ energy: 5, health: 100 }), { energy: 3 });
+    assert.deepEqual(patch, {});
   });
 
-  it("workPayoutMultiplier penalizes starving", () => {
-    assert.equal(workPayoutMultiplier(player({ hunger: 5, energy: 80 })), 0.7);
+  it("canAffordCosts ignores vital costs", () => {
+    assert.equal(canAffordCosts(player({ energy: 1 }), { energy: 50 }), null);
+    assert.ok(canAffordCosts(player({ rubles: 10 }), { rubles: 100 }));
   });
 
-  it("applyPostWorkPassives drains health when very hungry", () => {
-    const patch = applyPostWorkPassives(
-      player({ hunger: 10, health: 100 }),
-      { energy: 10, hunger: 2 },
-    );
-    assert.ok(patch.health != null && patch.health < 100);
+  it("applyStatChanges does not spend vitals", () => {
+    const patch = applyStatChanges(player({ energy: 80, mood: 70 }), { energy: 20, mood: 10 }, undefined);
+    assert.equal(patch.energy, undefined);
+    assert.equal(patch.mood, undefined);
+  });
+
+  it("scaleWorkCosts passes through", () => {
+    const scaled = scaleWorkCosts(player({}), { energy: 12, mood: 2 });
+    assert.deepEqual(scaled, { energy: 12, mood: 2 });
   });
 });

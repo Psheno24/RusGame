@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DATA_DIR } from "./config.js";
 import { getPlayer, updatePlayer, type PlayerRow } from "./db.js";
+import { sleepBlockMessage } from "./playerSleep.js";
 import { applyStatChanges, canAffordCosts, type StatGains } from "./playerStats.js";
 
 export type ProductDef = {
@@ -37,6 +38,8 @@ export function buyProduct(userId: number, productId: string): BuyProductResult 
   if (player.status === "traveling") {
     return { ok: false, error: "Вы в пути — покупки в городе недоступны" };
   }
+  const sleepErr = sleepBlockMessage(player);
+  if (sleepErr) return { ok: false, error: sleepErr };
 
   const costs = { rubles: def.priceRub };
   const affordErr = canAffordCosts(player, costs);
@@ -46,7 +49,6 @@ export function buyProduct(userId: number, productId: string): BuyProductResult 
   updatePlayer(userId, patch);
 
   const parts: string[] = [`Куплено: ${def.title}`];
-  if (def.gains?.hunger) parts.push(`+${def.gains.hunger} сытость`);
   if (def.gains?.energy) parts.push(`+${def.gains.energy} энергия`);
   if (def.gains?.mood) parts.push(`+${def.gains.mood} настроение`);
   if (def.gains?.health) parts.push(`+${def.gains.health} здоровье`);
