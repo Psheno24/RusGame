@@ -560,7 +560,9 @@ export async function registerRoutes(app: FastifyInstance) {
     if (!Number.isFinite(durationMs) || durationMs <= 0) {
       return reply.code(400).send({ error: "Укажите длительность сна" });
     }
-    const result = startSleep(userId, durationMs);
+    const now = Date.now();
+    refreshPlayerState(userId, now);
+    const result = startSleep(userId, durationMs, now);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
     return { message: result.message, user };

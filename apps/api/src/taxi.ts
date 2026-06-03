@@ -25,7 +25,6 @@ import {
   type TaxiOrder,
   type TaxiState,
 } from "./playerTaxi.js";
-import { sleepBlockMessage } from "./playerSleep.js";
 import { clampVital } from "./playerStats.js";
 import { jobCityId } from "./jobLocation.js";
 import { isVehicleRentalActive } from "./vehicleRental.js";
@@ -489,8 +488,9 @@ export function taxiGoOnline(
   player: PlayerRow,
   now = Date.now(),
 ): { ok: true; message: string } | { ok: false; error: string } {
-  const sleepErr = sleepBlockMessage(player, now);
-  if (sleepErr) return { ok: false, error: sleepErr };
+  if (player.sleep_started_at != null) {
+    return { ok: false, error: "Вы спите — сначала проснитесь" };
+  }
 
   let state = parseTaxiState(player);
   if (!state?.carSelected) {

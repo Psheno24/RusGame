@@ -7,8 +7,7 @@ import {
   nightGuardCooldownMsAtWork,
 } from "./jobShift.js";
 import { scaleCooldownMs } from "./testAccount.js";
-import { taxiBlocksShift } from "./taxi.js";
-// taxiBlocksShift also true during active trip
+import { taxiBlocksWork } from "./playerTaxi.js";
 
 export function formatCooldown(readyAt: number, now = Date.now()): { ready: boolean; remainingMs: number } {
   const remainingMs = Math.max(0, readyAt - now);
@@ -165,7 +164,7 @@ export function activeJobShiftBlock(
   now = Date.now(),
 ): { blocked: boolean; remainingMs: number } {
   if (!player.job_id) return { blocked: false, remainingMs: 0 };
-  if (taxiBlocksShift(player)) {
+  if (taxiBlocksWork(player)) {
     return { blocked: true, remainingMs: 60 * 60 * 1000 };
   }
   const st = canWorkJobNow(player, player.job_id, now);

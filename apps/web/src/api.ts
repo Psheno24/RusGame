@@ -65,6 +65,7 @@ export type Player = {
 
 export type HomeStatus = {
   isResident: boolean;
+  sleepBlockedReason: string | null;
   sleeping: boolean;
   sleepStartedAt: number | null;
   sleepPlannedMs: number;

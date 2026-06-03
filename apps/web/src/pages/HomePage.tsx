@@ -156,10 +156,13 @@ export function HomePage() {
   const sliderEnergy = Math.min(maxEnergy, Math.max(minEnergy, targetEnergy));
   const sleepMs = sleepMsForTargetEnergy(startEnergy, sliderEnergy);
 
+  const sleepBlocked = home.sleepBlockedReason;
+
   if (showRest && !home.sleeping) {
     return (
       <div className="card home-rest-card">
         <h2 className="city-header-title home-place-title">Отдохнуть</h2>
+        {sleepBlocked && <p className="work-empty-hint">{sleepBlocked}</p>}
         <input
           type="range"
           className="home-sleep-slider"
@@ -181,7 +184,7 @@ export function HomePage() {
           <button
             type="button"
             className="btn btn-primary job-detail-action-btn"
-            disabled={busy}
+            disabled={busy || !!sleepBlocked}
             onClick={() => void onSleep(startEnergy, sliderEnergy)}
           >
             {busy ? "…" : "Лечь спать"}
@@ -220,6 +223,7 @@ export function HomePage() {
         </div>
       ) : (
         <div className="card">
+          {sleepBlocked && <p className="work-empty-hint">{sleepBlocked}</p>}
           <button
             type="button"
             className="btn btn-primary btn-block job-detail-action-btn"
@@ -227,7 +231,7 @@ export function HomePage() {
               setTargetEnergy(maxEnergy);
               setShowRest(true);
             }}
-            disabled={startEnergy >= 100}
+            disabled={startEnergy >= 100 || !!sleepBlocked}
           >
             Отдохнуть
           </button>

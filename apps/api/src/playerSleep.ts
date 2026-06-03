@@ -1,7 +1,10 @@
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
+import { formatDuration } from "./formatDuration.js";
 import { isCityResident } from "./housing.js";
+import { taxiBlocksWork } from "./playerTaxi.js";
 import { clampVital } from "./playerStats.js";
+import { canWorkJobNow } from "./workCooldown.js";
 
 /** За 4 часа сна можно восстановить до 100 единиц энергии (линейно). */
 export const SLEEP_MS_FOR_FULL_ENERGY = 4 * 60 * 60 * 1000;
@@ -55,11 +58,28 @@ export type SleepStartResult =
   | { ok: true; message: string }
   | { ok: false; error: string };
 
+/** Нельзя лечь спать во время смены, поездки такси или ожидания на линии. */
+export function sleepStartBlockMessage(player: PlayerRow, now = Date.now()): string | null {
+  if (taxiBlocksWork(player)) {
+    return "Сначала завершите поездку и сойдите с линии такси";
+  }
+  if (player.job_id) {
+    const st = canWorkJobNow(player, player.job_id, now);
+    if (!st.ok) {
+      return `Дождитесь окончания смены (ещё ${formatDuration(st.remainingMs)})`;
+    }
+  }
+  return null;
+}
+
 export function startSleep(userId: number, durationMs: number, now = Date.now()): SleepStartResult {
   let player = getPlayer(userId);
   if (!player) return { ok: false, error: "Игрок не найден" };
   if (player.status === "traveling") return { ok: false, error: "Вы в пути" };
   if (isPlayerSleeping(player)) return { ok: false, error: "Вы уже спите" };
+
+  const workErr = sleepStartBlockMessage(player, now);
+  if (workErr) return { ok: false, error: workErr };
 
   const residentErr = !isCityResident(player, player.city_id, now)
     ? "Нужно жильё в этом городе, чтобы отдыхать дома"
@@ -135,6 +155,7 @@ export function homeStatusForPlayer(player: PlayerRow, now = Date.now()) {
 
   return {
     isResident: isCityResident(player, player.city_id, now),
+    sleepBlockedReason: sleeping ? null : sleepStartBlockMessage(player, now),
     sleeping,
     sleepStartedAt: player.sleep_started_at,
     sleepPlannedMs: plannedMs,

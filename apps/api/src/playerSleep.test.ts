@@ -6,6 +6,7 @@ import {
   energyFromSleep,
   maxSleepMsForEnergy,
   previewEnergyAfterSleep,
+  sleepStartBlockMessage,
 } from "./playerSleep.js";
 
 describe("playerSleep energy", () => {
@@ -30,6 +31,49 @@ describe("playerSleep energy", () => {
     assert.equal(maxSleepMsForEnergy(0), SLEEP_MS_FOR_FULL_ENERGY);
     assert.equal(maxSleepMsForEnergy(50), SLEEP_MS_FOR_FULL_ENERGY / 2);
     assert.equal(maxSleepMsForEnergy(100), 15 * 60 * 1000);
+  });
+
+  it("sleepStartBlockMessage blocks taxi line and active shift", () => {
+    const now = 1_000_000;
+    const car = { carSelected: true, carSource: "owned", carRefId: 1, carModelId: "granta" };
+    const onLine = {
+      taxi_state: JSON.stringify({ ...car, onLine: true }),
+    } as import("./db.js").PlayerRow;
+    assert.match(sleepStartBlockMessage(onLine, now) ?? "", /такси/);
+
+    const onTrip = {
+      taxi_state: JSON.stringify({
+        ...car,
+        onLine: false,
+        activeTrip: {
+          orderId: "o1",
+          startedAt: now - 1000,
+          endsAt: now + 60_000,
+          order: {
+            id: "o1",
+            tripMinutes: 10,
+            passengerRating: 5,
+            payment: "card",
+            payoutRub: 500,
+            tariff: "economy",
+            tariffTitle: "Эконом",
+            offeredAt: now - 2000,
+          },
+        },
+      }),
+    } as import("./db.js").PlayerRow;
+    assert.match(sleepStartBlockMessage(onTrip, now) ?? "", /такси/);
+
+    const onShift = {
+      city_id: "ekb",
+      job_id: "ekb_night_guard",
+      last_work_at_by_job: JSON.stringify({
+        ekb_night_guard: { at: now - 60_000, cooldownMs: 3_600_000 },
+      }),
+    } as import("./db.js").PlayerRow;
+    assert.match(sleepStartBlockMessage(onShift, now) ?? "", /смены/);
+
+    assert.equal(sleepStartBlockMessage({ city_id: "ekb" } as import("./db.js").PlayerRow, now), null);
   });
 
   it("currentSleepEnergy grows with elapsed time", () => {
