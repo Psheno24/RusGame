@@ -11,6 +11,7 @@ import { taxiClassForCarModel } from "./carStats.js";
 import {
   acceptBlockReasonForOrder,
   canCarFulfillOrderTariff,
+  orderTariffsAvailableToCar,
   pickWeightedOrderTariff,
   TAXI_TARIFF_ORDER,
 } from "./taxiTariff.js";
@@ -157,14 +158,15 @@ function generateOrder(player: PlayerRow, orderTariff: string, driverRating: num
   };
 }
 
-function generateOrderPool(player: PlayerRow, _state: TaxiState): TaxiOrder[] {
+function generateOrderPool(player: PlayerRow, state: TaxiState): TaxiOrder[] {
   const count = taxiConfig.ordersPerPool;
   const cityTariffs = availableTariffsForCity(player.city_id);
+  const allowedTariffs = orderTariffsAvailableToCar(cityTariffs, state.taxiClass);
   const orders: TaxiOrder[] = [];
   const usedIds = new Set<string>();
   while (orders.length < count) {
-    const orderTariff = pickWeightedOrderTariff(cityTariffs);
-    const o = generateOrder(player, orderTariff, _state.rating);
+    const orderTariff = pickWeightedOrderTariff(allowedTariffs);
+    const o = generateOrder(player, orderTariff, state.rating);
     if (!usedIds.has(o.id)) {
       usedIds.add(o.id);
       orders.push(o);

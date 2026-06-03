@@ -38,6 +38,16 @@ const ORDER_TARIFF_WEIGHTS: Record<TaxiTariffId, number> = {
   premium: 2,
 };
 
+/** Тарифы заказов, которые может принять авто данного класса (в пределах города). */
+export function orderTariffsAvailableToCar(cityTariffs: string[], carTariff: string): string[] {
+  const maxIdx = taxiTariffIndex(carTariff);
+  const list = cityTariffs.filter((t) => {
+    const idx = taxiTariffIndex(t);
+    return idx >= 0 && idx <= maxIdx;
+  });
+  return list.length > 0 ? list : ["economy"];
+}
+
 export function pickWeightedOrderTariff(availableTariffs: string[]): string {
   const list = availableTariffs.filter((t) =>
     TAXI_TARIFF_ORDER.includes(t as TaxiTariffId),
