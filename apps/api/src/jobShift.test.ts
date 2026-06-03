@@ -6,6 +6,7 @@ import {
   getShiftDurationLabel,
   jobNominalCooldownMs,
   nightGuardCooldownMsAtWork,
+  nightGuardDisplayPayoutRange,
   nightGuardStaminaEligible,
 } from "./jobShift.js";
 
@@ -41,6 +42,12 @@ describe("jobShift", () => {
       jobNominalCooldownMs({ kind: "cooldown", shiftEndsAtHour: 8 }, { hour: 22, minute: 0 }),
       10 * 3_600_000,
     );
+  });
+
+  it("night guard display payout is min at 7:59 and max at 22:00", () => {
+    const range = nightGuardDisplayPayoutRange(23_750, 26_250);
+    assert.equal(range.min, 39);
+    assert.equal(range.max, 26_250);
   });
 
   it("night guard cooldown from work time until 8:00", () => {

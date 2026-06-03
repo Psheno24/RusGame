@@ -53,6 +53,21 @@ export function scaleNightGuardPayoutRange(
   };
 }
 
+/** Диапазон зарплаты в карточке работы: минимум при выходе в 7:59, максимум при выходе в 22:00. */
+export function nightGuardDisplayPayoutRange(
+  payoutMin: number,
+  payoutMax: number,
+  shiftEndHour = NIGHT_GUARD_SHIFT_END,
+): { min: number; max: number } {
+  const minShiftHours =
+    computeNightGuardShiftMinutes(7, 59, shiftEndHour) / 60;
+  const maxShiftHours =
+    computeNightGuardShiftMinutes(NIGHT_GUARD_NIGHT_START, 0, shiftEndHour) / 60;
+  const atLatest = scaleNightGuardPayoutRange(payoutMin, payoutMax, minShiftHours);
+  const atEarliest = scaleNightGuardPayoutRange(payoutMin, payoutMax, maxShiftHours);
+  return { min: atLatest.min, max: atEarliest.max };
+}
+
 export function computeNightGuardShiftMinutes(
   hour: number,
   minute: number,

@@ -85,6 +85,18 @@ const JOB_ICONS: Record<string, string> = {
   night_guard: "🌙",
 };
 
+function formatShiftPayoutLabel(job: JobCard): string {
+  if (job.kind === "taxi_line") return "Доход неопределён";
+  if (job.kind === "duration" && job.payoutPerHourMin != null) {
+    return `${job.payoutPerHourMin.toLocaleString("ru-RU")}–${(job.payoutPerHourMax ?? job.payoutPerHourMin).toLocaleString("ru-RU")} ₽/ч`;
+  }
+  const range = `${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽`;
+  if (job.templateKey === "night_guard") {
+    return `${range} за смену (от 7:59 до 22:00)`;
+  }
+  return `${range} за смену`;
+}
+
 function JobListCard({
   job,
   highlighted,
@@ -105,7 +117,9 @@ function JobListCard({
           <span className="job-list-pay">
             {job.kind === "taxi_line"
               ? "Доход неопределён"
-              : `${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽`}
+              : job.templateKey === "night_guard"
+                ? `${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽ (7:59–22:00)`
+                : `${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽`}
           </span>
         </div>
       </div>
@@ -360,7 +374,10 @@ export function JobsSection({
           job.templateKey === "night_guard" ? ` (${nightGuardStaminaHint()})` : ""
         }`
       : "";
-    const earn = `${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽${mult}`;
+    const earn =
+      job.templateKey === "night_guard"
+        ? `${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽ (диапазон 7:59–22:00)${mult}`
+        : `${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽${mult}`;
     return {
       title: "Выйти на смену?",
       text: `«${job.title}», смена ${shiftLabel}.\nЗаработок: ${earn}${skillNote}`,
@@ -533,11 +550,7 @@ export function JobsSection({
               <div>
                 <dt>Зарплата</dt>
                 <dd>
-                  {selected.kind === "taxi_line"
-                    ? "Неопределённая (зависит от заказов и длительности сессии)"
-                    : selected.kind === "duration" && selected.payoutPerHourMin != null
-                      ? `${selected.payoutPerHourMin.toLocaleString("ru-RU")}–${(selected.payoutPerHourMax ?? selected.payoutPerHourMin).toLocaleString("ru-RU")} ₽/ч`
-                      : `${selected.payoutMin.toLocaleString("ru-RU")}–${selected.payoutMax.toLocaleString("ru-RU")} ₽ за смену`}
+                  {formatShiftPayoutLabel(selected)}
                 </dd>
               </div>
               <div>

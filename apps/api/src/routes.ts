@@ -26,7 +26,12 @@ import {
 } from "./auth.js";
 import { countPlayersInCity, getDb, getPlayer, getUserById, getUserByLogin, listPlayersForAdmin, updatePlayer } from "./db.js";
 import { getCityLocalTime, getCityTimezone } from "./cityTime.js";
-import { getShiftDurationLabel, isNightGuardJob, jobNominalCooldownMs, scaleNightGuardPayoutRange } from "./jobShift.js";
+import {
+  getShiftDurationLabel,
+  isNightGuardJob,
+  jobNominalCooldownMs,
+  nightGuardDisplayPayoutRange,
+} from "./jobShift.js";
 import {
   findCityJob,
   getCars,
@@ -258,11 +263,13 @@ export async function registerRoutes(app: FastifyInstance) {
             ? (job.payoutMax ?? 0)
             : (job.payoutMax ?? 0);
       if (isNightGuardJob(job)) {
-        const shiftHours =
-          jobNominalCooldownMs(job, work.localTime) / 3_600_000;
-        const scaled = scaleNightGuardPayoutRange(job.payoutMin ?? 0, job.payoutMax ?? 0, shiftHours);
-        payoutMin = scaled.min;
-        payoutMax = scaled.max;
+        const display = nightGuardDisplayPayoutRange(
+          job.payoutMin ?? 0,
+          job.payoutMax ?? 0,
+          job.shiftEndsAtHour ?? 8,
+        );
+        payoutMin = display.min;
+        payoutMax = display.max;
       }
       const workCityId = city?.id ?? player.city_id;
       const access = jobAccessStatus(player, job.id, now);
