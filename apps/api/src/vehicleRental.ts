@@ -2,7 +2,10 @@ import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { parseTaxiState, saveTaxiState, type TaxiState } from "./playerTaxi.js";
 
-export function isVehicleRentalActive(player: PlayerRow, now = Date.now()): boolean {
+export function isVehicleRentalActive(
+  player: PlayerRow,
+  now = Date.now(),
+): player is PlayerRow & { vehicle_rental_id: string; vehicle_rental_expires_at: number } {
   return Boolean(
     player.vehicle_rental_id &&
       player.vehicle_rental_expires_at != null &&

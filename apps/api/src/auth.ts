@@ -197,7 +197,7 @@ export function serializePlayer(p: import("./db.js").PlayerRow) {
     })(),
     vehicleRentalId: isVehicleRentalActive(p) ? p.vehicle_rental_id : null,
     vehicleRentalLabel: isVehicleRentalActive(p)
-      ? (getVehicleRental(p.vehicle_rental_id!)?.label ?? null)
+      ? (getVehicleRental(p.vehicle_rental_id)?.label ?? null)
       : null,
     vehicleRentalExpiresAt: isVehicleRentalActive(p) ? p.vehicle_rental_expires_at : null,
     driversLicense: Boolean(p.drivers_license),
