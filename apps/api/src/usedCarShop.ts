@@ -1,5 +1,5 @@
 import type { PlayerRow } from "./db.js";
-import { getPlayer, updatePlayer } from "./db.js";
+import { getDb, getPlayer, updatePlayer } from "./db.js";
 import { getCarClassLabel } from "./carMarket.js";
 import { getCar } from "./gameData.js";
 import { appendPlayerFeed } from "./playerFeed.js";
