@@ -1,8 +1,43 @@
+import { useEffect, useState } from "react";
 import { formatDuration, type TaxiOrderView, type TaxiStatus } from "../api";
 import { type TaxiLineHandle } from "../hooks/useTaxiLine";
 
-function carKey(c: { source: string; refId: number }) {
-  return `${c.source}:${c.refId}`;
+type TaxiCarOption = TaxiStatus["availableCars"][number];
+
+function TaxiCarList({
+  cars,
+  busy,
+  onPick,
+}: {
+  cars: TaxiCarOption[];
+  busy: boolean;
+  onPick: (car: TaxiCarOption) => void;
+}) {
+  if (cars.length === 0) {
+    return <p className="shop-owned">Нужен свой автомобиль или аренда транспорта.</p>;
+  }
+
+  return (
+    <ul className="phone-list taxi-car-list">
+      {cars.map((c) => (
+        <li key={`${c.source}:${c.refId}`}>
+          <button
+            type="button"
+            className="phone-list-item"
+            disabled={busy}
+            onClick={() => onPick(c)}
+          >
+            <span className="phone-list-info">
+              <span className="phone-list-name">{c.label}</span>
+              <span className="phone-list-price">
+                {c.tariffTitle} · {c.source === "rental" ? "аренда" : "свой"}
+              </span>
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function OrderCard({
@@ -52,12 +87,18 @@ type SetupProps = {
 
 /** Статистика и выбор авто — внутри карточки работы, без кнопки линии */
 export function TaxiLineSetup({ taxi }: SetupProps) {
-  const { status, busy, pickCar, setPickCar, carSelected, onLine, inTrip, clearCar, selectCar } =
-    taxi;
+  const { status, busy, carSelected, onLine, inTrip, selectCar } = taxi;
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (carSelected) setPickerOpen(false);
+  }, [carSelected]);
 
   if (!status) {
     return <p className="shop-owned">Загрузка…</p>;
   }
+
+  const canChangeCar = !onLine && !inTrip;
 
   return (
     <div className="taxi-line-setup">
@@ -72,64 +113,42 @@ export function TaxiLineSetup({ taxi }: SetupProps) {
         )}
       </p>
 
-      {!carSelected && (
-        <>
-          <p className="shop-owned">Выберите автомобиль для работы:</p>
-          {status.availableCars.length === 0 ? (
-            <p className="shop-owned">Нужен свой автомобиль или аренда транспорта.</p>
-          ) : (
-            <ul className="phone-list">
-              {status.availableCars.map((c) => {
-                const key = carKey(c);
-                const isPicked = pickCar === key;
-                return (
-                  <li key={key}>
-                    <button
-                      type="button"
-                      className={`phone-list-item taxi-car-pick${isPicked ? " taxi-car-pick--active" : ""}`}
-                      disabled={busy}
-                      onClick={() => {
-                        setPickCar(key);
-                        void selectCar(c.source as "owned" | "rental", c.refId);
-                      }}
-                    >
-                      <span className="taxi-car-pick-mark" aria-hidden>
-                        {isPicked ? "✓" : ""}
-                      </span>
-                      <span className="phone-list-info">
-                        <span className="phone-list-name">{c.label}</span>
-                        <span className="phone-list-price">
-                          {c.tariffTitle} · {c.source === "rental" ? "аренда" : "свой"}
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          <p className="shop-owned taxi-car-pick-hint">Нажмите на автомобиль в списке — он сразу будет выбран для смены.</p>
-        </>
+      {carSelected && status.carLabel && !pickerOpen && (
+        <p className="shop-owned">
+          Автомобиль: <strong>{status.carLabel}</strong>
+        </p>
       )}
 
-      {carSelected && status.carLabel && (
-        <>
-          <p className="shop-owned">
-            Автомобиль: <strong>{status.carLabel}</strong>
-          </p>
-          {!onLine && !inTrip && (
-            <div className="taxi-car-actions">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={busy}
-                onClick={() => void clearCar()}
-              >
-                Сменить
-              </button>
-            </div>
+      {canChangeCar && (
+        <div className="taxi-car-actions">
+          {!pickerOpen ? (
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => setPickerOpen(true)}
+            >
+              {carSelected ? "Сменить" : "Выбрать"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={busy}
+              onClick={() => setPickerOpen(false)}
+            >
+              Отмена
+            </button>
           )}
-        </>
+        </div>
+      )}
+
+      {pickerOpen && canChangeCar && (
+        <TaxiCarList
+          cars={status.availableCars}
+          busy={busy}
+          onPick={(car) => void selectCar(car.source, car.refId)}
+        />
       )}
     </div>
   );
