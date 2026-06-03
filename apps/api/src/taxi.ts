@@ -19,6 +19,7 @@ import {
   type TaxiOrder,
   type TaxiState,
 } from "./playerTaxi.js";
+import { sleepBlockMessage } from "./playerSleep.js";
 import { canAffordCosts, clampVital, scaleWorkCosts } from "./playerStats.js";
 import { jobCityId } from "./jobLocation.js";
 
@@ -228,7 +229,6 @@ function completeActiveTrip(
 
   const costs = scaleWorkCosts(player, {
     energy: energyCost,
-    hunger: job.workCosts?.hunger ?? 4,
     mood: 0,
   });
   const lifeErr = canAffordCosts(player, costs);
@@ -439,6 +439,9 @@ export function taxiGoOnline(
   player: PlayerRow,
   now = Date.now(),
 ): { ok: true; message: string } | { ok: false; error: string } {
+  const sleepErr = sleepBlockMessage(player, now);
+  if (sleepErr) return { ok: false, error: sleepErr };
+
   let state = parseTaxiState(player);
   if (!state?.carSelected) {
     return { ok: false, error: "Сначала выберите автомобиль" };
@@ -512,7 +515,6 @@ export function taxiAcceptOrder(
 
   const costs = scaleWorkCosts(player, {
     energy: taxiConfig.energyPerOrderBase,
-    hunger: job.workCosts?.hunger ?? 4,
     mood: 0,
   });
   const lifeErr = canAffordCosts(player, costs);

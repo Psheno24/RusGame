@@ -1,9 +1,11 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useCityNav } from "../cityNav";
 import { useApp } from "../context";
+import { useHomeNav } from "../homeNav";
 import { useWorkNav } from "../workNav";
 
 const PAGE_TITLES: { path: string; title: string }[] = [
+  { path: "/home", title: "Мой дом" },
   { path: "/map", title: "Карта" },
   { path: "/work", title: "Моя работа" },
   { path: "/city", title: "Город" },
@@ -13,18 +15,17 @@ const PAGE_TITLES: { path: string; title: string }[] = [
 
 const NAV_ITEMS = [
   {
-    to: "/map",
-    label: "Карта",
+    to: "/home",
+    label: "Мой дом",
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden>
         <path
-          d="M4 6.5 9 4l7 3.5 4-2v11l-4 2-7-3.5L4 17.5V6.5Z"
+          d="M4 11.5 12 5l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-5.5H9V20.5H5.5A1.5 1.5 0 0 1 4 19v-7.5Z"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.75"
           strokeLinejoin="round"
         />
-        <circle cx="12" cy="10" r="2" fill="currentColor" />
       </svg>
     ),
   },
@@ -114,6 +115,7 @@ export function Layout() {
   const location = useLocation();
   const cityNav = useCityNav();
   const workNav = useWorkNav();
+  const homeNav = useHomeNav();
   const headerTitle = pageTitle(location.pathname);
 
   const onCityNavClick = (e: React.MouseEvent) => {
@@ -127,6 +129,13 @@ export function Layout() {
     if (location.pathname === "/work") {
       e.preventDefault();
       workNav?.resetToCurrentJob();
+    }
+  };
+
+  const onHomeNavClick = (e: React.MouseEvent) => {
+    if (location.pathname === "/home") {
+      e.preventDefault();
+      homeNav?.resetHome();
     }
   };
 
@@ -153,7 +162,13 @@ export function Layout() {
               title={label}
               aria-label={label}
               onClick={
-                to === "/city" ? onCityNavClick : to === "/work" ? onWorkNavClick : undefined
+                to === "/city"
+                  ? onCityNavClick
+                  : to === "/work"
+                    ? onWorkNavClick
+                    : to === "/home"
+                      ? onHomeNavClick
+                      : undefined
               }
               className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
             >

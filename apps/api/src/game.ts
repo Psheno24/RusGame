@@ -47,6 +47,7 @@ import {
   workPayoutMultiplier,
 } from "./playerStats.js";
 import { applyCarCooldownReduction, hasDriverLicense } from "./playerCars.js";
+import { sleepBlockMessage } from "./playerSleep.js";
 import { playerMeetsSimTariff, syncPlayerSimTariffBilling, type SimTariffId } from "./simTariff.js";
 import {
   activeJobShiftBlock,
@@ -207,7 +208,6 @@ function scaleWorkCostsByHours(
   const factor = hours / baselineHours;
   const scaled: StatCosts = {};
   if (costs.energy != null) scaled.energy = Math.ceil(costs.energy * factor);
-  if (costs.hunger != null) scaled.hunger = Math.ceil(costs.hunger * factor);
   if (costs.mood != null) scaled.mood = Math.ceil(costs.mood * factor);
   return scaled;
 }
@@ -250,6 +250,8 @@ export function applyJob(
   if (!player) return { ok: false, error: "Игрок не найден" };
   player = resolveTravel(player, now);
   if (player.status === "traveling") return { ok: false, error: "Вы в пути" };
+  const sleepErr = sleepBlockMessage(player, now);
+  if (sleepErr) return { ok: false, error: sleepErr };
 
   const guestErr = requireCityResident(player, now);
   if (guestErr) return { ok: false, error: guestErr, code: "guest_no_housing" };
@@ -307,6 +309,8 @@ export function quitJob(
   if (!player) return { ok: false, error: "Игрок не найден" };
   player = resolveTravel(player, now);
   if (player.status === "traveling") return { ok: false, error: "Вы в пути" };
+  const sleepErr = sleepBlockMessage(player, now);
+  if (sleepErr) return { ok: false, error: sleepErr };
 
   const workCity = jobCityId(jobId);
   if (!workCity) return { ok: false, error: "Вакансия не найдена" };
@@ -341,6 +345,8 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
   if (!player) return { ok: false, error: "Игрок не найден" };
   player = resolveTravel(player, now);
   if (player.status === "traveling") return { ok: false, error: "Вы в пути — подождите прибытия" };
+  const sleepErr = sleepBlockMessage(player, now);
+  if (sleepErr) return { ok: false, error: sleepErr };
   player = syncPlayerSimTariffBilling(userId, now) ?? player;
 
   const workCity = jobCityId(jobId);
@@ -526,6 +532,8 @@ export function startTravel(
   player = resolveTravel(player, now);
   if (player.status === "traveling") return { ok: false, error: "Уже в пути" };
   if (player.city_id === toCityId) return { ok: false, error: "Вы уже в этом городе" };
+  const sleepErr = sleepBlockMessage(player, now);
+  if (sleepErr) return { ok: false, error: sleepErr };
 
   const shiftBlock = activeJobShiftBlock(player, now);
   if (shiftBlock.blocked) {

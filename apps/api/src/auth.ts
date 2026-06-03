@@ -217,11 +217,11 @@ export function serializePlayer(p: import("./db.js").PlayerRow) {
     housingStatusLabel: housing.statusLabel,
     vitals: {
       energy: p.energy ?? 80,
-      hunger: p.hunger ?? 80,
       mood: p.mood ?? 70,
       health: p.health ?? 100,
       reputation: p.reputation ?? 100,
     },
+    sleeping: p.sleep_started_at != null,
     education: p.education ?? "none",
   };
 }

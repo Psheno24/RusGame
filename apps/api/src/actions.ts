@@ -52,7 +52,6 @@ export function performAction(userId: number, actionId: string): PerformActionRe
 
   const parts: string[] = [def.title];
   if (def.gains?.energy) parts.push(`+${def.gains.energy} энергия`);
-  if (def.gains?.hunger) parts.push(`+${def.gains.hunger} сытость`);
   if (def.gains?.mood) parts.push(`+${def.gains.mood} настроение`);
   if (def.gains?.health) parts.push(`+${def.gains.health} здоровье`);
 

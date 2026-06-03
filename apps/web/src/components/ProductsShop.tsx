@@ -9,7 +9,6 @@ type Props = {
 
 function gainsLabel(p: ProductPreview): string {
   const parts: string[] = [];
-  if (p.gains?.hunger) parts.push(`+${p.gains.hunger} сытость`);
   if (p.gains?.energy) parts.push(`+${p.gains.energy} энергия`);
   if (p.gains?.mood) parts.push(`+${p.gains.mood} настроение`);
   if (p.gains?.health) parts.push(`+${p.gains.health} здоровье`);
@@ -52,7 +51,7 @@ export function ProductsShop({ user, setUser, onToast }: Props) {
 
   return (
     <div className="products-shop">
-      <p className="products-shop-lead">Еда и напитки восстанавливают показатели.</p>
+      <p className="products-shop-lead">Еда и напитки восстанавливают энергию и настроение.</p>
       <ul className="products-list">
         {items.map((p) => (
           <li key={p.id} className="card product-card">

@@ -35,7 +35,7 @@ const CITY_SECTIONS: { id: CitySection; title: string; hint: string }[] = [
 ];
 
 const SHOP_CATEGORIES: { id: ShopTab; title: string; hint: string }[] = [
-  { id: "products", title: "Продукты", hint: "Еда и бытовое" },
+  { id: "products", title: "Продукты", hint: "Еда и напитки" },
   { id: "phone", title: "Телефон", hint: "Устройства и сим-карта" },
   { id: "car", title: "Авто", hint: "Каталог, гараж, номер, тюнинг" },
 ];
@@ -275,6 +275,13 @@ export function CityPage() {
             Местное время — <strong>{liveLocalTime.label}</strong>
           </p>
         )}
+        <button
+          type="button"
+          className="btn btn-secondary city-map-btn"
+          onClick={() => navigate("/map")}
+        >
+          Карта
+        </button>
       </div>
 
       <div className="city-grid">

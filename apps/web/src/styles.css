@@ -1195,6 +1195,78 @@ body {
   color: var(--text);
 }
 
+.city-map-btn {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+}
+
+.home-page {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.home-lead {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+}
+
+.home-detail {
+  margin: 10px 0 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.home-energy-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.home-sleep-slider {
+  width: 100%;
+  margin: 12px 0;
+}
+
+.home-sleep-slider-label,
+.home-sleep-preview,
+.home-rest-hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.home-sleep-preview {
+  margin-top: 8px;
+}
+
+.home-rest-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.home-rest-actions .btn {
+  flex: 1;
+}
+
+.home-rest-full,
+.home-sleep-remaining {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.btn-block {
+  width: 100%;
+}
+
 .city-header-card p {
   margin: 10px 0 0;
 }

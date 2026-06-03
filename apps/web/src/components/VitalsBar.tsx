@@ -2,7 +2,6 @@ import type { Vitals } from "../api";
 
 const VITAL_META: { key: keyof Vitals; label: string; max: number }[] = [
   { key: "energy", label: "Энергия", max: 100 },
-  { key: "hunger", label: "Сытость", max: 100 },
   { key: "mood", label: "Настроение", max: 100 },
   { key: "health", label: "Здоровье", max: 100 },
   { key: "reputation", label: "Репутация", max: 1000 },

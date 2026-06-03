@@ -63,30 +63,25 @@ function player(partial: Partial<PlayerRow>): PlayerRow {
     education: "none",
     taxi_state: null,
     last_car_maintenance_at: null,
+    sleep_started_at: null,
+    sleep_planned_ms: null,
+    sleep_start_energy: null,
     ...partial,
   };
 }
 
 describe("playerStats passives", () => {
-  it("scaleWorkCosts adds energy when hungry", () => {
-    const scaled = scaleWorkCosts(player({ hunger: 15 }), { energy: 12, hunger: 8 });
-    assert.equal(scaled?.energy, 15);
+  it("scaleWorkCosts passes through", () => {
+    const scaled = scaleWorkCosts(player({ energy: 15 }), { energy: 12, mood: 2 });
+    assert.deepEqual(scaled, { energy: 12, mood: 2 });
   });
 
-  it("scaleWorkCosts unchanged when fed", () => {
-    const scaled = scaleWorkCosts(player({ hunger: 50 }), { energy: 12 });
-    assert.equal(scaled?.energy, 12);
+  it("workPayoutMultiplier penalizes low energy", () => {
+    assert.equal(workPayoutMultiplier(player({ energy: 10, mood: 80 })), 0.85);
   });
 
-  it("workPayoutMultiplier penalizes starving", () => {
-    assert.equal(workPayoutMultiplier(player({ hunger: 5, energy: 80 })), 0.7);
-  });
-
-  it("applyPostWorkPassives drains health when very hungry", () => {
-    const patch = applyPostWorkPassives(
-      player({ hunger: 10, health: 100 }),
-      { energy: 10, hunger: 2 },
-    );
+  it("applyPostWorkPassives drains health when exhausted", () => {
+    const patch = applyPostWorkPassives(player({ energy: 5, health: 100 }), { energy: 3 });
     assert.ok(patch.health != null && patch.health < 100);
   });
 });
