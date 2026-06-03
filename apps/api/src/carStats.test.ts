@@ -1,10 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import {
-  comfortToTaxiClass,
-  prestigeToMoodBonus,
-  speedToCooldownReducePct,
-} from "./carStats.js";
+import { comfortToTaxiTariff } from "./taxiTariff.js";
+import { prestigeToMoodBonus, speedToCooldownReducePct } from "./carStats.js";
 
 describe("carStats", () => {
   it("speed cooldown caps at 25%", () => {
@@ -12,11 +9,12 @@ describe("carStats", () => {
     assert.equal(speedToCooldownReducePct(100), 25);
   });
 
-  it("comfort maps to taxi class", () => {
-    assert.equal(comfortToTaxiClass(30), "economy");
-    assert.equal(comfortToTaxiClass(45), "comfort");
-    assert.equal(comfortToTaxiClass(65), "comfort_plus");
-    assert.equal(comfortToTaxiClass(85), "business");
+  it("comfort maps to taxi tariff", () => {
+    assert.equal(comfortToTaxiTariff(30), "economy");
+    assert.equal(comfortToTaxiTariff(45), "comfort");
+    assert.equal(comfortToTaxiTariff(65), "comfort_plus");
+    assert.equal(comfortToTaxiTariff(85), "business");
+    assert.equal(comfortToTaxiTariff(95), "premium");
   });
 
   it("prestige mood bonus", () => {

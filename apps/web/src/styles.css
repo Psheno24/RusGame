@@ -2818,6 +2818,22 @@ button.property-badge--live:not(:disabled):active {
   margin-top: 0;
 }
 
+.taxi-order-tariff {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: var(--accent);
+}
+
+.taxi-order-card--blocked {
+  opacity: 0.72;
+}
+
+.taxi-order-block-reason {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  color: #e8a87c;
+}
+
 .taxi-order-meta {
   margin: 0 0 8px;
   font-size: 0.9rem;

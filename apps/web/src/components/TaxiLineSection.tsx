@@ -14,8 +14,13 @@ function OrderCard({
   busy: boolean;
   onAccept: () => void;
 }) {
+  const blocked = order.canAccept === false;
+
   return (
-    <li className="taxi-order-card">
+    <li className={`taxi-order-card${blocked ? " taxi-order-card--blocked" : ""}`}>
+      <p className="taxi-order-tariff">
+        Вызов по тарифу <strong>«{order.tariffTitle}»</strong>
+      </p>
       <p className="taxi-order-meta">
         {order.tripMinutes} мин в пути · пассажир {order.passengerRating.toFixed(1)} ★ ·{" "}
         {order.payment === "cash" ? "наличные" : "карта"}
@@ -24,9 +29,17 @@ function OrderCard({
         )}
       </p>
       <p className="taxi-order-pay">
-        Выплата: <strong>{order.payoutRub.toLocaleString("ru-RU")} ₽</strong> · {order.tariffTitle}
+        Выплата: <strong>{order.payoutRub.toLocaleString("ru-RU")} ₽</strong>
       </p>
-      <button type="button" className="btn btn-primary taxi-order-select" disabled={busy} onClick={onAccept}>
+      {blocked && order.acceptBlockReason && (
+        <p className="taxi-order-block-reason">{order.acceptBlockReason}</p>
+      )}
+      <button
+        type="button"
+        className="btn btn-primary taxi-order-select"
+        disabled={busy || blocked}
+        onClick={onAccept}
+      >
         Выбрать
       </button>
     </li>
