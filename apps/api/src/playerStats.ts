@@ -16,11 +16,12 @@ const VITAL_MAX: Record<VitalKey, number> = {
 };
 
 export const REPUTATION_MAX = 1000;
+export const REPUTATION_MIN = -1000;
 export const DEFAULT_VITALS = {
   energy: 80,
   mood: 70,
   health: 100,
-  reputation: 100,
+  reputation: 0,
 };
 
 export function clampVital(key: VitalKey, value: number): number {
@@ -28,7 +29,7 @@ export function clampVital(key: VitalKey, value: number): number {
 }
 
 export function clampReputation(value: number): number {
-  return Math.max(0, Math.min(REPUTATION_MAX, Math.round(value)));
+  return Math.max(REPUTATION_MIN, Math.min(REPUTATION_MAX, Math.round(value)));
 }
 
 export function getPlayerVitals(player: PlayerRow) {

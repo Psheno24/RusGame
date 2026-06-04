@@ -28,6 +28,13 @@ function homePlaceTitle(p: Player): string {
   return afterDot && afterDot.length > 0 ? afterDot : label || "Дом";
 }
 
+function energyTone(value: number): "critical" | "low" | "mid" | "ok" {
+  if (value < 20) return "critical";
+  if (value < 45) return "low";
+  if (value < 70) return "mid";
+  return "ok";
+}
+
 export function HomePage() {
   const { user, setUser } = useApp();
   const { showNotice } = useNotice();
@@ -158,9 +165,31 @@ export function HomePage() {
 
   if (showRest && !home.sleeping) {
     return (
-      <div className="card home-rest-card">
+      <div className="card home-rest-card home-rest-card--planner">
         <CitySectionHeader title="Отдохнуть" onBack={() => setShowRest(false)} backLabel="Дом" />
         {sleepBlocked && <p className="work-empty-hint">{sleepBlocked}</p>}
+        <div className="home-rest-presets" role="group" aria-label="Быстрый выбор энергии">
+          {[20, 40, 60].map((step) => {
+            const preset = Math.min(maxEnergy, Math.max(minEnergy, startEnergy + step));
+            return (
+              <button
+                key={step}
+                type="button"
+                className="btn btn-secondary home-rest-preset-btn"
+                onClick={() => setTargetEnergy(preset)}
+              >
+                +{step}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            className="btn btn-secondary home-rest-preset-btn"
+            onClick={() => setTargetEnergy(maxEnergy)}
+          >
+            До 100
+          </button>
+        </div>
         <input
           type="range"
           className="home-sleep-slider"
@@ -194,6 +223,12 @@ export function HomePage() {
         <div className="home-energy-row">
           <span>Энергия</span>
           <strong>{energyNow} / 100</strong>
+        </div>
+        <div className="home-energy-meter" role="presentation" aria-hidden>
+          <span
+            className={`home-energy-meter-fill home-energy-meter-fill--${energyTone(energyNow)}`}
+            style={{ width: `${energyNow}%` }}
+          />
         </div>
       </div>
 

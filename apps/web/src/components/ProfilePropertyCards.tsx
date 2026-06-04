@@ -18,7 +18,7 @@ function PropertyCardButton({
   return (
     <button
       type="button"
-      className="property-card property-card--clickable"
+      className={`property-card property-card--clickable property-card--${c.kind}`}
       style={{ borderLeftColor: c.accent }}
       onClick={() => onOpen(c.id)}
       aria-label={`${c.title}, открыть подробности`}
@@ -31,14 +31,13 @@ function PropertyCardButton({
 function PropertyListCard({ c, onOpen }: { c: PropertyCard; onOpen: (id: string) => void }) {
   const hasPhoneRight =
     (c.kind === "phone" && (c.rightText || c.rightSubtext)) || (c.kind === "car" && c.plate);
+  const showMainMeta = c.rightText && !c.isActiveResidence && !hasPhoneRight;
 
   return (
     <PropertyCardButton c={c} onOpen={onOpen}>
       <div className="property-card-main">
         <span className="property-card-title">{c.title}</span>
-        {c.rightText && !c.isActiveResidence && (
-          <span className="property-card-meta">{c.rightText}</span>
-        )}
+        {showMainMeta && <span className="property-card-meta">{c.rightText}</span>}
       </div>
       {c.plate ? (
         <div className="property-card-right property-card-right--plate">

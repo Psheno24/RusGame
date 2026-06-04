@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
 import { DB_PATH } from "./config.js";
+import { DEFAULT_VITALS } from "./playerStats.js";
 
 export type PlayerRow = {
   user_id: number;
@@ -91,6 +92,11 @@ export function getDb(): Database.Database {
 
 function migrate(database: Database.Database) {
   database.exec(`
+    CREATE TABLE IF NOT EXISTS app_migrations (
+      key TEXT PRIMARY KEY,
+      applied_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       login TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -209,7 +215,7 @@ function migrate(database: Database.Database) {
       "ALTER TABLE players ADD COLUMN health INTEGER NOT NULL DEFAULT 100",
     );
     database.exec(
-      "ALTER TABLE players ADD COLUMN reputation INTEGER NOT NULL DEFAULT 100",
+      "ALTER TABLE players ADD COLUMN reputation INTEGER NOT NULL DEFAULT 0",
     );
     database.exec(
       "ALTER TABLE players ADD COLUMN education TEXT NOT NULL DEFAULT 'none'",
@@ -570,6 +576,16 @@ function migrate(database: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_player_feed_user_ts ON player_feed(user_id, ts DESC);
   `);
+
+  const reputationStartMigration = database
+    .prepare("SELECT key FROM app_migrations WHERE key = ?")
+    .get("reputation_start_zero");
+  if (!reputationStartMigration) {
+    database.prepare("UPDATE players SET reputation = 0 WHERE reputation = 100").run();
+    database
+      .prepare("INSERT INTO app_migrations (key, applied_at) VALUES (?, ?)")
+      .run("reputation_start_zero", Date.now());
+  }
 }
 
 export function getUserByLogin(login: string): UserRow | undefined {
@@ -616,7 +632,7 @@ export function createPlayer(
         user_id, display_name, rubles, city_id,
         housing_type, housing_city_id, housing_expires_at,
         energy, hunger, mood, health, reputation, education
-      ) VALUES (?, ?, ?, 'omsk', 'dorm', 'omsk', ?, 80, 80, 70, 100, 100, 'none')`,
+      ) VALUES (?, ?, ?, 'omsk', 'dorm', 'omsk', ?, 80, 80, 70, 100, 0, 'none')`,
     )
     .run(userId, displayName, rubles, expires);
 }
@@ -715,7 +731,7 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
       next.hunger ?? 80,
       next.mood ?? 70,
       next.health ?? 100,
-      next.reputation ?? 100,
+      next.reputation ?? DEFAULT_VITALS.reputation,
       next.education ?? "none",
       userId,
     );

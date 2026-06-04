@@ -31,17 +31,17 @@ import { placeById, type PlaceId } from "../placesData";
 type CitySection = CitySectionId;
 type ShopTab = "products" | "phone" | "car";
 
-const CITY_SECTIONS: { id: CitySection; title: string }[] = [
-  { id: "shop", title: "Магазин" },
-  { id: "jobs", title: "Вакансии" },
-  { id: "housing", title: "Недвижимость" },
-  { id: "places", title: "Разные места" },
+const CITY_SECTIONS: { id: CitySection; title: string; icon: string }[] = [
+  { id: "shop", title: "Магазин", icon: "₽" },
+  { id: "jobs", title: "Работа", icon: "↗" },
+  { id: "housing", title: "Недвижимость", icon: "⌂" },
+  { id: "places", title: "Сервисы", icon: "●" },
 ];
 
-const SHOP_CATEGORIES: { id: ShopTab; title: string }[] = [
-  { id: "products", title: "Продукты" },
-  { id: "phone", title: "Телефон" },
-  { id: "car", title: "Авто" },
+const SHOP_CATEGORIES: { id: ShopTab; title: string; icon: string }[] = [
+  { id: "products", title: "Продукты", icon: "▒" },
+  { id: "phone", title: "Телефон", icon: "▣" },
+  { id: "car", title: "Авто", icon: "◆" },
 ];
 
 export function CityPage() {
@@ -286,30 +286,50 @@ export function CityPage() {
 
   return (
     <>
-      <div className="card city-header-card">
-        <h2 className="city-header-title">
-          {cityName.toLocaleUpperCase("ru-RU")}{" "}
-          <span className="city-header-pop">
-            (население — {population.toLocaleString("ru-RU")})
+      <div className="card city-header-card city-overview-card">
+        <div className="city-overview-head">
+          <h2 className="city-header-title city-overview-title">{cityName.toLocaleUpperCase("ru-RU")}</h2>
+          {liveLocalTime && (
+            <p className="city-overview-time">
+              <strong>{liveLocalTime.label}</strong>
+              <span className="city-overview-time-period">{liveLocalTime.periodLabel}</span>
+            </p>
+          )}
+        </div>
+        <div className="city-overview-chips">
+          <span className="city-overview-chip city-overview-chip--muted">
+            Население: {population.toLocaleString("ru-RU")}
           </span>
-        </h2>
-        {liveLocalTime && (
-          <p className="city-header-time-line">
-            Местное время — <strong>{liveLocalTime.label}</strong>
-          </p>
-        )}
-        <button
-          type="button"
-          className="btn btn-secondary city-map-btn"
-          onClick={() => navigate("/map")}
-        >
-          Карта
+          <span className={`city-overview-chip ${user?.player.isResident ? "city-overview-chip--ok" : "city-overview-chip--warn"}`}>
+            {user?.player.isResident ? "Житель" : "Гость"}
+          </span>
+          <span className={`city-overview-chip ${user?.player.jobId ? "city-overview-chip--ok" : "city-overview-chip--muted"}`}>
+            {user?.player.jobId ? "Есть работа" : "Без работы"}
+          </span>
+        </div>
+        <button type="button" className="btn btn-secondary city-map-btn" onClick={() => navigate("/map")}>
+          Открыть карту города
         </button>
       </div>
 
-      <div className="city-grid">
+      <div className="city-grid city-main-actions-grid">
         {CITY_SECTIONS.map((s) => (
-          <CityGridButton key={s.id} title={s.title} onClick={() => setSection(s.id)} />
+          <CityGridButton
+            key={s.id}
+            title={s.title}
+            hint={
+              s.id === "jobs"
+                ? "Доход и смены"
+                : s.id === "shop"
+                  ? "Покупки и апгрейды"
+                  : s.id === "housing"
+                    ? "Дом и аренда"
+                    : "Полезные места"
+            }
+            onClick={() => setSection(s.id)}
+          >
+            <span className="city-grid-icon" aria-hidden>{s.icon}</span>
+          </CityGridButton>
         ))}
       </div>
 
@@ -341,7 +361,9 @@ function ShopSection({
     return (
       <div className="city-grid shop-categories">
         {SHOP_CATEGORIES.map((c) => (
-          <CityGridButton key={c.id} title={c.title} onClick={() => onTab(c.id)} />
+          <CityGridButton key={c.id} title={c.title} onClick={() => onTab(c.id)}>
+            <span className="city-grid-icon" aria-hidden>{c.icon}</span>
+          </CityGridButton>
         ))}
       </div>
     );

@@ -84,7 +84,7 @@ function OrderCard({
       )}
       <button
         type="button"
-        className="btn btn-primary taxi-order-select"
+        className="btn btn-secondary taxi-order-select"
         disabled={busy || blocked}
         onClick={onAccept}
       >
@@ -137,7 +137,7 @@ export function TaxiLineSetup({ taxi }: SetupProps) {
           {!pickerOpen ? (
             <button
               type="button"
-              className="btn btn-primary"
+              className="btn btn-secondary"
               disabled={busy}
               onClick={() => setPickerOpen(true)}
             >

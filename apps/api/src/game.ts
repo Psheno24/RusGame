@@ -425,7 +425,7 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
   };
 
   if (job.kind === "cooldown") {
-    patch.reputation = clampReputation((player.reputation ?? 100) + 2);
+    patch.reputation = clampReputation((player.reputation ?? 0) + 2);
   }
 
   let skillGain: { key: SkillKey; amount: number } | undefined;

@@ -60,7 +60,7 @@ function player(partial: Partial<PlayerRow>): PlayerRow {
     hunger: 80,
     mood: 70,
     health: 100,
-    reputation: 100,
+    reputation: 0,
     education: "none",
     taxi_state: null,
     last_car_maintenance_at: null,

@@ -217,7 +217,7 @@ export function serializePlayer(p: import("./db.js").PlayerRow) {
       energy: p.energy ?? 80,
       mood: p.mood ?? 70,
       health: p.health ?? 100,
-      reputation: p.reputation ?? 100,
+      reputation: p.reputation ?? 0,
     },
     sleeping: p.sleep_started_at != null,
     education: p.education ?? "none",

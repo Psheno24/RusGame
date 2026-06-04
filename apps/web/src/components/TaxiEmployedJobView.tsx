@@ -78,7 +78,7 @@ export function TaxiEmployedJobView({
           <div className="job-detail-actions">
             <button
               type="button"
-              className={`btn job-detail-action-btn${onLine ? " btn-danger" : " btn-success"}`}
+              className={`btn job-detail-action-btn${onLine ? " btn-secondary" : " btn-primary"}`}
               disabled={lineDisabled}
               onClick={() => void (onLine ? goOffline() : goOnline())}
             >

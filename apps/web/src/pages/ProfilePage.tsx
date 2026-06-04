@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { SKILL_LABELS, SKILL_ORDER } from "../api";
-import { formatLocaleDateRu } from "../formatLocaleDate";
 import { cityDisplayName } from "../cityNames";
 import { TestAdminPanel } from "../components/TestAdminPanel";
 import { ProfilePropertyCards } from "../components/ProfilePropertyCards";
@@ -29,15 +28,6 @@ export function ProfilePage() {
             <div className="profile-stat">
               <span className="profile-stat-label">Город</span>
               <span className="profile-stat-value">{cityDisplayName(p.cityId)}</span>
-            </div>
-            <div className="profile-stat">
-              <span className="profile-stat-label">Статус</span>
-              <span className="profile-stat-value">
-                {(p.isResident ?? false) ? "Житель" : "Гость"}
-                {p.housingExpiresAt && p.isResident && p.housingType !== "owned"
-                  ? ` · до ${formatLocaleDateRu(p.housingExpiresAt)}`
-                  : null}
-              </span>
             </div>
             <div className="profile-stat">
               <span className="profile-stat-label">Образование</span>

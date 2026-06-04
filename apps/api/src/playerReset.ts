@@ -94,7 +94,7 @@ export function resetPlayerAccount(targetUserId: number, now = Date.now()): bool
     hunger: 80,
     mood: 70,
     health: 100,
-    reputation: 100,
+    reputation: 0,
     education: "none",
   });
 

@@ -23,15 +23,15 @@ type JobCard = JobView;
 
 type JobsNav = "hub" | "side_jobs" | "career" | "secondary_edu" | "higher_edu" | "freelance";
 
-const JOBS_MENU: { id: "side_jobs" | "career"; title: string }[] = [
-  { id: "side_jobs", title: "Подработка" },
-  { id: "career", title: "Карьера" },
+const JOBS_MENU: { id: "side_jobs" | "career"; title: string; icon: string }[] = [
+  { id: "side_jobs", title: "Подработка", icon: "₽" },
+  { id: "career", title: "Карьера", icon: "▲" },
 ];
 
-const CAREER_MENU: { id: "secondary_edu" | "higher_edu" | "freelance"; title: string }[] = [
-  { id: "secondary_edu", title: "Среднее образование" },
-  { id: "higher_edu", title: "Высшее образование" },
-  { id: "freelance", title: "Фриланс" },
+const CAREER_MENU: { id: "secondary_edu" | "higher_edu" | "freelance"; title: string; icon: string }[] = [
+  { id: "secondary_edu", title: "Среднее образование", icon: "Ⅱ" },
+  { id: "higher_edu", title: "Высшее образование", icon: "Ⅲ" },
+  { id: "freelance", title: "Фриланс", icon: "⌁" },
 ];
 
 function careerNavTitle(nav: JobsNav): string | null {
@@ -86,13 +86,13 @@ function formatListPayoutLabel(job: JobCard): string {
   return `${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽`;
 }
 
-function formatListPayLine(job: JobCard, local: ReturnType<typeof getCityLocalTime>): string {
+function formatListMeta(job: JobCard, local: ReturnType<typeof getCityLocalTime>): { pay: string; cooldown?: string } {
   const pay = formatListPayoutLabel(job);
   const availability = formatJobListScheduleNote(job);
-  if (availability) return `${pay} · ${availability}`;
+  if (availability) return { pay, cooldown: availability };
   const cd = getJobCooldownLabel(job, { local });
-  if (cd === "—") return pay;
-  return `${pay} · КД ${cd}`;
+  if (cd === "—") return { pay };
+  return { pay, cooldown: `КД ${cd}` };
 }
 
 function JobListCard({
@@ -107,6 +107,7 @@ function JobListCard({
   onSelect: () => void;
 }) {
   const local = getCityLocalTime(cityTimezone);
+  const meta = formatListMeta(job, local);
   return (
     <li>
       <button
@@ -121,7 +122,8 @@ function JobListCard({
           </span>
           <div className="job-list-info">
             <span className="job-list-name">{job.title}</span>
-            <span className="job-list-pay">{formatListPayLine(job, local)}</span>
+            <span className="job-list-pay">{meta.pay}</span>
+            {meta.cooldown ? <span className="job-list-cooldown">{meta.cooldown}</span> : null}
           </div>
         </div>
       </button>
@@ -348,7 +350,7 @@ export function JobsSection({
         title: "Устроиться?",
         text: `«${job.title}»`,
         confirmLabel: "Устроиться",
-        confirmClassName: "btn-success",
+        confirmClassName: "btn-primary",
       };
     }
     if (pending.type === "switch") {
@@ -356,7 +358,7 @@ export function JobsSection({
         title: "Смена работы",
         text: `«${pending.currentTitle}» → «${job.title}»`,
         confirmLabel: "Устроиться",
-        confirmClassName: "btn-success",
+        confirmClassName: "btn-primary",
       };
     }
     if (pending.type === "quit") {
@@ -561,7 +563,7 @@ export function JobsSection({
             </dl>
             <div className="job-detail-actions">
               <button
-                className={`btn ${employed ? "btn-primary" : "btn-success"}`}
+                className="btn btn-primary"
                 type="button"
                 disabled={employed ? !canWork : !canHire}
                 onClick={onLeftClick}
@@ -624,7 +626,9 @@ export function JobsSection({
           )}
           <div className="city-grid shop-categories jobs-menu-grid">
             {JOBS_MENU.map((item) => (
-              <CityGridButton key={item.id} title={item.title} onClick={() => setNav(item.id)} />
+              <CityGridButton key={item.id} title={item.title} onClick={() => setNav(item.id)}>
+                <span className="city-grid-icon" aria-hidden>{item.icon}</span>
+              </CityGridButton>
             ))}
           </div>
         </div>
@@ -663,7 +667,9 @@ export function JobsSection({
           )}
           <div className="city-grid shop-categories jobs-menu-grid">
             {CAREER_MENU.map((item) => (
-              <CityGridButton key={item.id} title={item.title} onClick={() => setNav(item.id)} />
+              <CityGridButton key={item.id} title={item.title} onClick={() => setNav(item.id)}>
+                <span className="city-grid-icon" aria-hidden>{item.icon}</span>
+              </CityGridButton>
             ))}
           </div>
         </div>

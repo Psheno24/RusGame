@@ -2,6 +2,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useCityNav } from "../cityNav";
 import { useApp } from "../context";
+import { cityDisplayName } from "../cityNames";
 import { useHomeNav } from "../homeNav";
 import { useWorkNav } from "../workNav";
 
@@ -145,9 +146,17 @@ export function Layout() {
       {p && (
         <header className="app-header">
           <div className="money-bar">
-            <span className="money-bar-name">{p.displayName}</span>
+            <span className="money-bar-player">
+              <span className="money-bar-name">{p.displayName}</span>
+              <span className="money-bar-city">
+                {cityDisplayName(p.cityId)} · {(p.isResident ?? false) ? "Житель" : "Гость"}
+              </span>
+            </span>
             {headerTitle && <span className="money-bar-title">{headerTitle}</span>}
-            <span className="money-bar-rubles">{p.rubles.toLocaleString("ru-RU")} ₽</span>
+            <span className="money-bar-wallet">
+              <span className="money-bar-wallet-label">Баланс</span>
+              <span className="money-bar-rubles">{p.rubles.toLocaleString("ru-RU")} ₽</span>
+            </span>
           </div>
         </header>
       )}

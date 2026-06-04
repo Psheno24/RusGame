@@ -101,9 +101,10 @@ export function WorkPage() {
   if (!employedId) {
     return (
       <div className="card work-empty-card">
-        <p>Нет работы</p>
+        <h2 className="work-empty-title">Сейчас вы не трудоустроены</h2>
+        <p className="work-empty-hint">Откройте вакансии в городе и выберите доступную работу.</p>
         <button type="button" className="btn btn-primary" onClick={goToVacancies}>
-          Вакансии
+          Перейти к вакансиям
         </button>
       </div>
     );

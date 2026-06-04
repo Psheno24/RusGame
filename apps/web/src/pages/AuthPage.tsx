@@ -28,40 +28,41 @@ export function AuthPage() {
 
   return (
     <div className="auth-screen">
-      <h1>Россия — жизнь</h1>
-      <p className="subtitle">Выбери город, работай, переезжай. Минимальная версия — уже можно играть.</p>
-      <div className="tabs-inline">
-        <button type="button" className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>
-          Вход
-        </button>
-        <button type="button" className={mode === "register" ? "active" : ""} onClick={() => setMode("register")}>
-          Регистрация
-        </button>
-      </div>
-      <form onSubmit={submit}>
-        <input
-          className="input"
-          placeholder="Логин"
-          autoComplete="username"
-          value={loginName}
-          onChange={(e) => setLoginName(e.target.value)}
-        />
-        <input
-          className="input"
-          type="password"
-          placeholder="Пароль (мин. 6)"
-          autoComplete={mode === "login" ? "current-password" : "new-password"}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {error && <p style={{ color: "var(--danger)", marginBottom: 12 }}>{error}</p>}
-        <button className="btn btn-primary" type="submit" disabled={busy}>
-          {busy ? "Подождите…" : mode === "login" ? "Войти" : "Создать аккаунт"}
-        </button>
-      </form>
-      <p style={{ color: "var(--text-muted)", fontSize: "0.8rem", marginTop: 20 }}>
-        Старт в Омске · 5 000 ₽ · сессия запоминается на телефоне
-      </p>
+      <section className="auth-card card">
+        <p className="auth-kicker">Urban life RPG</p>
+        <h1>Россия — жизнь</h1>
+        <p className="subtitle">Выбери город, работай, покупай жильё и строй свою историю на карте страны.</p>
+        <div className="tabs-inline">
+          <button type="button" className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>
+            Вход
+          </button>
+          <button type="button" className={mode === "register" ? "active" : ""} onClick={() => setMode("register")}>
+            Регистрация
+          </button>
+        </div>
+        <form className="auth-form" onSubmit={submit}>
+          <input
+            className="input"
+            placeholder="Логин"
+            autoComplete="username"
+            value={loginName}
+            onChange={(e) => setLoginName(e.target.value)}
+          />
+          <input
+            className="input"
+            type="password"
+            placeholder="Пароль (мин. 6)"
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {error && <p className="auth-error">{error}</p>}
+          <button className="btn btn-primary" type="submit" disabled={busy}>
+            {busy ? "Подождите…" : mode === "login" ? "Войти" : "Создать аккаунт"}
+          </button>
+        </form>
+        <p className="auth-footnote">Старт в Омске · 5 000 ₽ · сессия запоминается на телефоне</p>
+      </section>
     </div>
   );
 }
