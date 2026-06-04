@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import {
   fetchMap,
@@ -113,7 +113,10 @@ export function MapPage() {
     setQuoteLoading(false);
   }, []);
 
+  const quoteRequestRef = useRef(0);
+
   const pickCity = async (c: CityPin) => {
+    const requestId = ++quoteRequestRef.current;
     setSelected(c);
     setQuoteOptions(null);
     if (c.id === currentId) {
@@ -123,12 +126,14 @@ export function MapPage() {
     setQuoteLoading(true);
     try {
       const q = await travelQuote(c.id);
+      if (requestId !== quoteRequestRef.current) return;
       setQuoteOptions(q.options);
       setTravelMode(q.options[0]?.mode ?? "train");
     } catch {
+      if (requestId !== quoteRequestRef.current) return;
       setQuoteOptions(null);
     } finally {
-      setQuoteLoading(false);
+      if (requestId === quoteRequestRef.current) setQuoteLoading(false);
     }
   };
 
@@ -154,59 +159,56 @@ export function MapPage() {
     quoteOptions?.find((o) => o.mode === travelMode) ?? quoteOptions?.[0] ?? null;
 
   const showRouteUnavailable =
-    selected != null && selected.id !== currentId && !quoteLoading && quoteOptions == null;
+    selected != null &&
+    selected.id !== currentId &&
+    !quoteLoading &&
+    (quoteOptions == null || quoteOptions.length === 0);
 
-  const mapActionPanels = (mode: "overlay" | "dock" | false) => (
-    <>
-      <MapActionPanel
-        open={Boolean(selected && quoteLoading)}
-        onDismiss={dismissSelected}
-        overlay={mode === "overlay"}
-        dock={mode === "dock"}
-        persistent
-        resetKey={`loading-${selected?.id}`}
-      >
-        <h2>{selected?.name}</h2>
-        <p className="map-action-hint">Проверяем маршрут…</p>
-      </MapActionPanel>
+  const mapActionPanel = (mode: "overlay" | "dock") => {
+    let body: ReactNode = null;
+    let tone: "info" | "error" = "info";
 
-      <MapActionPanel
-        open={Boolean(selected && !quoteLoading && selected.id === currentId)}
-        onDismiss={dismissSelected}
-        overlay={mode === "overlay"}
-        dock={mode === "dock"}
-        persistent
-        resetKey={`here-${selected?.id}`}
-      >
-        <h2>{selected?.name}</h2>
-        <p>Вы уже здесь. Вкладка «Город» — работа и магазин.</p>
-      </MapActionPanel>
-
-      <MapActionPanel
-        open={Boolean(selected && !quoteLoading && selected.id !== currentId && selectedQuote)}
-        onDismiss={dismissSelected}
-        overlay={mode === "overlay"}
-        dock={mode === "dock"}
-        persistent
-        resetKey={`quote-${selected?.id}`}
-      >
-        <h2>{selected?.name}</h2>
-        {quoteOptions && quoteOptions.length > 1 && (
-          <div className="tabs-inline map-travel-modes">
-            {quoteOptions.map((o) => (
-              <button
-                key={o.mode}
-                type="button"
-                className={travelMode === o.mode ? "active" : ""}
-                onClick={() => setTravelMode(o.mode)}
-              >
-                {o.mode === "plane" ? "Самолёт" : "Поезд"}
-              </button>
-            ))}
-          </div>
-        )}
-        {selectedQuote && (
+    if (selected) {
+      if (quoteLoading) {
+        body = (
           <>
+            <h2>{selected.name}</h2>
+            <p className="map-action-hint">Проверяем маршрут…</p>
+          </>
+        );
+      } else if (selected.id === currentId) {
+        body = (
+          <>
+            <h2>{selected.name}</h2>
+            <p>Вы уже здесь. Вкладка «Город» — работа и магазин.</p>
+          </>
+        );
+      } else if (showRouteUnavailable) {
+        tone = "error";
+        body = (
+          <>
+            <h2>{selected.name}</h2>
+            <p className="map-error-text">{ROUTE_UNAVAILABLE}</p>
+          </>
+        );
+      } else if (selectedQuote) {
+        body = (
+          <>
+            <h2>{selected.name}</h2>
+            {quoteOptions && quoteOptions.length > 1 && (
+              <div className="tabs-inline map-travel-modes">
+                {quoteOptions.map((o) => (
+                  <button
+                    key={o.mode}
+                    type="button"
+                    className={travelMode === o.mode ? "active" : ""}
+                    onClick={() => setTravelMode(o.mode)}
+                  >
+                    {o.mode === "plane" ? "Самолёт" : "Поезд"}
+                  </button>
+                ))}
+              </div>
+            )}
             <p>
               {travelMode === "plane" ? "Самолёт" : "Поезд"}:{" "}
               <strong>{selectedQuote.priceRub.toLocaleString("ru-RU")} ₽</strong>, в пути{" "}
@@ -224,26 +226,27 @@ export function MapPage() {
               <p className="map-action-hint">Дождитесь окончания смены</p>
             )}
           </>
-        )}
-      </MapActionPanel>
+        );
+      }
+    }
 
+    return (
       <MapActionPanel
-        open={showRouteUnavailable}
+        open={Boolean(selected)}
         onDismiss={dismissSelected}
         overlay={mode === "overlay"}
         dock={mode === "dock"}
         persistent
-        tone="error"
-        resetKey={`route-${selected?.id}`}
+        tone={tone}
+        resetKey={selected?.id ?? "none"}
       >
-        <h2>{selected?.name}</h2>
-        <p className="map-error-text">{ROUTE_UNAVAILABLE}</p>
+        {body}
       </MapActionPanel>
-    </>
-  );
+    );
+  };
 
   return (
-    <>
+    <div className={`map-page${view === "map" ? " map-page--map" : ""}`}>
       <div className="card map-intro">
         <h2>Карта России</h2>
         <p>Щипок — масштаб, палец — двигать. При открытии — ваш город.</p>
@@ -256,10 +259,24 @@ export function MapPage() {
           </p>
         )}
         <div className="tabs-inline map-tabs">
-          <button type="button" className={view === "map" ? "active" : ""} onClick={() => setView("map")}>
+          <button
+            type="button"
+            className={view === "map" ? "active" : ""}
+            onClick={() => {
+              if (view !== "map") dismissSelected();
+              setView("map");
+            }}
+          >
             Карта
           </button>
-          <button type="button" className={view === "list" ? "active" : ""} onClick={() => setView("list")}>
+          <button
+            type="button"
+            className={view === "list" ? "active" : ""}
+            onClick={() => {
+              if (view !== "list") dismissSelected();
+              setView("list");
+            }}
+          >
             Список
           </button>
         </div>
@@ -272,7 +289,7 @@ export function MapPage() {
           focusHomeOnMount={focusHomeOnMount}
           selectedCityId={selected?.id ?? null}
           onBackgroundClick={selected ? dismissSelected : undefined}
-          overlay={mapActionPanels("overlay")}
+          overlay={mapActionPanel("overlay")}
         >
           {(vb, uiScale) => (
             <div className="map-wrap map-wrap--scheme">
@@ -355,9 +372,9 @@ export function MapPage() {
               />
             ))}
           </div>
-          <div className="map-action-dock">{mapActionPanels("dock")}</div>
+          <div className="map-action-dock">{mapActionPanel("dock")}</div>
         </>
       )}
-    </>
+    </div>
   );
 }

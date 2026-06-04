@@ -17,6 +17,10 @@ type Props = {
   className?: string;
   resetKey?: string | number;
   enabled?: boolean;
+  /** onDismiss сам убирает элемент (для анимации закрытия). */
+  deferGone?: boolean;
+  /** Горизонтальный свайп для закрытия. */
+  swipeEnabled?: boolean;
 };
 
 const DEFAULT_AUTO_DISMISS: Record<NoticeVariant, number> = {
@@ -35,6 +39,8 @@ export function DismissibleNotice({
   className = "",
   resetKey,
   enabled = true,
+  deferGone = false,
+  swipeEnabled = true,
 }: Props) {
   const hasContent = Boolean(message || children);
   const dismissMs = autoDismissMs ?? DEFAULT_AUTO_DISMISS[variant];
@@ -44,9 +50,13 @@ export function DismissibleNotice({
     onDismiss,
     resetKey: resetKey ?? (message ?? "panel"),
     enabled: enabled && hasContent,
+    deferGone,
+    swipeEnabled,
   });
 
   if (!hasContent || gone) return null;
+
+  const swipeBind = swipeEnabled ? bind : {};
 
   const classes = [
     "notice",
@@ -67,7 +77,7 @@ export function DismissibleNotice({
         opacity: Math.abs(offsetX) > 120 ? 0.4 : 1,
       }}
       role="alert"
-      {...bind}
+      {...swipeBind}
     >
       {children ?? message}
     </div>

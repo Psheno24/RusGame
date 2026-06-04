@@ -76,6 +76,7 @@ export function MapZoomViewport({
   const panRef = useRef<{ x: number; y: number } | null>(null);
   const pinchRef = useRef<{ dist: number; vb: MapViewBox; rx: number; ry: number } | null>(null);
   const movedRef = useRef(false);
+  const overlayGestureRef = useRef(false);
   const homeFocusedRef = useRef(false);
 
   const focusOnCity = useCallback((cityId: string) => {
@@ -130,7 +131,13 @@ export function MapZoomViewport({
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    if ((e.target as Element).closest(MAP_INTERACTIVE_SEL)) return;
+    if ((e.target as Element).closest(MAP_INTERACTIVE_SEL)) {
+      if ((e.target as Element).closest(".map-viewport-overlay")) {
+        overlayGestureRef.current = true;
+      }
+      return;
+    }
+    overlayGestureRef.current = false;
     movedRef.current = false;
     wrapRef.current?.setPointerCapture(e.pointerId);
     panRef.current = { x: e.clientX, y: e.clientY };
@@ -150,8 +157,11 @@ export function MapZoomViewport({
 
   const onPointerUp = (e: React.PointerEvent) => {
     const wasPan = movedRef.current;
+    const fromOverlay = overlayGestureRef.current;
+    overlayGestureRef.current = false;
     panRef.current = null;
-    if (!wasPan && onBackgroundClick) {
+    if (fromOverlay || wasPan) return;
+    if (onBackgroundClick) {
       const target = e.target as Element;
       if (!target.closest(MAP_INTERACTIVE_SEL)) onBackgroundClick();
     }

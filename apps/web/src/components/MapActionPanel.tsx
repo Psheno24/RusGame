@@ -1,16 +1,15 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { DismissibleNotice } from "./DismissibleNotice";
 import { NOTICE_PERSISTENT_AUTO_DISMISS_MS, NOTICE_PANEL_AUTO_DISMISS_MS, type NoticeTone } from "../noticeConfig";
+
+const EXIT_MS = 280;
 
 type Props = {
   open: boolean;
   onDismiss: () => void;
   tone?: NoticeTone;
-  /** Панель с кнопкой действия — не скрывается сама, только свайпом. */
   persistent?: boolean;
-  /** Поверх карты снизу (bottom sheet), а не в потоке страницы. */
   overlay?: boolean;
-  /** Фиксированная панель у нижнего края экрана (список городов). */
   dock?: boolean;
   resetKey?: string | number;
   className?: string;
@@ -28,7 +27,42 @@ export function MapActionPanel({
   className = "",
   children,
 }: Props) {
-  if (!open) return null;
+  const [mounted, setMounted] = useState(open);
+  const [exiting, setExiting] = useState(false);
+  const lastContent = useRef(children);
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
+  if (open) lastContent.current = children;
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      setExiting(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (open || !mounted) return;
+    setExiting(true);
+    const t = window.setTimeout(() => {
+      setMounted(false);
+      setExiting(false);
+    }, EXIT_MS);
+    return () => window.clearTimeout(t);
+  }, [open, mounted]);
+
+  const handleDismiss = useCallback(() => {
+    if (exiting) return;
+    setExiting(true);
+    window.setTimeout(() => {
+      setMounted(false);
+      setExiting(false);
+      onDismissRef.current();
+    }, EXIT_MS);
+  }, [exiting]);
+
+  if (!mounted) return null;
 
   const modeClass = overlay
     ? " map-action-card--overlay"
@@ -36,16 +70,19 @@ export function MapActionPanel({
       ? " map-action-card--dock"
       : "";
 
+  const content = open ? children : lastContent.current;
+
   return (
     <DismissibleNotice
       variant="panel"
       tone={tone}
       autoDismissMs={persistent ? NOTICE_PERSISTENT_AUTO_DISMISS_MS : NOTICE_PANEL_AUTO_DISMISS_MS}
-      onDismiss={onDismiss}
+      onDismiss={handleDismiss}
+      deferGone
       resetKey={resetKey}
-      className={`map-action-card${modeClass}${className ? ` ${className}` : ""}`}
+      className={`map-action-card${modeClass}${exiting ? " map-action-card--exiting" : ""}${className ? ` ${className}` : ""}`}
     >
-      {children}
+      {content}
     </DismissibleNotice>
   );
 }
