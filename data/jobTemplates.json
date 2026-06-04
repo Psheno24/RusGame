@@ -1,7 +1,6 @@
 {
   "delivery": {
     "title": "Курьер доставки",
-    "description": "Развоз заказов по городу. Смена 2 часа. Нужен телефон и тариф «Полный безлимит».",
     "kind": "cooldown",
     "shiftHours": 2,
     "requiresPhone": true,
@@ -10,7 +9,6 @@
   },
   "taxi": {
     "title": "Таксист",
-    "description": "Выход на линию и заказы пассажиров. Нужны права B, автомобиль, телефон и тариф «Полный безлимит». Каждые 10 поездок — +1 к вождению.",
     "kind": "taxi_line",
     "requiresDriversLicense": true,
     "requiresPhone": true,
@@ -20,14 +18,12 @@
   },
   "cashier": {
     "title": "Кассир «Пятёрочка»",
-    "description": "Работа на кассе. Смена 4 часа. Можно в любое время.",
     "kind": "cooldown",
     "shiftHours": 4,
     "skill": "charisma"
   },
   "night_guard": {
     "title": "Ночной охранник",
-    "description": "Охрана с 22:00 до 8:00 по местному времени. Зарплата за смену зависит от времени выхода: максимум с 22:00, минимум перед 8:00 (например, в 7:59).",
     "kind": "cooldown",
     "shiftEndsAtHour": 8,
     "schedule": { "mode": "night", "nightStartHour": 22, "dayStartHour": 8 },

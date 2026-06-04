@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useToastRef } from "../hooks/useToastRef";
 import {
   fetchCarRepairShop,
   repairCarNode,
@@ -35,22 +36,30 @@ export function CarRepairPlace({ user, setUser, onToast, registerBack, onExitPla
   const [serviceId, setServiceId] = useState<CarRepairServiceId | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const reload = useCallback(async (svc: CarRepairServiceId | null) => {
-    const data = await fetchCarRepairShop(svc ?? undefined);
+  const onToastRef = useToastRef(onToast);
+
+  const reload = useCallback(async (svc: CarRepairServiceId) => {
+    const data = await fetchCarRepairShop(svc);
     setShop(data);
     return data;
   }, []);
 
   useEffect(() => {
-    reload(null).catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
-  }, [reload, onToast]);
+    fetchCarRepairShop()
+      .then(setShop)
+      .catch((e) =>
+        onToastRef.current(e instanceof Error ? e.message : "Ошибка", true),
+      );
+  }, []);
 
   useEffect(() => {
     const handler: NavBackHandler = () => {
       if (nav === "garage") {
         setNav("services");
         setServiceId(null);
-        reload(null).catch(() => {});
+        fetchCarRepairShop()
+          .then(setShop)
+          .catch(() => {});
         return true;
       }
       onExitPlace();
@@ -58,7 +67,7 @@ export function CarRepairPlace({ user, setUser, onToast, registerBack, onExitPla
     };
     registerBack(handler);
     return () => registerBack(null);
-  }, [nav, registerBack, reload, onExitPlace]);
+  }, [nav, registerBack, onExitPlace]);
 
   const openService = async (id: CarRepairServiceId) => {
     setServiceId(id);
@@ -66,7 +75,7 @@ export function CarRepairPlace({ user, setUser, onToast, registerBack, onExitPla
     try {
       await reload(id);
     } catch (e) {
-      onToast(e instanceof Error ? e.message : "Ошибка", true);
+      onToastRef.current(e instanceof Error ? e.message : "Ошибка", true);
     }
   };
 
@@ -85,15 +94,19 @@ export function CarRepairPlace({ user, setUser, onToast, registerBack, onExitPla
       const r = await repairCarNode(serviceId, car.playerCarId, nodeId);
       setUser(r.user);
       onToast(`${car.brand} ${car.model}: ${r.costRub.toLocaleString("ru-RU")} ₽`);
-      await reload(serviceId);
+      if (serviceId) await reload(serviceId);
     } catch (e) {
-      onToast(e instanceof Error ? e.message : "Ошибка", true);
+      onToastRef.current(e instanceof Error ? e.message : "Ошибка", true);
     } finally {
       setBusy(false);
     }
   };
 
   if (!shop) {
+    return <p className="shop-stub">Загрузка…</p>;
+  }
+
+  if (nav === "garage" && serviceId && shop.service !== serviceId) {
     return <p className="shop-stub">Загрузка…</p>;
   }
 

@@ -1,4 +1,7 @@
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
+import { registerAuthRoutes } from "./routes/authRoutes.js";
+import { resolveUserId } from "./routes/shared.js";
+import { registerWorkRoutes } from "./routes/workRoutes.js";
 import {
   ADMIN_LOGIN,
   ADMIN_PASSWORD,
@@ -123,78 +126,10 @@ import { listPlayerFeed } from "./playerFeed.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 import { refreshPlayerState } from "./playerSync.js";
 
-function getBearer(req: FastifyRequest): string | null {
-  const h = req.headers.authorization;
-  if (!h?.startsWith("Bearer ")) return null;
-  return h.slice(7);
-}
-
-/** Bearer или cookie сессии — для локальной игры без сбоев «Не авторизован». */
-async function resolveUserId(req: FastifyRequest): Promise<number | null> {
-  const token = getBearer(req);
-  if (token) {
-    const id = await verifyAccessToken(token);
-    if (id) return id;
-  }
-  const raw = req.cookies[REFRESH_COOKIE];
-  if (raw) return validateRefreshToken(raw);
-  return null;
-}
-
 export async function registerRoutes(app: FastifyInstance) {
   app.get("/api/health", async () => ({ ok: true }));
 
-  app.post<{ Body: { login?: string; password?: string } }>("/api/auth/register", async (req, reply) => {
-    const { login = "", password = "" } = req.body ?? {};
-    const result = registerUser(login, password);
-    if (!result.ok) return reply.code(400).send({ error: result.error });
-
-    const refreshToken = result.refreshToken;
-    const accessToken = await signAccessToken(result.userId);
-    reply.setCookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions(90 * 24 * 60 * 60));
-    return { accessToken, user: await getPublicUser(result.userId) };
-  });
-
-  app.post<{ Body: { login?: string; password?: string } }>("/api/auth/login", async (req, reply) => {
-    const { login = "", password = "" } = req.body ?? {};
-    const result = await loginUser(login, password);
-    if (!result.ok) return reply.code(401).send({ error: result.error });
-
-    reply.setCookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions(90 * 24 * 60 * 60));
-    return { accessToken: result.accessToken, user: await getPublicUser(result.userId) };
-  });
-
-  app.post("/api/auth/logout", async (req, reply) => {
-    const raw = req.cookies[REFRESH_COOKIE];
-    if (raw) revokeRefreshToken(raw);
-    reply.clearCookie(REFRESH_COOKIE, { path: "/" });
-    return { ok: true };
-  });
-
-  app.post("/api/auth/refresh", async (req, reply) => {
-    const raw = req.cookies[REFRESH_COOKIE];
-    if (!raw) return reply.code(401).send({ error: "Нет сессии" });
-    const userId = validateRefreshToken(raw);
-    if (!userId) {
-      reply.clearCookie(REFRESH_COOKIE, { path: "/" });
-      return reply.code(401).send({ error: "Сессия истекла" });
-    }
-    const user = getUserById(userId);
-    if (user?.is_banned) {
-      return reply.code(403).send({ error: "Аккаунт заблокирован" });
-    }
-    const session = await buildSession(userId, raw);
-    return { accessToken: session.accessToken, user: await getPublicUser(userId) };
-  });
-
-  app.get("/api/auth/me", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    const user = await getPublicUser(userId);
-    if (!user) return reply.code(401).send({ error: "Не авторизован" });
-    const accessToken = await signAccessToken(userId);
-    return { user, accessToken };
-  });
+  registerAuthRoutes(app);
 
   app.get("/api/map/cities", async (req, reply) => {
     const userId = await resolveUserId(req);
@@ -281,7 +216,6 @@ export async function registerRoutes(app: FastifyInstance) {
         workCityName: access.workCityName,
         physicallyHere: access.physicallyHere,
         residentHere: access.residentHere,
-        description: job.description,
         kind: job.kind,
         shiftHoursMin: job.shiftHoursMin ?? null,
         shiftHoursMax: job.shiftHoursMax ?? null,
@@ -584,183 +518,7 @@ export async function registerRoutes(app: FastifyInstance) {
     return { message: result.message, user };
   });
 
-  app.post("/api/work/quit", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    const body = req.body as { jobId?: string };
-    const jobId = body.jobId ?? "";
-    if (!jobId) return reply.code(400).send({ error: "Укажите вакансию" });
-    const result = quitJob(userId, jobId);
-    if (!result.ok) {
-      return reply.code(400).send({ error: result.error, remainingMs: result.remainingMs });
-    }
-    const user = await getPublicUser(userId);
-    return { message: result.message, user };
-  });
-
-  app.post("/api/work/apply", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    const body = req.body as { jobId?: string; forceSwitch?: boolean };
-    const jobId = body.jobId ?? "";
-    if (!jobId) return reply.code(400).send({ error: "Укажите вакансию" });
-    const result = applyJob(userId, jobId, { forceSwitch: body.forceSwitch === true });
-    if (!result.ok) {
-      if ("kind" in result) {
-        return reply.code(409).send({
-          code: "confirm_switch",
-          jobId: result.jobId,
-          currentTitle: result.currentTitle,
-          newTitle: result.newTitle,
-        });
-      }
-      const code = "code" in result ? result.code : undefined;
-      return reply.code(code === "guest_no_housing" ? 403 : 400).send({
-        error: result.error,
-        remainingMs: result.remainingMs,
-        code,
-      });
-    }
-    const user = await getPublicUser(userId);
-    return { message: result.message, user };
-  });
-
-  app.post<{ Body: { jobId?: string; hours?: number } }>("/api/work/job", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    const jobId = req.body?.jobId ?? "";
-    if (!jobId) return reply.code(400).send({ error: "Укажите jobId" });
-    const hours =
-      req.body?.hours != null && Number.isFinite(Number(req.body.hours))
-        ? Math.floor(Number(req.body.hours))
-        : undefined;
-    const result = doJobWork(userId, jobId, hours);
-    if (!result.ok) {
-      return reply.code(result.code === "guest_no_housing" ? 403 : 400).send({
-        error: result.error,
-        readyAt: result.readyAt,
-        code: result.code,
-        localTime: result.localTime,
-        nextWindowAt: result.nextWindowAt,
-      });
-    }
-    const user = await getPublicUser(userId);
-    return { message: result.message, payout: result.payout, skillGain: result.skillGain, user };
-  });
-
-  app.get("/api/taxi/status", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    const player = refreshPlayerState(userId);
-    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
-    if (!player.job_id) return reply.code(400).send({ error: "Нет активной работы" });
-    const job = findCityJob(jobCityId(player.job_id) ?? player.city_id, player.job_id);
-    if (!job || job.kind !== "taxi_line") {
-      return reply.code(400).send({ error: "Вы не устроены таксистом" });
-    }
-    const { getTaxiStatus } = await import("./taxi.js");
-    const status = getTaxiStatus(player, job);
-    const user =
-      status.completedPayout != null ? await getPublicUser(userId) : undefined;
-    return {
-      ok: true,
-      status,
-      completedMessage: status.completedMessage,
-      completedPayout: status.completedPayout,
-      user,
-    };
-  });
-
-  app.post("/api/taxi/clear-car", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    let player = refreshPlayerState(userId);
-    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
-    const { taxiClearCar } = await import("./taxi.js");
-    const result = taxiClearCar(player);
-    if (!result.ok) return reply.code(400).send({ error: result.error });
-    const user = await getPublicUser(userId);
-    return { message: result.message, user };
-  });
-
-  app.post<{ Body: { carSource?: string; carRefId?: number } }>("/api/taxi/select-car", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    let player = refreshPlayerState(userId);
-    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
-    const job = player.job_id ? findCityJob(jobCityId(player.job_id) ?? player.city_id, player.job_id) : null;
-    if (!job || job.kind !== "taxi_line") {
-      return reply.code(400).send({ error: "Вы не устроены таксистом" });
-    }
-    const source = req.body?.carSource === "rental" ? "rental" : "owned";
-    const refId = Number(req.body?.carRefId);
-    if (!Number.isFinite(refId)) return reply.code(400).send({ error: "Укажите автомобиль" });
-    const { taxiSelectCar } = await import("./taxi.js");
-    const result = taxiSelectCar(player, source, refId);
-    if (!result.ok) return reply.code(400).send({ error: result.error });
-    const user = await getPublicUser(userId);
-    return { message: result.message, user };
-  });
-
-  app.post("/api/taxi/go-online", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    let player = refreshPlayerState(userId);
-    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
-    const job = player.job_id ? findCityJob(jobCityId(player.job_id) ?? player.city_id, player.job_id) : null;
-    if (!job || job.kind !== "taxi_line") {
-      return reply.code(400).send({ error: "Вы не устроены таксистом" });
-    }
-    const { taxiGoOnline } = await import("./taxi.js");
-    const result = taxiGoOnline(player);
-    if (!result.ok) return reply.code(400).send({ error: result.error });
-    const user = await getPublicUser(userId);
-    return { message: result.message, user };
-  });
-
-  app.post("/api/taxi/go-offline", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    let player = refreshPlayerState(userId);
-    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
-    const { taxiGoOffline } = await import("./taxi.js");
-    const result = taxiGoOffline(player);
-    if (!result.ok) return reply.code(400).send({ error: result.error });
-    const user = await getPublicUser(userId);
-    return { message: result.message, user };
-  });
-
-  app.post<{ Body: { orderId?: string } }>("/api/taxi/accept", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    let player = refreshPlayerState(userId);
-    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
-    const orderId = req.body?.orderId ?? "";
-    if (!orderId) return reply.code(400).send({ error: "Укажите заказ" });
-    const job = player.job_id ? findCityJob(jobCityId(player.job_id) ?? player.city_id, player.job_id) : null;
-    if (!job || job.kind !== "taxi_line") {
-      return reply.code(400).send({ error: "Вы не устроены таксистом" });
-    }
-    const { taxiAcceptOrder } = await import("./taxi.js");
-    const result = taxiAcceptOrder(player, job, orderId);
-    if (!result.ok) return reply.code(400).send({ error: result.error });
-    const user = await getPublicUser(userId);
-    return { message: result.message, user };
-  });
-
-  app.post<{ Body: { orderId?: string } }>("/api/taxi/decline", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-    let player = refreshPlayerState(userId);
-    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
-    const orderId = req.body?.orderId ?? "";
-    if (!orderId) return reply.code(400).send({ error: "Укажите заказ" });
-    const { taxiDeclineOrder } = await import("./taxi.js");
-    const result = taxiDeclineOrder(player, orderId);
-    if (!result.ok) return reply.code(400).send({ error: result.error });
-    const user = await getPublicUser(userId);
-    return { message: result.message, user };
-  });
+  registerWorkRoutes(app);
 
   app.get<{ Querystring: { to?: string } }>("/api/travel/quote", async (req, reply) => {
     const userId = await resolveUserId(req);

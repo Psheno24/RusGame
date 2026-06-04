@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { fetchPropertyCards, type PropertyCard } from "../api";
 import { useApp } from "../context";
 import { useNotice } from "../noticeContext";
+import type { ToastFn } from "../hooks/useToastRef";
 import { PropertyDetailView } from "./PropertyDetailView";
 import { VehiclePlate } from "./VehiclePlate";
 
@@ -71,6 +72,19 @@ export function ProfilePropertyCards() {
       .catch(() => setCards([]));
   }, []);
 
+  const showToast = useCallback<ToastFn>((msg, isErr = false) => {
+    showNotice(msg, isErr ? "error" : "success");
+  }, [showNotice]);
+
+  const onDetailBack = useCallback(() => {
+    setDetailId(null);
+    void reload();
+  }, [reload]);
+
+  const onDetailChanged = useCallback(() => {
+    void reload();
+  }, [reload]);
+
   useEffect(() => {
     reload().finally(() => setLoading(false));
   }, [reload]);
@@ -86,13 +100,10 @@ export function ProfilePropertyCards() {
     return (
       <PropertyDetailView
         propertyId={detailId}
-        onBack={() => {
-          setDetailId(null);
-          void reload();
-        }}
+        onBack={onDetailBack}
         setUser={setUser}
-        onToast={(msg, isErr) => showNotice(msg, isErr ? "error" : "success")}
-        onChanged={() => void reload()}
+        onToast={showToast}
+        onChanged={onDetailChanged}
       />
     );
   }

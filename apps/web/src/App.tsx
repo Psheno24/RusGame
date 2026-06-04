@@ -1,7 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import { CityNavProvider } from "./cityNav";
-import { HomeNavProvider } from "./homeNav";
-import { WorkNavProvider } from "./workNav";
+import { TabNavProvider } from "./tabNavReset";
 import { AppLoadingScreen } from "./components/AppLoadingScreen";
 import { Layout } from "./components/Layout";
 import { useApp } from "./context";
@@ -30,24 +28,20 @@ export function App() {
   }
 
   return (
-    <CityNavProvider>
-      <HomeNavProvider>
-      <WorkNavProvider>
-        <NoticeProvider>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route path="/home" element={<HomePage />} />
-              <Route path="/map" element={<MapPage />} />
-              <Route path="/work" element={<WorkPage />} />
-              <Route path="/city" element={<CityPage />} />
-              <Route path="/activity" element={<ActivityPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="*" element={<Navigate to="/city" replace />} />
-            </Route>
-          </Routes>
-        </NoticeProvider>
-      </WorkNavProvider>
-      </HomeNavProvider>
-    </CityNavProvider>
+    <TabNavProvider>
+      <NoticeProvider>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/map" element={<MapPage />} />
+            <Route path="/work" element={<WorkPage />} />
+            <Route path="/city" element={<CityPage />} />
+            <Route path="/activity" element={<ActivityPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="*" element={<Navigate to="/city" replace />} />
+          </Route>
+        </Routes>
+      </NoticeProvider>
+    </TabNavProvider>
   );
 }

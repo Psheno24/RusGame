@@ -7,14 +7,14 @@ export type PlaceId =
   | "ambulance"
   | "court";
 
-export const CITY_PLACES: { id: PlaceId; title: string; hint: string }[] = [
-  { id: "flea_market", title: "Барахолка", hint: "Объявления по городам" },
-  { id: "cinema", title: "Кино", hint: "Отдохнуть и поднять настроение" },
-  { id: "car_repair", title: "Ремонт авто", hint: "СТО и шиномонтаж" },
-  { id: "phone_repair", title: "Ремонт телефона", hint: "Починка смартфона" },
-  { id: "police", title: "Полиция", hint: "Обращения и справки" },
-  { id: "ambulance", title: "Скорая", hint: "Медицинская помощь" },
-  { id: "court", title: "Суд", hint: "Судебные дела" },
+export const CITY_PLACES: { id: PlaceId; title: string; hint?: string }[] = [
+  { id: "flea_market", title: "Барахолка" },
+  { id: "cinema", title: "Кино", hint: "500 ₽ · +22 настроение" },
+  { id: "car_repair", title: "Ремонт авто" },
+  { id: "phone_repair", title: "Ремонт телефона" },
+  { id: "police", title: "Полиция" },
+  { id: "ambulance", title: "Скорая" },
+  { id: "court", title: "Суд" },
 ];
 
 export function placeById(id: PlaceId) {

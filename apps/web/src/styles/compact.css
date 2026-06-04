@@ -1,0 +1,21 @@
+/* Compact overrides — loaded after main styles */
+.job-list-card {
+  padding: 10px 12px;
+}
+
+.work-empty-card p {
+  margin-bottom: 10px;
+}
+
+.map-viewport-hint-dismiss {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border: none;
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}

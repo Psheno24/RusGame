@@ -1,25 +1,28 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ToastFn } from "../hooks/useToastRef";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCityNav } from "../cityNav";
 import { useNavBackSlot } from "../navBack";
 import {
-  fetchCity,
-  formatDuration,
   type CityFeedEvent,
   type HousingInfo,
   type CityLocalTimeView,
   type JobView,
   type User,
 } from "../api";
+import { fetchCityCached, invalidateCityCache } from "../cityDataCache";
 import { getCityLocalTime } from "../cityTime";
 import { CityActivityFeed } from "../components/CityActivityFeed";
+import { TravelingCard } from "../components/TravelingCard";
+import { CityGridButton } from "../components/ui/CityGridButton";
 import { JobsSection } from "../components/JobsSection";
 import type { CityOpenState, CitySectionId } from "./cityRouteState";
 import { CarShop } from "../components/CarShop";
 import { HousingShop } from "../components/HousingShop";
 import { PhoneShop } from "../components/PhoneShop";
-import { ProductsShop } from "../components/ProductsShop";
 import { PlacesSection } from "../components/PlacesSection";
+import { ProductsShop } from "../components/ProductsShop";
+import { useIntervalTick } from "../hooks/useIntervalTick";
 import { useApp } from "../context";
 import { useNotice } from "../noticeContext";
 import { placeById, type PlaceId } from "../placesData";
@@ -27,17 +30,17 @@ import { placeById, type PlaceId } from "../placesData";
 type CitySection = CitySectionId;
 type ShopTab = "products" | "phone" | "car";
 
-const CITY_SECTIONS: { id: CitySection; title: string; hint: string }[] = [
-  { id: "shop", title: "Магазин", hint: "Продукты, телефон, авто" },
-  { id: "jobs", title: "Вакансии", hint: "Доставка, такси, касса, охрана" },
-  { id: "housing", title: "Недвижимость", hint: "Аренда и покупка" },
-  { id: "places", title: "Разные места", hint: "Барахолка и сервисы" },
+const CITY_SECTIONS: { id: CitySection; title: string }[] = [
+  { id: "shop", title: "Магазин" },
+  { id: "jobs", title: "Вакансии" },
+  { id: "housing", title: "Недвижимость" },
+  { id: "places", title: "Разные места" },
 ];
 
-const SHOP_CATEGORIES: { id: ShopTab; title: string; hint: string }[] = [
-  { id: "products", title: "Продукты", hint: "Еда и напитки" },
-  { id: "phone", title: "Телефон", hint: "Устройства и сим-карта" },
-  { id: "car", title: "Авто", hint: "Каталог, гараж, номер, тюнинг" },
+const SHOP_CATEGORIES: { id: ShopTab; title: string }[] = [
+  { id: "products", title: "Продукты" },
+  { id: "phone", title: "Телефон" },
+  { id: "car", title: "Авто" },
 ];
 
 export function CityPage() {
@@ -64,12 +67,11 @@ export function CityPage() {
   const [jobsSelectedId, setJobsSelectedId] = useState<string | null>(null);
   const [cityJobs, setCityJobs] = useState<JobView[]>([]);
   const [activeEmployment, setActiveEmployment] = useState<Awaited<
-    ReturnType<typeof fetchCity>
+    ReturnType<typeof fetchCityCached>
   >["activeEmployment"]>(null);
-  const [tick, setTick] = useState(0);
   const [cityFeed, setCityFeed] = useState<CityFeedEvent[]>([]);
-  const load = useCallback(async () => {
-    const data = await fetchCity();
+  const load = useCallback(async (force = false) => {
+    const data = await fetchCityCached(force);
     setCityName(data.city?.name ?? "—");
     setPopulation(data.city?.population ?? 0);
     setPlayable(data.city?.playable ?? false);
@@ -81,8 +83,11 @@ export function CityPage() {
     setCityJobs(data.jobs ?? []);
     setActiveEmployment(data.activeEmployment ?? null);
     setCityFeed(data.feed ?? []);
-    if (user) setUser({ ...user, player: data.player });
-  }, [setUser, user]);
+    setUser((prev) => (prev ? { ...prev, player: data.player } : prev));
+  }, [setUser]);
+
+  const loadRef = useRef(load);
+  loadRef.current = load;
 
   useEffect(() => {
     const openSection = (location.state as CityOpenState | null)?.openSection;
@@ -94,10 +99,11 @@ export function CityPage() {
   }, [location.state, location.pathname, navigate]);
 
   useEffect(() => {
-    load().catch((e) => showNotice(e instanceof Error ? e.message : "Ошибка", "error"));
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, [load]);
+    loadRef.current().catch((e) => showNotice(e instanceof Error ? e.message : "Ошибка", "error"));
+  }, [showNotice]);
+
+  const tickActive = traveling || section === "jobs" || section == null;
+  const tick = useIntervalTick(tickActive);
 
   const liveLocalTime = useMemo(() => {
     if (!cityTimezone) return cityLocalTime;
@@ -135,9 +141,9 @@ export function CityPage() {
     if (section !== "jobs") setJobsSelectedId(null);
   }, [section]);
 
-  const showToast = (msg: string, isErr = false) => {
+  const showToast = useCallback<ToastFn>((msg, isErr = false) => {
     showNotice(msg, isErr ? "error" : "success");
-  };
+  }, [showNotice]);
 
   const remaining = arrivesAt ? Math.max(0, arrivesAt - Date.now()) : 0;
 
@@ -166,13 +172,7 @@ export function CityPage() {
   }, [cityNav, goCityHome]);
 
   if (traveling) {
-    return (
-      <div className="card">
-        <h2>В пути</h2>
-        <p>До прибытия: {formatDuration(remaining)}</p>
-        <p style={{ color: "var(--text-muted)" }}>В городе станет доступно после прибытия.</p>
-      </div>
-    );
+    return <TravelingCard remainingMs={remaining} context="city" />;
   }
 
   const sectionMeta = CITY_SECTIONS.find((s) => s.id === section);
@@ -204,7 +204,10 @@ export function CityPage() {
             selectedId={jobsSelectedId}
             onSelectJob={setJobsSelectedId}
             registerBack={registerSectionBack}
-            onJobsReload={load}
+            onJobsReload={async () => {
+              invalidateCityCache();
+              await load(true);
+            }}
             listMode="vacancies"
           />
         ) : isHousingSection ? (
@@ -213,7 +216,10 @@ export function CityPage() {
             user={user}
             setUser={setUser}
             onToast={showToast}
-            onReload={load}
+            onReload={() => {
+              invalidateCityCache();
+              return load(true);
+            }}
             onNavChange={setHousingNav}
             registerBack={registerSectionBack}
           />
@@ -238,7 +244,7 @@ export function CityPage() {
                 onTab={setShopTab}
                 user={user}
                 setUser={setUser}
-                onToast={(msg, isErr) => showToast(msg, isErr)}
+                onToast={showToast}
                 registerSectionBack={registerSectionBack}
                 onPhoneNavChange={setPhoneNav}
                 onCarNavChange={setCarNav}
@@ -250,7 +256,7 @@ export function CityPage() {
                 registerBack={registerSectionBack}
                 user={user}
                 setUser={setUser}
-                onToast={(msg, isErr) => showToast(msg, isErr)}
+                onToast={showToast}
               />
             ) : (
               <p>Раздел скоро появится. Пока загляните в другие кнопки или на карту.</p>
@@ -286,15 +292,7 @@ export function CityPage() {
 
       <div className="city-grid">
         {CITY_SECTIONS.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            className="city-grid-btn"
-            onClick={() => setSection(s.id)}
-          >
-            <span className="city-grid-title">{s.title}</span>
-            <span className="city-grid-hint">{s.hint}</span>
-          </button>
+          <CityGridButton key={s.id} title={s.title} onClick={() => setSection(s.id)} />
         ))}
       </div>
 
@@ -326,10 +324,7 @@ function ShopSection({
     return (
       <div className="city-grid shop-categories">
         {SHOP_CATEGORIES.map((c) => (
-          <button key={c.id} type="button" className="city-grid-btn" onClick={() => onTab(c.id)}>
-            <span className="city-grid-title">{c.title}</span>
-            <span className="city-grid-hint">{c.hint}</span>
-          </button>
+          <CityGridButton key={c.id} title={c.title} onClick={() => onTab(c.id)} />
         ))}
       </div>
     );

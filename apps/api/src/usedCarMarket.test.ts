@@ -7,6 +7,7 @@ import {
   getMileageWearMultiplier,
   isCarClassOnUsedMarket,
   buildDiagnosisRanges,
+  listingDiagnoseCostRub,
 } from "./usedCarMarket.js";
 import { isCarClassAvailableInCity } from "./carMarket.js";
 
@@ -25,6 +26,30 @@ describe("usedCarMarket", () => {
     assert.equal(isCarClassAvailableInCity("samara", "comfort_plus"), true);
     assert.equal(isCarClassOnUsedMarket("samara", "premium"), true);
     assert.equal(isCarClassOnUsedMarket("samara", "luxury"), false);
+  });
+
+  it("diagnose cost is stable per listing id", () => {
+    const listing = {
+      id: "omsk-123-0",
+      carModelId: "lada_granta",
+      mileageKm: 50_000,
+      condition: {
+        engine: 80,
+        transmission: 75,
+        tires: 70,
+        alignment: 68,
+        body: 85,
+        electronics: 72,
+        interior: 78,
+      },
+      overallVisible: 82,
+      priceRub: 600_000,
+      newPriceRub: 900_000,
+    };
+    const a = listingDiagnoseCostRub(listing);
+    const b = listingDiagnoseCostRub(listing);
+    assert.equal(a, b);
+    assert.ok(a >= 500);
   });
 
   it("generates stable listing count for Omsk in a refresh slot", () => {

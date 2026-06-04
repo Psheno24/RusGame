@@ -15,7 +15,9 @@ import {
   type HousingPurchaseQuote,
   type User,
 } from "../api";
+import { useToastRef } from "../hooks/useToastRef";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { CityGridButton } from "./ui/CityGridButton";
 
 type HousingNav = "hub" | "buy" | "buyDetail" | "exchange" | "rent";
 
@@ -56,6 +58,7 @@ export function HousingShop({
   onNavChange,
   registerBack,
 }: Props) {
+  const onToastRef = useToastRef(onToast);
   const [nav, setNav] = useState<HousingNav>("hub");
   const [info, setInfo] = useState<HousingInfo | null>(initialInfo);
   const [propertyId, setPropertyId] = useState<string | null>(null);
@@ -74,9 +77,9 @@ export function HousingShop({
     if (!initialInfo) {
       fetchHousing()
         .then(setInfo)
-        .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+        .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true));
     }
-  }, [initialInfo, onToast]);
+  }, [initialInfo]);
 
   useEffect(() => {
     let title = "Недвижимость";
@@ -126,8 +129,8 @@ export function HousingShop({
     }
     fetchHousingExchangeQuote(propertyId, exchangeIds)
       .then(setExchangeQuote)
-      .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
-  }, [nav, propertyId, exchangeIds, onToast]);
+      .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true));
+  }, [nav, propertyId, exchangeIds]);
 
   const refresh = async () => {
     const data = await fetchHousing();
@@ -183,65 +186,43 @@ export function HousingShop({
   const pendingCopy = (() => {
     if (!pending) return null;
     if (pending.kind === "dorm") {
-      const sub =
-        pending.subletIncomeRub > 0
-          ? ` Свободные квартиры сдадутся на ${info?.prices.dormHours ?? 24} ч (доход ~${rub(pending.subletIncomeRub)}, аренда/30 за каждый день).`
-          : "";
       return {
-        title: "Оплатить общежитие?",
-        text: `Сутки в общежитии — ${rub(info?.prices.dormRub ?? 0)}.${sub}`,
+        title: "Общежитие?",
+        text: `${rub(info?.prices.dormRub ?? 0)} · сутки`,
         confirmLabel: "Подтвердить",
         confirmClassName: "btn-primary",
       };
     }
     if (pending.kind === "rent") {
-      const sub =
-        pending.subletIncomeRub > 0
-          ? ` Свободные квартиры сдадутся на ${info?.prices.rentDays ?? 30} дн. (+${rub(pending.subletIncomeRub)}).`
-          : "";
       return {
-        title: "Оплатить аренду?",
-        text: `Квартира на ${info?.prices.rentDays ?? 30} дн. — ${rub(info?.prices.rentRub ?? 0)}.${sub}`,
+        title: "Аренда?",
+        text: `${rub(info?.prices.rentRub ?? 0)} · ${info?.prices.rentDays ?? 30} дн.`,
         confirmLabel: "Подтвердить",
         confirmClassName: "btn-primary",
       };
     }
     if (pending.kind === "sell") {
-      const home =
-        selected?.isActiveResidence
-          ? " Это ваше текущее жильё — после продажи вернётесь к прежнему варианту."
-          : "";
+      const home = selected?.isActiveResidence ? " · сменится жильё" : "";
       return {
-        title: "Продать квартиру?",
-        text: `«${pending.title}»: вы получите ${rub(pending.amountRub)} (60% от ${rub(pending.catalogPriceRub)}).${home}`,
+        title: "Продать?",
+        text: `${rub(pending.amountRub)}${home}`,
         confirmLabel: "Подтвердить",
         confirmClassName: "btn-danger",
       };
     }
     if (pending.kind === "exchange") {
-      const lines = pending.quote.tradeInUnits.map(
-        (u) => `• ${u.title}: ${rub(u.amountRub)}`,
-      );
-      const excess =
-        pending.quote.excessRub > 0
-          ? `\nСдача: +${rub(pending.quote.excessRub)}.`
-          : "";
       return {
-        title: "Купить с зачётом?",
-        text: `«${pending.title}»\nЗачёт: ${rub(pending.quote.tradeInRub)}${lines.length ? `\n${lines.join("\n")}` : ""}\nК оплате: ${rub(pending.quote.netPriceRub)}.${excess}`,
+        title: "С зачётом?",
+        text: `${rub(pending.quote.netPriceRub)} к оплате`,
         confirmLabel: "Подтвердить",
         confirmClassName: "btn-success",
       };
     }
     if (pending.kind === "postBuy") return null;
-    const moveNote = pending.quote.willMoveIn ? " Вы переедете сюда." : "";
-    const sub =
-      pending.quote.subletNewIncomeRub > 0
-        ? ` Остальные квартиры сдадутся на 30 дн. (+${rub(pending.quote.subletNewIncomeRub)}).`
-        : "";
+    const moveNote = pending.quote.willMoveIn ? " · переезд" : "";
     return {
-      title: "Купить квартиру?",
-      text: `«${pending.title}» за ${rub(pending.quote.netPriceRub)}.${moveNote}${sub}`,
+      title: "Купить?",
+      text: `${rub(pending.quote.netPriceRub)}${moveNote}`,
       confirmLabel: "Подтвердить",
       confirmClassName: "btn-success",
     };
@@ -316,14 +297,8 @@ export function HousingShop({
             </p>
           </div>
           <div className="city-grid shop-categories phone-hub">
-            <button type="button" className="city-grid-btn" onClick={() => setNav("buy")}>
-              <span className="city-grid-title">Купить</span>
-              <span className="city-grid-hint">Квартиры в этом городе</span>
-            </button>
-            <button type="button" className="city-grid-btn" onClick={() => setNav("rent")}>
-              <span className="city-grid-title">Снять</span>
-              <span className="city-grid-hint">Общежитие или аренда</span>
-            </button>
+            <CityGridButton title="Купить" onClick={() => setNav("buy")} />
+            <CityGridButton title="Снять" onClick={() => setNav("rent")} />
           </div>
         </div>
       )}

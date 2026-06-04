@@ -33,10 +33,13 @@ const catalog = JSON.parse(
   readFileSync(join(DATA_DIR, "housingProperties.json"), "utf-8"),
 ) as HousingPropertiesFile;
 
+const sortedByCity: Record<string, HousingPropertyDef[]> = {};
+for (const [cityId, list] of Object.entries(catalog.byCity)) {
+  sortedByCity[cityId] = [...list].sort((a, b) => a.priceRub - b.priceRub);
+}
+
 export function getHousingPropertiesForCity(cityId: string): HousingPropertyDef[] {
-  const cityList = catalog.byCity[cityId];
-  if (!cityList?.length) return [];
-  return [...cityList].sort((a, b) => a.priceRub - b.priceRub);
+  return sortedByCity[cityId] ?? [];
 }
 
 export function getHousingProperty(cityId: string, propertyId: string): HousingPropertyDef | undefined {

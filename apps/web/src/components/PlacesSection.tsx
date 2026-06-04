@@ -3,6 +3,7 @@ import { performAction, type User } from "../api";
 import type { NavBackHandler } from "../navBack";
 import { CITY_PLACES, type PlaceId } from "../placesData";
 import { CarRepairPlace } from "./CarRepairPlace";
+import { CityGridButton } from "./ui/CityGridButton";
 import { PoliceLicenseShop } from "./PoliceLicenseShop";
 
 type Props = {
@@ -41,15 +42,7 @@ export function PlacesSection({
     const place = CITY_PLACES.find((p) => p.id === placeId)!;
 
     if (placeId === "flea_market") {
-      return (
-        <div className="place-detail">
-          <p className="place-detail-lead">{place.hint}</p>
-          <p className="shop-stub">
-            Лоты с ценами и городом, где лежит товар, появятся в следующем обновлении. Пока можно
-            заглянуть в магазин или недвижимость.
-          </p>
-        </div>
-      );
+      return <p className="shop-stub">Скоро</p>;
     }
 
     if (placeId === "police") {
@@ -84,8 +77,7 @@ export function PlacesSection({
       const rubles = user.player.rubles;
       return (
         <div className="place-detail">
-          <p className="place-detail-lead">{place.hint}</p>
-          <p>Билет в кино: 500 ₽ · +22 настроение</p>
+          {place.hint ? <p className="place-detail-lead">{place.hint}</p> : null}
           <button
             type="button"
             className="btn btn-primary"
@@ -111,21 +103,13 @@ export function PlacesSection({
       );
     }
 
-    return (
-      <div className="place-detail">
-        <p className="place-detail-lead">{place.hint}</p>
-        <p className="shop-stub">Содержимое «{place.title}» появится в следующих обновлениях.</p>
-      </div>
-    );
+    return <p className="shop-stub">Скоро</p>;
   }
 
   return (
     <div className="city-grid places-grid">
       {CITY_PLACES.map((p) => (
-        <button key={p.id} type="button" className="city-grid-btn" onClick={() => onPlace(p.id)}>
-          <span className="city-grid-title">{p.title}</span>
-          <span className="city-grid-hint">{p.hint}</span>
-        </button>
+        <CityGridButton key={p.id} title={p.title} onClick={() => onPlace(p.id)} />
       ))}
     </div>
   );

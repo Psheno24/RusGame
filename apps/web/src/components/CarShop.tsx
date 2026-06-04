@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useToastRef } from "../hooks/useToastRef";
 import {
   buyCar,
   buyUsedCar,
@@ -33,6 +34,7 @@ import {
 } from "../api";
 import type { NavBackHandler } from "../navBack";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { CityGridButton } from "./ui/CityGridButton";
 import { PlateShopPanel } from "./PlateShopPanel";
 import { VehiclePlate } from "./VehiclePlate";
 
@@ -260,41 +262,58 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
     return () => registerBack(null);
   }, [nav, registerBack]);
 
+  const onToastRef = useToastRef(onToast);
+
+  useEffect(() => {
+    if (nav !== "usedDetail" || !usedListingId) {
+      setUsedDetail(null);
+      return;
+    }
+    let cancelled = false;
+    fetchUsedCarDetail(usedListingId)
+      .then((detail) => {
+        if (!cancelled) setUsedDetail(detail);
+      })
+      .catch((e) =>
+        onToastRef.current(e instanceof Error ? e.message : "Ошибка", true),
+      );
+    return () => {
+      cancelled = true;
+    };
+  }, [nav, usedListingId]);
+
   useEffect(() => {
     if (nav === "buyChoice" || nav === "buyCategories") {
       fetchCarCategories()
         .then((r) => setCategories(r.categories))
-        .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+        .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true));
     }
     if (nav === "usedList") {
       fetchUsedCarMarket()
         .then(setUsedMarket)
-        .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
-    }
-    if (nav === "usedDetail" && usedListingId) {
-      fetchUsedCarDetail(usedListingId)
-        .then(setUsedDetail)
-        .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+        .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true));
     }
     if (nav === "buyList" || nav === "buyDetail" || nav === "tradeIn") {
-      reloadCategory().catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+      reloadCategory().catch((e) =>
+        onToastRef.current(e instanceof Error ? e.message : "Ошибка", true),
+      );
     }
     if (nav === "rent") {
       fetchVehicleRentals()
         .then((r) => setRentals(r.rentals))
-        .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+        .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true));
     }
     if (nav === "plate") {
       fetchPlateGarage()
         .then((r) => setPlateGarage(r.cars))
-        .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+        .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true));
     }
     if (nav === "plateDetail" && platePlayerCarId) {
       fetchPlateShopCar(platePlayerCarId)
         .then(setPlateInfo)
-        .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+        .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true));
     }
-  }, [nav, reloadCategory, onToast, platePlayerCarId, usedListingId]);
+  }, [nav, reloadCategory, platePlayerCarId]);
 
   useEffect(() => {
     if (nav !== "tradeIn" || !carId) return;
@@ -453,35 +472,17 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
 
       {nav === "hub" && (
         <div className="city-grid shop-categories phone-hub">
-          <button type="button" className="city-grid-btn" onClick={() => go("buyChoice")}>
-            <span className="city-grid-title">Купить авто</span>
-            <span className="city-grid-hint">Новые и с пробегом</span>
-          </button>
-          <button type="button" className="city-grid-btn" onClick={() => go("rent")}>
-            <span className="city-grid-title">Аренда</span>
-            <span className="city-grid-hint">Самокат, велосипед, скутер…</span>
-          </button>
-          <button type="button" className="city-grid-btn" onClick={() => go("plate")}>
-            <span className="city-grid-title">Гос.номер</span>
-            <span className="city-grid-hint">Оформление и смена</span>
-          </button>
-          <button type="button" className="city-grid-btn" onClick={() => go("tuning")}>
-            <span className="city-grid-title">Тюнинг</span>
-            <span className="city-grid-hint">Скоро</span>
-          </button>
+          <CityGridButton title="Купить авто" onClick={() => go("buyChoice")} />
+          <CityGridButton title="Аренда" onClick={() => go("rent")} />
+          <CityGridButton title="Гос.номер" onClick={() => go("plate")} />
+          <CityGridButton title="Скоро" hint="Тюнинг" disabled />
         </div>
       )}
 
       {nav === "buyChoice" && (
         <div className="city-grid shop-categories phone-hub">
-          <button type="button" className="city-grid-btn" onClick={() => go("buyCategories")}>
-            <span className="city-grid-title">Новые</span>
-            <span className="city-grid-hint">Салон по категориям прав</span>
-          </button>
-          <button type="button" className="city-grid-btn" onClick={() => go("usedList")}>
-            <span className="city-grid-title">С пробегом</span>
-            <span className="city-grid-hint">Б/у рынок, диагностика перед покупкой</span>
-          </button>
+          <CityGridButton title="Новые" onClick={() => go("buyCategories")} />
+          <CityGridButton title="С пробегом" onClick={() => go("usedList")} />
         </div>
       )}
 
@@ -1029,9 +1030,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
       )}
 
       {nav === "tuning" && (
-        <div className="card">
-          <p style={{ color: "var(--text-muted)" }}>Тюнинг появится в следующих обновлениях.</p>
-        </div>
+        <p className="shop-stub">Скоро</p>
       )}
     </>
   );

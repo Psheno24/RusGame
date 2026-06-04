@@ -11,8 +11,8 @@ import {
 } from "./playerCars.js";
 import {
   buildDiagnosisRanges,
-  diagnoseCostRub,
   ensureCityUsedMarket,
+  listingDiagnoseCostRub,
   formatMileageKm,
   getCityListing,
   getMaxUsedCarClassForCity,
@@ -108,7 +108,7 @@ function toListingView(
     priceVsNewPct: Math.round((listing.priceRub / listing.newPriceRub) * 100),
     diagnosed: diagnosis != null,
     diagnosis,
-    diagnoseCostRub: diagnoseCostRub(listing.priceRub),
+    diagnoseCostRub: listingDiagnoseCostRub(listing),
   };
 }
 
@@ -154,7 +154,7 @@ export function diagnoseUsedCar(
     return { ok: true, diagnosis: existing, costRub: 0 };
   }
 
-  const costRub = diagnoseCostRub(listing.priceRub);
+  const costRub = listingDiagnoseCostRub(listing);
   if (player.rubles < costRub) {
     return { ok: false, error: `Нужно ${costRub.toLocaleString("ru-RU")} ₽ за диагностику` };
   }

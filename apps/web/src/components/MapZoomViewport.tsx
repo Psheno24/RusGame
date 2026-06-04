@@ -18,6 +18,8 @@ import {
   type MapViewBox,
 } from "../mapViewBox";
 
+const MAP_HINT_KEY = "russiaGame.mapGestureHintDismissed";
+
 type Props = {
   focusCityId: string;
   active: boolean;
@@ -48,6 +50,9 @@ function initialViewBox(focusCityId: string): MapViewBox {
 
 export function MapZoomViewport({ focusCityId, active, children }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const [showGestureHint, setShowGestureHint] = useState(
+    () => typeof localStorage !== "undefined" && !localStorage.getItem(MAP_HINT_KEY),
+  );
   const [vb, setVb] = useState<MapViewBox>(() => initialViewBox(focusCityId));
   const vbRef = useRef(vb);
   vbRef.current = vb;
@@ -164,7 +169,21 @@ export function MapZoomViewport({ focusCityId, active, children }: Props) {
           ⊙
         </button>
       </div>
-      <p className="map-viewport-hint">Два пальца — масштаб · перетаскивание — двигать карту</p>
+      {showGestureHint ? (
+        <p className="map-viewport-hint">
+          Два пальца — масштаб · перетаскивание — карта{" "}
+          <button
+            type="button"
+            className="map-viewport-hint-dismiss"
+            onClick={() => {
+              localStorage.setItem(MAP_HINT_KEY, "1");
+              setShowGestureHint(false);
+            }}
+          >
+            OK
+          </button>
+        </p>
+      ) : null}
     </div>
   );
 }

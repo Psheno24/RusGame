@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { buyProduct, fetchShopProducts, type ProductPreview, type User } from "../api";
+import { useToastRef } from "../hooks/useToastRef";
 
 type Props = {
   user: User;
@@ -16,6 +17,7 @@ function gainsLabel(p: ProductPreview): string {
 }
 
 export function ProductsShop({ user, setUser, onToast }: Props) {
+  const onToastRef = useToastRef(onToast);
   const [items, setItems] = useState<ProductPreview[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,9 +29,9 @@ export function ProductsShop({ user, setUser, onToast }: Props) {
 
   useEffect(() => {
     reload()
-      .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true))
+      .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true))
       .finally(() => setLoading(false));
-  }, [onToast]);
+  }, []);
 
   const onBuy = async (id: string) => {
     setBusy(id);

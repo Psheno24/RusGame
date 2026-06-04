@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchCity, formatDuration, type JobView } from "../api";
+import { type JobView } from "../api";
+import { fetchCityCached, invalidateCityCache } from "../cityDataCache";
+import { useIntervalTick } from "../hooks/useIntervalTick";
 import { JobsSection } from "../components/JobsSection";
+import { TravelingCard } from "../components/TravelingCard";
 import { useApp } from "../context";
 import { useNotice } from "../noticeContext";
 import { useNavBackSlot } from "../navBack";
 import { useWorkNav } from "../workNav";
+import type { ToastFn } from "../hooks/useToastRef";
 import type { CityOpenState } from "./cityRouteState";
 
 export function WorkPage() {
@@ -17,18 +21,17 @@ export function WorkPage() {
   const [cityTimezone, setCityTimezone] = useState("Europe/Moscow");
   const [cityJobs, setCityJobs] = useState<JobView[]>([]);
   const [activeEmployment, setActiveEmployment] = useState<Awaited<
-    ReturnType<typeof fetchCity>
+    ReturnType<typeof fetchCityCached>
   >["activeEmployment"]>(null);
   const [playable, setPlayable] = useState(true);
   const [traveling, setTraveling] = useState(false);
   const [arrivesAt, setArrivesAt] = useState<number | null>(null);
-  const [tick, setTick] = useState(0);
   const [dataReady, setDataReady] = useState(false);
 
   const employedId = user?.player.jobId ?? null;
 
-  const load = useCallback(async () => {
-    const data = await fetchCity();
+  const load = useCallback(async (force = false) => {
+    const data = await fetchCityCached(force);
     setCityTimezone(data.city?.timezone ?? "Europe/Moscow");
     setPlayable(data.city?.playable ?? false);
     setCityJobs(data.jobs ?? []);
@@ -39,11 +42,14 @@ export function WorkPage() {
     setDataReady(true);
   }, [setUser]);
 
+  const loadRef = useRef(load);
+  loadRef.current = load;
+
   useEffect(() => {
-    load().catch((e) => showNotice(e instanceof Error ? e.message : "Ошибка", "error"));
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, [load, showNotice]);
+    loadRef.current().catch((e) => showNotice(e instanceof Error ? e.message : "Ошибка", "error"));
+  }, [showNotice]);
+
+  const tick = useIntervalTick(traveling || Boolean(employedId));
 
   useEffect(() => {
     if (!traveling || !arrivesAt) return;
@@ -55,9 +61,9 @@ export function WorkPage() {
     return () => workNav?.registerReset(null);
   }, [workNav]);
 
-  const showToast = (msg: string, isErr = false) => {
+  const showToast = useCallback<ToastFn>((msg, isErr = false) => {
     showNotice(msg, isErr ? "error" : "success");
-  };
+  }, [showNotice]);
 
   const goToVacancies = () => {
     navigate("/city", { state: { openSection: "jobs" } satisfies CityOpenState });
@@ -73,13 +79,7 @@ export function WorkPage() {
 
   if (traveling) {
     const remaining = arrivesAt ? Math.max(0, arrivesAt - Date.now()) : 0;
-    return (
-      <div className="card">
-        <h2>В пути</h2>
-        <p>До прибытия: {formatDuration(remaining)}</p>
-        <p style={{ color: "var(--text-muted)" }}>Работа станет доступна после прибытия.</p>
-      </div>
-    );
+    return <TravelingCard remainingMs={remaining} context="work" />;
   }
 
   if (!playable) {
@@ -101,10 +101,9 @@ export function WorkPage() {
   if (!employedId) {
     return (
       <div className="card work-empty-card">
-        <p>У вас пока нет работы.</p>
-        <p className="work-empty-hint">Устройтесь в городе — откройте вакансии и выберите подходящую.</p>
+        <p>Нет работы</p>
         <button type="button" className="btn btn-primary" onClick={goToVacancies}>
-          Перейти к вакансиям
+          Вакансии
         </button>
       </div>
     );
@@ -133,7 +132,10 @@ export function WorkPage() {
       selectedId={employedId}
       onSelectJob={() => {}}
       registerBack={registerSectionBack}
-      onJobsReload={load}
+      onJobsReload={async () => {
+        invalidateCityCache();
+        await load(true);
+      }}
       listMode="none"
     />
   );

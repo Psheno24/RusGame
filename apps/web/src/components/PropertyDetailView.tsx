@@ -12,6 +12,7 @@ import {
   type PropertySellQuote,
   type User,
 } from "../api";
+import { useToastRef } from "../hooks/useToastRef";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { VehiclePlate } from "./VehiclePlate";
 
@@ -28,6 +29,7 @@ type Props = {
 };
 
 export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onChanged }: Props) {
+  const onToastRef = useToastRef(onToast);
   const [detail, setDetail] = useState<PropertyDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -45,11 +47,11 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
     setLoading(true);
     load()
       .catch((e) => {
-        onToast(e instanceof Error ? e.message : "Ошибка", true);
+        onToastRef.current(e instanceof Error ? e.message : "Ошибка", true);
         onBack();
       })
       .finally(() => setLoading(false));
-  }, [load, onBack, onToast]);
+  }, [load, onBack]);
 
   useEffect(() => {
     if (

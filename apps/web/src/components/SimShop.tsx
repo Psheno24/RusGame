@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useToastRef } from "../hooks/useToastRef";
 import type { NavBackHandler } from "../navBack";
 import {
   changeSimPart,
@@ -30,6 +31,7 @@ type Props = {
 };
 
 export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onExitToPhoneHub }: Props) {
+  const onToastRef = useToastRef(onToast);
   const [view, setView] = useState<SimView>("main");
   const [info, setInfo] = useState<SimShopInfo | null>(null);
   const [topupAmount, setTopupAmount] = useState("500");
@@ -37,14 +39,17 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
   const [pending, setPending] = useState<SimPending | null>(null);
   const p = user.player;
 
-  const reload = () =>
-    fetchSimShop()
-      .then(setInfo)
-      .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+  const reload = useCallback(
+    () =>
+      fetchSimShop()
+        .then(setInfo)
+        .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true)),
+    [],
+  );
 
   useEffect(() => {
-    reload();
-  }, [p.phoneNumber, p.hasSim, p.simBalanceRub, p.simTariffId, p.simTariffPaidUntil, p.phoneDeviceId]);
+    void reload();
+  }, [p.phoneNumber, p.hasSim, p.simBalanceRub, p.simTariffId, p.simTariffPaidUntil, p.phoneDeviceId, reload]);
 
   useEffect(() => {
     const title =
@@ -135,7 +140,7 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
     if (pending.type === "topup") {
       return {
         title: "Пополнить сим?",
-        text: `С основного счёта спишется ${pending.amount.toLocaleString("ru-RU")} ₽ и зачислится на баланс сим-карты.`,
+        text: `${pending.amount.toLocaleString("ru-RU")} ₽ с основного счёта`,
         confirmLabel: "Пополнить",
         confirmClassName: "btn-primary",
       };
@@ -143,35 +148,31 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
     const q = pending.quote;
     if (q.kind === "downgrade") {
       return {
-        title: `Перейти на «${q.title}»?`,
-        text: `Сейчас действует «${q.currentTitle}». Тариф «${q.title}» применится при следующем списании — ${q.effectiveAtLabel ?? "—"}. До этой даты условия текущего тарифа не меняются.`,
+        title: `«${q.title}»?`,
+        text: `С ${q.effectiveAtLabel ?? "след. списания"}`,
         confirmLabel: "Подтвердить",
         confirmClassName: "btn-primary",
       };
     }
     if (q.kind === "upgrade") {
-      const prorate =
-        q.prorateDaysUsed != null && q.prorateDaysRemaining != null
-          ? ` За ${q.prorateDaysUsed} из 7 дн. текущего тарифа уже учтено ${q.currentWeeklyRub.toLocaleString("ru-RU")} ₽/нед.`
-          : "";
       return {
-        title: `Повысить до «${q.title}»?`,
-        text: `С баланса сим спишется доплата ${q.chargeRub.toLocaleString("ru-RU")} ₽.${prorate} Оплачено до ${q.paidUntilLabel} — срок не меняется. Следующее списание ${q.weeklyRub.toLocaleString("ru-RU")} ₽ — ${q.nextChargeLabel}.`,
+        title: `«${q.title}»?`,
+        text: `Доплата ${q.chargeRub.toLocaleString("ru-RU")} ₽ · до ${q.paidUntilLabel}`,
         confirmLabel: "Подтвердить",
         confirmClassName: "btn-primary",
       };
     }
     if (q.chargeRub <= 0) {
       return {
-        title: `Тариф «${q.title}»?`,
-        text: "Платных списаний нет. Можно принимать только входящие звонки.",
+        title: `«${q.title}»?`,
+        text: "Только входящие",
         confirmLabel: "Подтвердить",
         confirmClassName: "btn-primary",
       };
     }
     return {
-      title: `Тариф «${q.title}»?`,
-      text: `С баланса сим спишется ${q.chargeRub.toLocaleString("ru-RU")} ₽ (${q.cityName}). Оплачено до ${q.paidUntilLabel}. Следующее списание ${q.weeklyRub.toLocaleString("ru-RU")} ₽ — ${q.nextChargeLabel}.`,
+      title: `«${q.title}»?`,
+      text: `${q.chargeRub.toLocaleString("ru-RU")} ₽ · до ${q.paidUntilLabel}`,
       confirmLabel: "Подтвердить",
       confirmClassName: "btn-primary",
     };

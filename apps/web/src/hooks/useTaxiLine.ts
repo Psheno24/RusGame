@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useToastRef } from "./useToastRef";
 import {
   fetchTaxiStatus,
   taxiAcceptOrder,
@@ -23,8 +24,7 @@ export function useTaxiLine(
   const [pickCar, setPickCarState] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const onToastRef = useRef(onToast);
-  onToastRef.current = onToast;
+  const onToastRef = useToastRef(onToast);
   const setUserRef = useRef(setUser);
   setUserRef.current = setUser;
   const pickCarRef = useRef("");

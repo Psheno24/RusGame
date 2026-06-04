@@ -1,4 +1,6 @@
+import type { JobRequirement } from "../jobRequirements";
 import { JobActionButtonLabel } from "./JobActionButtonLabel";
+import { JobRequirementsList } from "./JobRequirementsList";
 import { TaxiLinePanels, TaxiLineSetup } from "./TaxiLineSection";
 import { useTaxiLine } from "../hooks/useTaxiLine";
 import type { JobView, User } from "../api";
@@ -16,7 +18,7 @@ type Props = {
   quitRemainingMs?: number;
   onRequestQuit: () => void;
   shiftDurationLabel: string;
-  jobRequirements: { label: string; ok: boolean; status?: string }[];
+  jobRequirements: JobRequirement[];
 };
 
 export function TaxiEmployedJobView({
@@ -55,27 +57,13 @@ export function TaxiEmployedJobView({
           <dl className="phone-specs job-specs">
             <div>
               <dt>Зарплата</dt>
-              <dd>Неопределённая (зависит от заказов и длительности сессии)</dd>
+              <dd>Доход неопределён</dd>
             </div>
             <div>
               <dt>Сессия</dt>
               <dd>{shiftDurationLabel}</dd>
             </div>
-            <div className="job-requirements">
-              <dt>Требования</dt>
-              <dd>
-                <ul className="job-requirements-list">
-                  {jobRequirements.map((req) => (
-                    <li key={req.label}>
-                      {req.label}{" "}
-                      <span className={req.ok ? "license-ok" : "license-miss"}>
-                        {req.status ?? (req.ok ? "есть" : "нет")}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </dd>
-            </div>
+            <JobRequirementsList requirements={jobRequirements} />
           </dl>
 
           <TaxiLineSetup taxi={taxi} />

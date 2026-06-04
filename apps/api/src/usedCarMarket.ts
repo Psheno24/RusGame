@@ -54,6 +54,8 @@ export type UsedCarListing = {
   overallVisible: number;
   priceRub: number;
   newPriceRub: number;
+  /** Фиксируется при генерации рынка; старые записи без поля — детерминированный fallback. */
+  diagnoseCostRub?: number;
 };
 
 export type UsedCarDiagnosisRanges = {
@@ -138,6 +140,24 @@ function listingCountForCity(cityId: string, refreshSlot: number): number {
     override ?? config.listingCountByMarketLevel[String(level)] ?? [6, 10];
   const rng = mulberry32(hashCitySlot(cityId, refreshSlot) ^ 0x9e3779b9);
   return randInt(rng, range[0], range[1]);
+}
+
+function hashListingId(listingId: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < listingId.length; i++) {
+    h ^= listingId.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+/** Стабильная стоимость диагностики для объявления (не меняется между запросами). */
+export function listingDiagnoseCostRub(listing: UsedCarListing): number {
+  if (listing.diagnoseCostRub != null && listing.diagnoseCostRub > 0) {
+    return listing.diagnoseCostRub;
+  }
+  const rng = mulberry32(hashListingId(listing.id) ^ 0xd1a90e01);
+  return diagnoseCostRub(listing.priceRub, rng);
 }
 
 function hashCitySlot(cityId: string, slot: number): number {
@@ -240,6 +260,7 @@ export function generateCityListings(cityId: string, refreshedAt: number): UsedC
     const condition = rollCondition(rng, mileageKm);
     const newPriceRub = getCarCityPriceRub(cityId, car);
     const priceRub = rollPriceRub(rng, newPriceRub, condition, mileageKm);
+    const diagnoseCost = diagnoseCostRub(priceRub, rng);
 
     listings.push({
       id: `${cityId}-${refreshedAt}-${i}`,
@@ -249,6 +270,7 @@ export function generateCityListings(cityId: string, refreshedAt: number): UsedC
       overallVisible: visibleOverall(condition, rng),
       priceRub,
       newPriceRub,
+      diagnoseCostRub: diagnoseCost,
     });
   }
 

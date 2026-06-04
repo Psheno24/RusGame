@@ -30,7 +30,7 @@ export type JobKind = "duration" | "cooldown" | "taxi_line";
 
 export type JobTemplate = {
   title: string;
-  description: string;
+  description?: string;
   kind: JobKind;
   shiftHoursMin?: number;
   shiftHoursMax?: number;

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { buyPoliceLicense, fetchPoliceLicenses, type User } from "../api";
+import { useToastRef } from "../hooks/useToastRef";
 import type { NavBackHandler } from "../navBack";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { CityGridButton } from "./ui/CityGridButton";
 
 type LicenseRow = {
   category: string;
@@ -25,6 +27,7 @@ function rub(n: number) {
 }
 
 export function PoliceLicenseShop({ user, setUser, onToast, registerBack, onExitPlace }: Props) {
+  const onToastRef = useToastRef(onToast);
   const [nav, setNav] = useState<PoliceNav>("hub");
   const [licenses, setLicenses] = useState<LicenseRow[]>([]);
   const [pending, setPending] = useState<LicenseRow | null>(null);
@@ -48,9 +51,9 @@ export function PoliceLicenseShop({ user, setUser, onToast, registerBack, onExit
     if (nav === "licenses") {
       fetchPoliceLicenses()
         .then((r) => setLicenses(r.licenses))
-        .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+        .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true));
     }
-  }, [nav, onToast]);
+  }, [nav]);
 
   const onConfirm = async () => {
     if (!pending) return;
@@ -82,22 +85,13 @@ export function PoliceLicenseShop({ user, setUser, onToast, registerBack, onExit
 
       {nav === "hub" && (
         <div className="city-grid shop-categories phone-hub police-hub">
-          <button type="button" className="city-grid-btn" onClick={() => setNav("licenses")}>
-            <span className="city-grid-title">Водительское удостоверение</span>
-            <span className="city-grid-hint">Категории A, B, C, D, BE</span>
-          </button>
-          <button type="button" className="city-grid-btn" onClick={() => setNav("fines")}>
-            <span className="city-grid-title">Штрафы</span>
-            <span className="city-grid-hint">Скоро</span>
-          </button>
+          <CityGridButton title="Водительские права" onClick={() => setNav("licenses")} />
+          <CityGridButton title="Штрафы" hint="Скоро" disabled />
         </div>
       )}
 
       {nav === "licenses" && (
         <div className="police-licenses">
-          <p className="place-detail-lead">
-            Оформление прав для покупки и управления транспортом нужной категории.
-          </p>
           <ul className="phone-list police-license-list">
             {licenses.map((lic) => {
               const has = owned.has(lic.category);

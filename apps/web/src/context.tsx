@@ -4,7 +4,9 @@ import {
   useContext,
   useEffect,
   useState,
+  type Dispatch,
   type ReactNode,
+  type SetStateAction,
 } from "react";
 import {
   fetchMe,
@@ -19,7 +21,7 @@ import {
 type AppContextValue = {
   user: User | null;
   loading: boolean;
-  setUser: (u: User | null) => void;
+  setUser: Dispatch<SetStateAction<User | null>>;
   login: (l: string, p: string) => Promise<void>;
   register: (l: string, p: string) => Promise<void>;
   logout: () => Promise<void>;

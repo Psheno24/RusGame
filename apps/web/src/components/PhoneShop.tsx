@@ -10,7 +10,9 @@ import {
   type User,
 } from "../api";
 import type { NavBackHandler } from "../navBack";
+import { useToastRef } from "../hooks/useToastRef";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { CityGridButton } from "./ui/CityGridButton";
 import { PhonePreview } from "./PhonePreview";
 import { SimShop } from "./SimShop";
 
@@ -33,6 +35,7 @@ function rub(n: number) {
 }
 
 export function PhoneShop({ user, setUser, onToast, onNavChange, registerBack }: Props) {
+  const onToastRef = useToastRef(onToast);
   const [nav, setNav] = useState<PhoneNav>("hub");
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [phones, setPhones] = useState<PhoneDevice[]>([]);
@@ -86,9 +89,9 @@ export function PhoneShop({ user, setUser, onToast, onNavChange, registerBack }:
     if (nav === "devices" || nav === "detail") {
       fetchShopPhones()
         .then((r) => setPhones(r.phones))
-        .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
+        .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true));
     }
-  }, [nav, onToast]);
+  }, [nav]);
 
   const ownedDevice = p.phoneDeviceId === deviceId;
 
@@ -122,8 +125,8 @@ export function PhoneShop({ user, setUser, onToast, onNavChange, registerBack }:
     }
     fetchPhoneSellQuote()
       .then(setSellQuote)
-      .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true));
-  }, [nav, ownedDevice, onToast]);
+      .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true));
+  }, [nav, ownedDevice]);
 
   const go = (next: PhoneNav, id: string | null = null) => {
     setNav(next);
@@ -233,14 +236,8 @@ export function PhoneShop({ user, setUser, onToast, onNavChange, registerBack }:
 
       {nav === "hub" && (
         <div className="city-grid shop-categories phone-hub">
-          <button type="button" className="city-grid-btn" onClick={() => go("devices")}>
-            <span className="city-grid-title">Устройства</span>
-            <span className="city-grid-hint">Смартфоны на выбор</span>
-          </button>
-          <button type="button" className="city-grid-btn" onClick={() => go("sim")}>
-            <span className="city-grid-title">Сим-карта</span>
-            <span className="city-grid-hint">Номер для связи</span>
-          </button>
+          <CityGridButton title="Устройства" onClick={() => go("devices")} />
+          <CityGridButton title="Сим-карта" onClick={() => go("sim")} />
         </div>
       )}
 

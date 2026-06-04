@@ -486,7 +486,6 @@ export type JobView = {
   workCityName?: string | null;
   physicallyHere?: boolean;
   residentHere?: boolean;
-  description: string;
   kind: "duration" | "cooldown" | "taxi_line";
   shiftHoursMin: number | null;
   shiftHoursMax: number | null;

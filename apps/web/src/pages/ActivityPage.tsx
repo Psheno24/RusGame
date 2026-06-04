@@ -49,9 +49,7 @@ export function ActivityPage() {
       {loading ? (
         <p className="player-feed-empty">Загрузка…</p>
       ) : events.length === 0 ? (
-        <p className="player-feed-empty">
-          Пока нет записей — поездки, работа и покупки появятся здесь.
-        </p>
+        <p className="player-feed-empty">Пока пусто</p>
       ) : (
         <ul className="player-feed-list">
           {events.map((ev) => (

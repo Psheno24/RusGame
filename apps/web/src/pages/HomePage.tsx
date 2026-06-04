@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   fetchHome,
@@ -10,6 +10,8 @@ import {
 } from "../api";
 import { useApp } from "../context";
 import { useNotice } from "../noticeContext";
+import { TravelingCard } from "../components/TravelingCard";
+import { useIntervalTick } from "../hooks/useIntervalTick";
 import { useHomeNav } from "../homeNav";
 import { SLEEP_MS_FOR_FULL_ENERGY } from "../sleepConstants";
 import {
@@ -37,8 +39,6 @@ export function HomePage() {
   const [targetEnergy, setTargetEnergy] = useState(100);
   const [showRest, setShowRest] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [tick, setTick] = useState(0);
-
   const load = useCallback(async () => {
     const data = await fetchHome();
     setHome(data.home);
@@ -48,11 +48,14 @@ export function HomePage() {
     setUser((prev) => (prev ? { ...prev, player: data.player } : prev));
   }, [setUser]);
 
+  const loadRef = useRef(load);
+  loadRef.current = load;
+
   useEffect(() => {
-    load().catch((e) => showNotice(e instanceof Error ? e.message : "Ошибка", "error"));
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, [load, showNotice]);
+    loadRef.current().catch((e) => showNotice(e instanceof Error ? e.message : "Ошибка", "error"));
+  }, [showNotice]);
+
+  const tick = useIntervalTick(traveling || Boolean(home?.sleeping));
 
   useEffect(() => {
     homeNav?.registerReset(() => {
@@ -116,13 +119,7 @@ export function HomePage() {
 
   if (traveling) {
     const remaining = arrivesAt ? Math.max(0, arrivesAt - Date.now()) : 0;
-    return (
-      <div className="card">
-        <h2>В пути</h2>
-        <p>До прибытия: {formatDuration(remaining)}</p>
-        <p style={{ color: "var(--text-muted)" }}>Дом станет доступен после прибытия.</p>
-      </div>
-    );
+    return <TravelingCard remainingMs={remaining} context="home" />;
   }
 
   if (!home) {
