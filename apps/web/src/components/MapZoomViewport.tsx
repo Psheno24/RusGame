@@ -1,17 +1,11 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-  type WheelEvent,
-} from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode, type WheelEvent } from "react";
 import { CITY_NODES } from "../mapMetroLayout";
 import {
   clampViewBox,
   mapUiScale,
   panViewBox,
   viewBoxAroundCity,
+  viewBoxAroundCityAt,
   viewBoxFitAll,
   wheelZoomFactor,
   zoomViewBox,
@@ -20,9 +14,20 @@ import {
 
 const MAP_HINT_KEY = "russiaGame.mapGestureHintDismissed";
 
+const MAP_INTERACTIVE_SEL =
+  ".map-hit, .map-label, .map-viewport-overlay, .map-zoom-controls, .map-zoom-btn";
+
 type Props = {
   focusCityId: string;
   active: boolean;
+  /** Центрировать на текущем городе один раз (вход из меню «Город»). */
+  focusHomeOnMount?: boolean;
+  /** Выбранный город — центрируем в видимой области над панелью. */
+  selectedCityId?: string | null;
+  /** Тап по пустому месту на карте (не по городу и не по панели). */
+  onBackgroundClick?: () => void;
+  /** Панель поверх карты (выбор города, билет). */
+  overlay?: ReactNode;
   children: (vb: MapViewBox, uiScale: number) => ReactNode;
 };
 
@@ -43,34 +48,74 @@ function touchCenterRatio(touches: TouchList, rect: DOMRect): { rx: number; ry: 
   };
 }
 
-function initialViewBox(focusCityId: string): MapViewBox {
-  if (focusCityId && CITY_NODES[focusCityId]) return viewBoxAroundCity(focusCityId);
-  return viewBoxFitAll();
+function focalYForOverlay(overlayHeight: number, viewportHeight: number): number {
+  if (overlayHeight <= 0 || viewportHeight <= 0) return 0.5;
+  const ratio = Math.min(0.58, overlayHeight / viewportHeight);
+  return (1 - ratio) * 0.5;
 }
 
-export function MapZoomViewport({ focusCityId, active, children }: Props) {
+export function MapZoomViewport({
+  focusCityId,
+  active,
+  focusHomeOnMount = false,
+  selectedCityId = null,
+  onBackgroundClick,
+  overlay,
+  children,
+}: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const [showGestureHint, setShowGestureHint] = useState(
     () => typeof localStorage !== "undefined" && !localStorage.getItem(MAP_HINT_KEY),
   );
-  const [vb, setVb] = useState<MapViewBox>(() => initialViewBox(focusCityId));
+  const [vb, setVb] = useState<MapViewBox>(() => viewBoxFitAll());
+  const [overlayHeight, setOverlayHeight] = useState(0);
   const vbRef = useRef(vb);
   vbRef.current = vb;
 
   const panRef = useRef<{ x: number; y: number } | null>(null);
   const pinchRef = useRef<{ dist: number; vb: MapViewBox; rx: number; ry: number } | null>(null);
   const movedRef = useRef(false);
+  const homeFocusedRef = useRef(false);
 
   const focusOnCity = useCallback((cityId: string) => {
     if (CITY_NODES[cityId]) setVb(viewBoxAroundCity(cityId));
     else setVb(viewBoxFitAll());
   }, []);
 
+  const focusSelectedCity = useCallback((cityId: string, panelHeight: number) => {
+    if (!CITY_NODES[cityId]) return;
+    const vh = wrapRef.current?.getBoundingClientRect().height ?? 0;
+    const focalY = focalYForOverlay(panelHeight, vh);
+    setVb(viewBoxAroundCityAt(cityId, 0.5, focalY));
+  }, []);
+
   useEffect(() => {
-    if (!active) return;
-    if (focusCityId && CITY_NODES[focusCityId]) focusOnCity(focusCityId);
-    else setVb(viewBoxFitAll());
-  }, [active, focusCityId, focusOnCity]);
+    if (!active || !focusHomeOnMount || homeFocusedRef.current) return;
+    homeFocusedRef.current = true;
+    focusOnCity(focusCityId);
+  }, [active, focusHomeOnMount, focusCityId, focusOnCity]);
+
+  useEffect(() => {
+    if (!active || !selectedCityId || !CITY_NODES[selectedCityId]) return;
+    const vh = wrapRef.current?.getBoundingClientRect().height ?? 0;
+    const effectiveOverlay =
+      overlayHeight > 0 ? overlayHeight : overlay && vh > 0 ? Math.min(vh * 0.42, 220) : 0;
+    focusSelectedCity(selectedCityId, effectiveOverlay);
+  }, [active, selectedCityId, overlayHeight, overlay, focusSelectedCity]);
+
+  useEffect(() => {
+    const el = overlayRef.current;
+    if (!overlay || !el) {
+      setOverlayHeight(0);
+      return;
+    }
+    const measure = () => setOverlayHeight(el.getBoundingClientRect().height);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [overlay]);
 
   const rectOf = () => wrapRef.current?.getBoundingClientRect();
 
@@ -85,6 +130,7 @@ export function MapZoomViewport({ focusCityId, active, children }: Props) {
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
+    if ((e.target as Element).closest(MAP_INTERACTIVE_SEL)) return;
     movedRef.current = false;
     wrapRef.current?.setPointerCapture(e.pointerId);
     panRef.current = { x: e.clientX, y: e.clientY };
@@ -102,8 +148,13 @@ export function MapZoomViewport({ focusCityId, active, children }: Props) {
     setVb((cur) => panViewBox(cur, dx, dy, rect.width, rect.height));
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent) => {
+    const wasPan = movedRef.current;
     panRef.current = null;
+    if (!wasPan && onBackgroundClick) {
+      const target = e.target as Element;
+      if (!target.closest(MAP_INTERACTIVE_SEL)) onBackgroundClick();
+    }
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -157,6 +208,11 @@ export function MapZoomViewport({ focusCityId, active, children }: Props) {
         <div className={`map-viewport-inner${movedRef.current ? " is-panning" : ""}`}>
           {children(vb, uiScale)}
         </div>
+        {overlay ? (
+          <div ref={overlayRef} className="map-viewport-overlay">
+            {overlay}
+          </div>
+        ) : null}
       </div>
       <div className="map-zoom-controls">
         <button

@@ -41,11 +41,11 @@ const KAZAN_X = X_WEST + STEP_H * 2;
 export const MAP_VB = { w: 580, h: 320 };
 
 export const CITY_NODES: Record<string, CityNodeLayout> = {
-  spb: pin(X_WEST, Y0, "СПб", "west"),
+  spb: pin(X_WEST, Y0, "Санкт-Петербург", "west"),
   moscow: pin(X_WEST, MOSCOW_Y, "Москва", "left"),
   voronezh: pin(X_WEST, Y0 + STEP_V * 2, "Воронеж", "west"),
   volgograd: pin(X_WEST, Y0 + STEP_V * 3, "Волгоград", "west"),
-  rostov: pin(X_WEST, Y0 + STEP_V * 4, "Ростов", "west"),
+  rostov: pin(X_WEST, Y0 + STEP_V * 4, "Ростов-на-Дону", "west"),
   krasnodar: pin(X_WEST, Y0 + STEP_V * 5, "Краснодар", "west"),
 
   nn: pin(X_WEST + STEP_H, Y_EAST, "Н. Новгород", "above"),

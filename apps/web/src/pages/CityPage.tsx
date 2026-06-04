@@ -15,6 +15,7 @@ import { getCityLocalTime } from "../cityTime";
 import { CityActivityFeed } from "../components/CityActivityFeed";
 import { TravelingCard } from "../components/TravelingCard";
 import { CityGridButton } from "../components/ui/CityGridButton";
+import { FitLineTitle } from "../components/ui/FitLineTitle";
 import { CitySectionHeader } from "../components/ui/CitySectionHeader";
 import { JobsSection } from "../components/JobsSection";
 import type { CityOpenState, CitySectionId } from "./cityRouteState";
@@ -71,6 +72,7 @@ export function CityPage() {
     ReturnType<typeof fetchCityCached>
   >["activeEmployment"]>(null);
   const [cityFeed, setCityFeed] = useState<CityFeedEvent[]>([]);
+  const cityTimeRef = useRef<HTMLParagraphElement>(null);
   const load = useCallback(async (force = false) => {
     const data = await fetchCityCached(force);
     setCityName(data.city?.name ?? "—");
@@ -172,10 +174,6 @@ export function CityPage() {
     return () => cityNav?.registerReset(null);
   }, [cityNav, goCityHome]);
 
-  if (traveling) {
-    return <TravelingCard remainingMs={remaining} context="city" />;
-  }
-
   const sectionMeta = CITY_SECTIONS.find((s) => s.id === section);
 
   const sectionHeader = useMemo(() => {
@@ -202,6 +200,10 @@ export function CityPage() {
     }
     return { title, backLabel };
   }, [section, sectionMeta, shopTab, phoneNav, carNav, housingNav, placeId]);
+
+  if (traveling) {
+    return <TravelingCard remainingMs={remaining} context="city" />;
+  }
 
   if (section && sectionMeta) {
     const isJobsSection = section === "jobs" && playable && user;
@@ -288,9 +290,14 @@ export function CityPage() {
     <>
       <div className="card city-header-card city-overview-card">
         <div className="city-overview-head">
-          <h2 className="city-header-title city-overview-title">{cityName.toLocaleUpperCase("ru-RU")}</h2>
+          <FitLineTitle
+            text={cityName.toLocaleUpperCase("ru-RU")}
+            className="city-header-title city-overview-title"
+            sizeRef={cityTimeRef}
+            sizeRefKey={liveLocalTime?.label}
+          />
           {liveLocalTime && (
-            <p className="city-overview-time">
+            <p ref={cityTimeRef} className="city-overview-time">
               <strong>{liveLocalTime.label}</strong>
               <span className="city-overview-time-period">{liveLocalTime.periodLabel}</span>
             </p>
@@ -307,8 +314,8 @@ export function CityPage() {
             {user?.player.jobId ? "Есть работа" : "Без работы"}
           </span>
         </div>
-        <button type="button" className="btn btn-secondary city-map-btn" onClick={() => navigate("/map")}>
-          Открыть карту города
+        <button type="button" className="btn btn-secondary city-map-btn" onClick={() => navigate("/map", { state: { focusHome: true } })}>
+          Карта России
         </button>
       </div>
 

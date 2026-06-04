@@ -8,6 +8,10 @@ type Props = {
   tone?: NoticeTone;
   /** Панель с кнопкой действия — не скрывается сама, только свайпом. */
   persistent?: boolean;
+  /** Поверх карты снизу (bottom sheet), а не в потоке страницы. */
+  overlay?: boolean;
+  /** Фиксированная панель у нижнего края экрана (список городов). */
+  dock?: boolean;
   resetKey?: string | number;
   className?: string;
   children: ReactNode;
@@ -18,11 +22,19 @@ export function MapActionPanel({
   onDismiss,
   tone = "info",
   persistent = false,
+  overlay = false,
+  dock = false,
   resetKey,
   className = "",
   children,
 }: Props) {
   if (!open) return null;
+
+  const modeClass = overlay
+    ? " map-action-card--overlay"
+    : dock
+      ? " map-action-card--dock"
+      : "";
 
   return (
     <DismissibleNotice
@@ -31,7 +43,7 @@ export function MapActionPanel({
       autoDismissMs={persistent ? NOTICE_PERSISTENT_AUTO_DISMISS_MS : NOTICE_PANEL_AUTO_DISMISS_MS}
       onDismiss={onDismiss}
       resetKey={resetKey}
-      className={`map-action-card${className ? ` ${className}` : ""}`}
+      className={`map-action-card${modeClass}${className ? ` ${className}` : ""}`}
     >
       {children}
     </DismissibleNotice>

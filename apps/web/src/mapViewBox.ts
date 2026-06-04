@@ -42,18 +42,31 @@ export function viewBoxFitAll(): MapViewBox {
 }
 
 /** Приближение к городу (меньше w/h — ближе). */
-export function viewBoxAroundCity(cityId: string, level = 1): MapViewBox {
+export function viewBoxAroundCityAt(
+  cityId: string,
+  focalX = 0.5,
+  focalY = 0.5,
+  level = 1,
+): MapViewBox {
   const node = CITY_NODES[cityId];
   if (!node) return viewBoxFitAll();
 
+  const b = nodeContentBounds(node);
+  const cx = (b.left + b.right) / 2;
+  const cy = (b.top + b.bottom) / 2;
   const w = 155 / level;
   const h = 115 / level;
   return clampViewBox({
-    x: node.x - w / 2,
-    y: node.y - h / 2,
+    x: cx - w * focalX,
+    y: cy - h * focalY,
     w,
     h,
   });
+}
+
+/** Приближение к городу (меньше w/h — ближе). */
+export function viewBoxAroundCity(cityId: string, level = 1): MapViewBox {
+  return viewBoxAroundCityAt(cityId, 0.5, 0.5, level);
 }
 
 export function viewBoxToString(vb: MapViewBox): string {
