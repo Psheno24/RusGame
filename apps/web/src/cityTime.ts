@@ -81,6 +81,25 @@ export function scheduleBlockedMessage(localTime: CityLocalTime, schedule: JobSc
   return `Работа только днём (${dayStart}:00–${nightStart}:00). Сейчас в городе ${localTime.label}`;
 }
 
+/** Строка в списке вакансий, когда смена сейчас недоступна по расписанию. */
+export function formatJobListScheduleNote(job: {
+  schedule?: JobSchedule;
+  scheduleAllowed: boolean;
+  workCityName?: string | null;
+}): string | null {
+  if (job.scheduleAllowed || !job.schedule || job.schedule.mode === "any") return null;
+  const city = job.workCityName?.trim() || "городе";
+  if (job.schedule.mode === "night") {
+    const h = job.schedule.nightStartHour ?? 22;
+    return `доступно только с ${String(h).padStart(2, "0")}:00 (по г. «${city}»)`;
+  }
+  if (job.schedule.mode === "day") {
+    const h = job.schedule.dayStartHour ?? 6;
+    return `доступно только с ${String(h).padStart(2, "0")}:00 (по г. «${city}»)`;
+  }
+  return null;
+}
+
 /** Recompute schedule flags from city timezone (clock ticks between API reloads). */
 export function applyLiveJobSchedule<T extends {
   schedule?: JobSchedule;

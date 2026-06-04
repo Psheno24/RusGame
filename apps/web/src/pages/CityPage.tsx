@@ -15,6 +15,7 @@ import { getCityLocalTime } from "../cityTime";
 import { CityActivityFeed } from "../components/CityActivityFeed";
 import { TravelingCard } from "../components/TravelingCard";
 import { CityGridButton } from "../components/ui/CityGridButton";
+import { CitySectionHeader } from "../components/ui/CitySectionHeader";
 import { JobsSection } from "../components/JobsSection";
 import type { CityOpenState, CitySectionId } from "./cityRouteState";
 import { CarShop } from "../components/CarShop";
@@ -177,21 +178,37 @@ export function CityPage() {
 
   const sectionMeta = CITY_SECTIONS.find((s) => s.id === section);
 
+  const sectionHeader = useMemo(() => {
+    if (!section || !sectionMeta) return { title: "", backLabel: "Город" };
+    let title = sectionMeta.title;
+    let backLabel = "Город";
+    if (section === "shop") {
+      if (shopTab === "phone" && phoneNav.inSub) {
+        title = phoneNav.title;
+        backLabel = phoneNav.backLabel;
+      } else if (shopTab === "car" && carNav.inSub) {
+        title = carNav.title;
+        backLabel = carNav.backLabel;
+      } else if (shopTab) {
+        title = SHOP_CATEGORIES.find((c) => c.id === shopTab)!.title;
+        backLabel = "Магазин";
+      }
+    } else if (section === "housing" && housingNav.inSub) {
+      title = housingNav.title;
+      backLabel = housingNav.backLabel;
+    } else if (section === "places" && placeId) {
+      title = placeById(placeId).title;
+      backLabel = "Разные места";
+    }
+    return { title, backLabel };
+  }, [section, sectionMeta, shopTab, phoneNav, carNav, housingNav, placeId]);
+
   if (section && sectionMeta) {
-    const isJobsSection =
-      section === "jobs" && playable && user && (cityJobs.length > 0 || activeEmployment != null);
+    const isJobsSection = section === "jobs" && playable && user;
     const isHousingSection = section === "housing" && playable && user;
 
     return (
       <>
-        <div className="city-nav-bar">
-          <button type="button" className="btn btn-secondary city-nav-btn" onClick={goBackInCity}>
-            Назад
-          </button>
-          <button type="button" className="btn btn-secondary city-nav-btn" onClick={goCityHome}>
-            В город
-          </button>
-        </div>
         {isJobsSection ? (
           <JobsSection
             jobs={cityJobs}
@@ -204,6 +221,7 @@ export function CityPage() {
             selectedId={jobsSelectedId}
             onSelectJob={setJobsSelectedId}
             registerBack={registerSectionBack}
+            onBack={goBackInCity}
             onJobsReload={async () => {
               invalidateCityCache();
               await load(true);
@@ -211,33 +229,32 @@ export function CityPage() {
             listMode="vacancies"
           />
         ) : isHousingSection ? (
-          <HousingShop
-            initialInfo={housingInfo}
-            user={user}
-            setUser={setUser}
-            onToast={showToast}
-            onReload={() => {
-              invalidateCityCache();
-              return load(true);
-            }}
-            onNavChange={setHousingNav}
-            registerBack={registerSectionBack}
-          />
+          <div className="card">
+            <CitySectionHeader
+              title={sectionHeader.title}
+              onBack={goBackInCity}
+              backLabel={sectionHeader.backLabel}
+            />
+            <HousingShop
+              initialInfo={housingInfo}
+              user={user}
+              setUser={setUser}
+              onToast={showToast}
+              onReload={() => {
+                invalidateCityCache();
+                return load(true);
+              }}
+              onNavChange={setHousingNav}
+              registerBack={registerSectionBack}
+            />
+          </div>
         ) : (
           <div className="card">
-            <h2>
-              {section === "shop" && shopTab === "phone" && phoneNav.inSub
-                ? phoneNav.title
-                : section === "shop" && shopTab === "car" && carNav.inSub
-                  ? carNav.title
-                : section === "shop" && shopTab
-                  ? SHOP_CATEGORIES.find((c) => c.id === shopTab)!.title
-                  : section === "housing" && housingNav.inSub
-                    ? housingNav.title
-                  : section === "places" && placeId
-                    ? placeById(placeId).title
-                    : sectionMeta.title}
-            </h2>
+            <CitySectionHeader
+              title={sectionHeader.title}
+              onBack={goBackInCity}
+              backLabel={sectionHeader.backLabel}
+            />
             {section === "shop" && user ? (
               <ShopSection
                 tab={shopTab}

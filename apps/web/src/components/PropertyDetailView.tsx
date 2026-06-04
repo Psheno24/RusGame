@@ -13,6 +13,7 @@ import {
   type User,
 } from "../api";
 import { useToastRef } from "../hooks/useToastRef";
+import { CitySectionHeader } from "./ui/CitySectionHeader";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { VehiclePlate } from "./VehiclePlate";
 
@@ -219,16 +220,12 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
       )}
 
       <div className="property-detail-wrap">
-        <button type="button" className="btn btn-secondary property-detail-back" onClick={onBack}>
-          ← К имуществу
-        </button>
-
         <article
           className="property-detail card"
           style={{ borderLeftColor: detail.accent }}
         >
+          <CitySectionHeader title={detail.title} onBack={onBack} backLabel="Имущество" />
           <header className="property-detail-header">
-            <h3 className="property-detail-title">{detail.title}</h3>
             {detail.subtitle && <p className="property-detail-sub">{detail.subtitle}</p>}
             {detail.kind === "rental" && liveRemainingMs != null && (
               <p className="property-detail-rental-timer">

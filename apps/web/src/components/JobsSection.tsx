@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CityGridButton } from "./ui/CityGridButton";
 import {
   applyJob as applyJobApi,
   fetchCity,
@@ -9,15 +10,33 @@ import {
   type JobView,
   type User,
 } from "../api";
-import { applyLiveJobSchedule, getCityLocalTime } from "../cityTime";
+import { applyLiveJobSchedule, formatJobListScheduleNote, getCityLocalTime } from "../cityTime";
 import { buildJobRequirements, jobRequirementsMet } from "../jobRequirements";
-import { getShiftDurationLabel } from "../jobShift";
+import { getJobCooldownLabel, getShiftDurationLabel } from "../jobShift";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { JobActionButtonLabel } from "./JobActionButtonLabel";
 import { JobRequirementsList } from "./JobRequirementsList";
+import { CitySectionHeader } from "./ui/CitySectionHeader";
 import { TaxiEmployedJobView } from "./TaxiEmployedJobView";
 
 type JobCard = JobView;
+
+type JobsNav = "hub" | "side_jobs" | "career" | "secondary_edu" | "higher_edu" | "freelance";
+
+const JOBS_MENU: { id: "side_jobs" | "career"; title: string }[] = [
+  { id: "side_jobs", title: "Подработка" },
+  { id: "career", title: "Карьера" },
+];
+
+const CAREER_MENU: { id: "secondary_edu" | "higher_edu" | "freelance"; title: string }[] = [
+  { id: "secondary_edu", title: "Среднее образование" },
+  { id: "higher_edu", title: "Высшее образование" },
+  { id: "freelance", title: "Фриланс" },
+];
+
+function careerNavTitle(nav: JobsNav): string | null {
+  return CAREER_MENU.find((c) => c.id === nav)?.title ?? null;
+}
 
 function resolveJobCooldown(
   cooldown: JobView["cooldown"],
@@ -67,28 +86,44 @@ function formatListPayoutLabel(job: JobCard): string {
   return `${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽`;
 }
 
+function formatListPayLine(job: JobCard, local: ReturnType<typeof getCityLocalTime>): string {
+  const pay = formatListPayoutLabel(job);
+  const availability = formatJobListScheduleNote(job);
+  if (availability) return `${pay} · ${availability}`;
+  const cd = getJobCooldownLabel(job, { local });
+  if (cd === "—") return pay;
+  return `${pay} · КД ${cd}`;
+}
+
 function JobListCard({
   job,
   highlighted,
+  cityTimezone,
   onSelect,
 }: {
   job: JobCard;
   highlighted?: boolean;
+  cityTimezone: string;
   onSelect: () => void;
 }) {
+  const local = getCityLocalTime(cityTimezone);
   return (
-    <li className={`job-list-card${highlighted ? " job-list-card--current" : ""}`}>
-      <div className="job-list-head">
-        <span className="job-list-icon" aria-hidden>
-          {JOB_ICONS[job.templateKey] ?? "💼"}
-        </span>
-        <div className="job-list-info">
-          <span className="job-list-name">{job.title}</span>
-          <span className="job-list-pay">{formatListPayoutLabel(job)}</span>
+    <li>
+      <button
+        type="button"
+        className={`job-list-card${highlighted ? " job-list-card--current" : ""}`}
+        onClick={onSelect}
+        aria-label={`${job.title}, подробнее`}
+      >
+        <div className="job-list-head">
+          <span className="job-list-icon" aria-hidden>
+            {JOB_ICONS[job.templateKey] ?? "💼"}
+          </span>
+          <div className="job-list-info">
+            <span className="job-list-name">{job.title}</span>
+            <span className="job-list-pay">{formatListPayLine(job, local)}</span>
+          </div>
         </div>
-      </div>
-      <button type="button" className="btn btn-primary job-list-select" onClick={onSelect}>
-        Выбрать
       </button>
     </li>
   );
@@ -117,6 +152,7 @@ export function JobsSection({
   onSelectJob,
   registerBack,
   onJobsReload,
+  onBack,
   listMode = "vacancies",
 }: {
   jobs: JobView[];
@@ -130,11 +166,33 @@ export function JobsSection({
   onSelectJob: (id: string | null) => void;
   registerBack: (handler: (() => boolean) | null) => void;
   onJobsReload: () => Promise<void>;
+  onBack?: () => void;
   listMode?: "vacancies" | "none";
 }) {
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<JobPendingAction | null>(null);
   const [shiftHours, setShiftHours] = useState(8);
+  const [nav, setNav] = useState<JobsNav>("hub");
+
+  const stepBackInJobs = useCallback((): boolean => {
+    if (selectedId) {
+      onSelectJob(null);
+      return true;
+    }
+    if (nav === "secondary_edu" || nav === "higher_edu" || nav === "freelance") {
+      setNav("career");
+      return true;
+    }
+    if (nav === "side_jobs" || nav === "career") {
+      setNav("hub");
+      return true;
+    }
+    return false;
+  }, [selectedId, nav, onSelectJob]);
+
+  const handleJobsBack = useCallback(() => {
+    if (!stepBackInJobs()) onBack?.();
+  }, [stepBackInJobs, onBack]);
 
   const employedId = user.player.jobId;
   const isResident = user.player.isResident;
@@ -185,16 +243,9 @@ export function JobsSection({
       registerBack(null);
       return;
     }
-    const handler = () => {
-      if (selectedId) {
-        onSelectJob(null);
-        return true;
-      }
-      return false;
-    };
-    registerBack(handler);
+    registerBack(stepBackInJobs);
     return () => registerBack(null);
-  }, [selectedId, onSelectJob, registerBack, listMode]);
+  }, [listMode, registerBack, stepBackInJobs]);
 
   const onApply = async (job: JobCard, forceSwitch = false) => {
     setBusy(true);
@@ -415,6 +466,7 @@ export function JobsSection({
             user={user}
             setUser={setUser}
             onToast={onToast}
+            onBack={onBack}
             busy={busy}
             canQuitBase={canQuit}
             employmentBlocked={employmentBlocked}
@@ -459,7 +511,11 @@ export function JobsSection({
     return (
       <>
         <div className="card">
-          <h2>{selected.title}</h2>
+          {onBack ? (
+            <CitySectionHeader title={selected.title} onBack={handleJobsBack} backLabel="Подработка" />
+          ) : (
+            <h2>{selected.title}</h2>
+          )}
           <div className="job-detail">
             <dl className="phone-specs job-specs phone-specs--compact">
               <div>
@@ -549,25 +605,80 @@ export function JobsSection({
 
   if (listMode === "none") return null;
 
+  const careerTitle = careerNavTitle(nav);
+
   return (
     <div className="city-jobs-stack">
-      {activeEmployment?.workBlockedReason && (
+      {activeEmployment?.workBlockedReason && nav === "side_jobs" && (
         <p className="shop-owned" role="status">
           {activeEmployment.workBlockedReason}
         </p>
       )}
-      <div className="card">
-        <h2>Вакансии</h2>
-        {vacancyJobs.length === 0 ? (
-          <p className="job-block-empty">Вакансий в этом городе пока нет.</p>
-        ) : (
-          <ul className="job-list">
-            {vacancyJobs.map((job) => (
-              <JobListCard key={job.id} job={job} onSelect={() => onSelectJob(job.id)} />
+
+      {nav === "hub" && (
+        <div className="card">
+          {onBack ? (
+            <CitySectionHeader title="Вакансии" onBack={handleJobsBack} backLabel="Город" />
+          ) : (
+            <h2>Вакансии</h2>
+          )}
+          <div className="city-grid shop-categories jobs-menu-grid">
+            {JOBS_MENU.map((item) => (
+              <CityGridButton key={item.id} title={item.title} onClick={() => setNav(item.id)} />
             ))}
-          </ul>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
+
+      {nav === "side_jobs" && (
+        <div className="card">
+          {onBack ? (
+            <CitySectionHeader title="Подработка" onBack={handleJobsBack} backLabel="Вакансии" />
+          ) : (
+            <h2>Подработка</h2>
+          )}
+          {vacancyJobs.length === 0 ? (
+            <p className="job-block-empty">Вакансий в этом городе пока нет.</p>
+          ) : (
+            <ul className="job-list">
+              {vacancyJobs.map((job) => (
+                <JobListCard
+                  key={job.id}
+                  job={job}
+                  cityTimezone={cityTimezone}
+                  onSelect={() => onSelectJob(job.id)}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {nav === "career" && (
+        <div className="card">
+          {onBack ? (
+            <CitySectionHeader title="Карьера" onBack={handleJobsBack} backLabel="Вакансии" />
+          ) : (
+            <h2>Карьера</h2>
+          )}
+          <div className="city-grid shop-categories jobs-menu-grid">
+            {CAREER_MENU.map((item) => (
+              <CityGridButton key={item.id} title={item.title} onClick={() => setNav(item.id)} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {careerTitle && (
+        <div className="card">
+          {onBack ? (
+            <CitySectionHeader title={careerTitle} onBack={handleJobsBack} backLabel="Карьера" />
+          ) : (
+            <h2>{careerTitle}</h2>
+          )}
+          <p className="shop-stub">Скоро</p>
+        </div>
+      )}
     </div>
   );
 }

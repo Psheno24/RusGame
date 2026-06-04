@@ -11,6 +11,7 @@ import {
 import { useApp } from "../context";
 import { useNotice } from "../noticeContext";
 import { TravelingCard } from "../components/TravelingCard";
+import { CitySectionHeader } from "../components/ui/CitySectionHeader";
 import { useIntervalTick } from "../hooks/useIntervalTick";
 import { useHomeNav } from "../homeNav";
 import { SLEEP_MS_FOR_FULL_ENERGY } from "../sleepConstants";
@@ -158,7 +159,7 @@ export function HomePage() {
   if (showRest && !home.sleeping) {
     return (
       <div className="card home-rest-card">
-        <h2 className="city-header-title home-place-title">Отдохнуть</h2>
+        <CitySectionHeader title="Отдохнуть" onBack={() => setShowRest(false)} backLabel="Дом" />
         {sleepBlocked && <p className="work-empty-hint">{sleepBlocked}</p>}
         <input
           type="range"
@@ -174,19 +175,14 @@ export function HomePage() {
           <span className="home-sleep-preview-sep"> · </span>
           сон ~<strong>{formatDuration(sleepMs)}</strong>
         </p>
-        <div className="home-rest-actions">
-          <button type="button" className="btn btn-secondary job-detail-action-btn" onClick={() => setShowRest(false)}>
-            Назад
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary job-detail-action-btn"
-            disabled={busy || !!sleepBlocked}
-            onClick={() => void onSleep(startEnergy, sliderEnergy)}
-          >
-            {busy ? "…" : "Лечь спать"}
-          </button>
-        </div>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={busy || !!sleepBlocked}
+          onClick={() => void onSleep(startEnergy, sliderEnergy)}
+        >
+          {busy ? "…" : "Лечь спать"}
+        </button>
       </div>
     );
   }

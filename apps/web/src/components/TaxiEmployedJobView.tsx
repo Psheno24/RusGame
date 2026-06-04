@@ -1,4 +1,5 @@
 import type { JobRequirement } from "../jobRequirements";
+import { CitySectionHeader } from "./ui/CitySectionHeader";
 import { JobActionButtonLabel } from "./JobActionButtonLabel";
 import { JobRequirementsList } from "./JobRequirementsList";
 import { TaxiLinePanels, TaxiLineSetup } from "./TaxiLineSection";
@@ -12,6 +13,7 @@ type Props = {
   user: User;
   setUser: (u: User) => void;
   onToast: (msg: string, isErr?: boolean) => void;
+  onBack?: () => void;
   busy: boolean;
   canQuitBase: boolean;
   employmentBlocked: boolean;
@@ -26,6 +28,7 @@ export function TaxiEmployedJobView({
   user: _user,
   setUser,
   onToast,
+  onBack,
   busy: parentBusy,
   canQuitBase,
   employmentBlocked,
@@ -52,7 +55,11 @@ export function TaxiEmployedJobView({
   return (
     <>
       <div className="card">
-        <h2>{selected.title}</h2>
+        {onBack ? (
+          <CitySectionHeader title={selected.title} onBack={onBack} backLabel="Вакансии" />
+        ) : (
+          <h2>{selected.title}</h2>
+        )}
         <div className="job-detail">
           <dl className="phone-specs job-specs">
             <div>
