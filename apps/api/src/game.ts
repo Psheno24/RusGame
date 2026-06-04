@@ -55,6 +55,7 @@ import {
 import { scaleTravelMs } from "./testAccount.js";
 import { finalShiftPayout, skillPayoutMultiplier } from "./jobSalaries.js";
 import { playerMeetsCarRequirement, taxiBlocksShift } from "./taxi.js";
+import { saveTaxiState } from "./playerTaxi.js";
 
 export { canWorkJobNow, formatCooldown } from "./workCooldown.js";
 import { randInt } from "./random.js";
@@ -272,7 +273,13 @@ export function applyJob(
     }
   }
 
+  const prevJobId = player.job_id;
   updatePlayer(userId, { job_id: jobId });
+  if (prevJobId && prevJobId !== jobId) {
+    const prevCity = jobCityId(prevJobId);
+    const prevJob = prevCity ? findCityJob(prevCity, prevJobId) : null;
+    if (prevJob?.kind === "taxi_line") saveTaxiState(userId, null);
+  }
   appendPlayerFeed(userId, "job:apply", `Устроились: ${job.title}`, now);
   return { ok: true, message: `Вы устроились: ${job.title}` };
 }
@@ -313,6 +320,7 @@ export function quitJob(
   }
 
   updatePlayer(userId, { job_id: null });
+  if (job.kind === "taxi_line") saveTaxiState(userId, null);
   appendPlayerFeed(userId, "job:quit", `Уволились: ${job.title}`, now);
   return { ok: true, message: `Вы уволились: ${job.title}` };
 }

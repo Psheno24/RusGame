@@ -18,7 +18,6 @@ import { getCitySalaryMultiplier, skillPayoutMultiplier } from "./jobSalaries.js
 import { recordSkillAction, SKILL_LABELS } from "./skills.js";
 import { listPlayerCars, playerHasAnyCar } from "./playerCars.js";
 import {
-  hasActiveTaxiTrip,
   parseTaxiState,
   saveTaxiState,
   taxiBlocksWork,
@@ -353,14 +352,10 @@ export function advanceTaxiState(
   if (s.activeTrip && now >= s.activeTrip.endsAt && job) {
     const fresh = getPlayer(player.user_id) ?? player;
     const result = completeActiveTrip(fresh, job, s, now);
-    if (result.payoutRub > 0) {
-      s = result.state;
-      completedMessage = result.message;
-      completedPayout = result.payoutRub;
-      appendPlayerFeed(player.user_id, "work:taxi", `Заказ: ${result.message}`, now);
-    } else if (result.message && result.payoutRub === 0) {
-      return { state: s, completedMessage: result.message };
-    }
+    s = result.state;
+    completedMessage = result.message;
+    completedPayout = result.payoutRub;
+    appendPlayerFeed(player.user_id, "work:taxi", `Заказ: ${result.message}`, now);
   }
 
   if (s.onLine && !s.activeTrip) {

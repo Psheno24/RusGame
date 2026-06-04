@@ -12,50 +12,16 @@ import {
   type User,
 } from "../api";
 
-function carKey(c: { source: string; refId: number }) {
-  return `${c.source}:${c.refId}`;
-}
-
 export function useTaxiLine(
   setUser: (u: User) => void,
   onToast: (msg: string, isErr?: boolean) => void,
 ) {
   const [status, setStatus] = useState<TaxiStatus | null>(null);
-  const [pickCar, setPickCarState] = useState("");
   const [busy, setBusy] = useState(false);
 
   const onToastRef = useToastRef(onToast);
   const setUserRef = useRef(setUser);
   setUserRef.current = setUser;
-  const pickCarRef = useRef("");
-  const userPickedAtRef = useRef(0);
-  const busyRef = useRef(false);
-  busyRef.current = busy;
-
-  const setPickCar = useCallback((value: string) => {
-    pickCarRef.current = value;
-    if (value) userPickedAtRef.current = Date.now();
-    setPickCarState(value);
-  }, []);
-
-  const syncPickCar = useCallback((nextStatus: TaxiStatus) => {
-    if (nextStatus.selectedCarKey) {
-      pickCarRef.current = nextStatus.selectedCarKey;
-      setPickCarState(nextStatus.selectedCarKey);
-      return;
-    }
-    const guardMs = Date.now() - userPickedAtRef.current;
-    if (guardMs < 5000 && pickCarRef.current) {
-      return;
-    }
-    setPickCarState((prev) => {
-      const keep = pickCarRef.current || prev;
-      if (busyRef.current && keep) return keep;
-      if (keep && nextStatus.availableCars.some((c) => carKey(c) === keep)) return keep;
-      pickCarRef.current = "";
-      return "";
-    });
-  }, []);
 
   const refresh = useCallback(async () => {
     const data = await fetchTaxiStatus();
@@ -64,8 +30,7 @@ export function useTaxiLine(
       if (data.user) setUserRef.current(data.user);
     }
     setStatus(data.status);
-    syncPickCar(data.status);
-  }, [syncPickCar]);
+  }, []);
 
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
@@ -90,7 +55,6 @@ export function useTaxiLine(
         const r = await fn();
         setUserRef.current(r.user);
         onToastRef.current(r.message);
-        userPickedAtRef.current = 0;
         await refreshRef.current();
       } catch (e) {
         onToastRef.current(e instanceof Error ? e.message : "Ошибка", true);
@@ -107,8 +71,6 @@ export function useTaxiLine(
   return {
     status,
     busy,
-    pickCar,
-    setPickCar,
     refresh,
     run,
     carSelected,

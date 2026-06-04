@@ -4,6 +4,15 @@ import { findCityJob } from "../gameData.js";
 import { jobCityId } from "../jobLocation.js";
 import { applyJob, doJobWork, quitJob } from "../game.js";
 import { refreshPlayerState } from "../playerSync.js";
+import {
+  getTaxiStatus,
+  taxiAcceptOrder,
+  taxiClearCar,
+  taxiDeclineOrder,
+  taxiGoOffline,
+  taxiGoOnline,
+  taxiSelectCar,
+} from "../taxi.js";
 import { resolveUserId } from "./shared.js";
 
 export function registerWorkRoutes(app: FastifyInstance): void {
@@ -81,7 +90,6 @@ export function registerWorkRoutes(app: FastifyInstance): void {
     if (!job || job.kind !== "taxi_line") {
       return reply.code(400).send({ error: "Вы не устроены таксистом" });
     }
-    const { getTaxiStatus } = await import("../taxi.js");
     const status = getTaxiStatus(player, job);
     const user = status.completedPayout != null ? await getPublicUser(userId) : undefined;
     return {
@@ -98,7 +106,6 @@ export function registerWorkRoutes(app: FastifyInstance): void {
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
     const player = refreshPlayerState(userId);
     if (!player) return reply.code(404).send({ error: "Игрок не найден" });
-    const { taxiClearCar } = await import("../taxi.js");
     const result = taxiClearCar(player);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
@@ -117,7 +124,6 @@ export function registerWorkRoutes(app: FastifyInstance): void {
     const source = req.body?.carSource === "rental" ? "rental" : "owned";
     const refId = Number(req.body?.carRefId);
     if (!Number.isFinite(refId)) return reply.code(400).send({ error: "Укажите автомобиль" });
-    const { taxiSelectCar } = await import("../taxi.js");
     const result = taxiSelectCar(player, source, refId);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
@@ -133,7 +139,6 @@ export function registerWorkRoutes(app: FastifyInstance): void {
     if (!job || job.kind !== "taxi_line") {
       return reply.code(400).send({ error: "Вы не устроены таксистом" });
     }
-    const { taxiGoOnline } = await import("../taxi.js");
     const result = taxiGoOnline(player, job);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
@@ -145,7 +150,6 @@ export function registerWorkRoutes(app: FastifyInstance): void {
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
     const player = refreshPlayerState(userId);
     if (!player) return reply.code(404).send({ error: "Игрок не найден" });
-    const { taxiGoOffline } = await import("../taxi.js");
     const result = taxiGoOffline(player);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
@@ -163,7 +167,6 @@ export function registerWorkRoutes(app: FastifyInstance): void {
     if (!job || job.kind !== "taxi_line") {
       return reply.code(400).send({ error: "Вы не устроены таксистом" });
     }
-    const { taxiAcceptOrder } = await import("../taxi.js");
     const result = taxiAcceptOrder(player, job, orderId);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
@@ -177,7 +180,6 @@ export function registerWorkRoutes(app: FastifyInstance): void {
     if (!player) return reply.code(404).send({ error: "Игрок не найден" });
     const orderId = req.body?.orderId ?? "";
     if (!orderId) return reply.code(400).send({ error: "Укажите заказ" });
-    const { taxiDeclineOrder } = await import("../taxi.js");
     const result = taxiDeclineOrder(player, orderId);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
