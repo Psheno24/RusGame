@@ -134,7 +134,7 @@ export function registerWorkRoutes(app: FastifyInstance): void {
       return reply.code(400).send({ error: "Вы не устроены таксистом" });
     }
     const { taxiGoOnline } = await import("../taxi.js");
-    const result = taxiGoOnline(player);
+    const result = taxiGoOnline(player, job);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
     return { message: result.message, user };

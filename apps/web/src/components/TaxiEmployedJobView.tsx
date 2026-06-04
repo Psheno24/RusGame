@@ -1,4 +1,5 @@
 import type { JobRequirement } from "../jobRequirements";
+import { jobRequirementsMet } from "../jobRequirements";
 import { CitySectionHeader } from "./ui/CitySectionHeader";
 import { JobActionButtonLabel } from "./JobActionButtonLabel";
 import { JobRequirementsList } from "./JobRequirementsList";
@@ -41,6 +42,7 @@ export function TaxiEmployedJobView({
   const { carSelected, onLine, inTrip, busy: taxiBusy, goOnline, goOffline } = taxi;
 
   const taxiBlocksQuit = onLine || inTrip;
+  const requirementsMet = jobRequirementsMet(jobRequirements);
   const canQuit = canQuitBase && !taxiBlocksQuit;
   const quitReason = taxiBlocksQuit
     ? inTrip
@@ -49,12 +51,12 @@ export function TaxiEmployedJobView({
     : undefined;
 
   const lineBusy = parentBusy || taxiBusy;
-  const lineDisabled = lineBusy || inTrip || !carSelected;
-  const lineLabel = onLine ? "Завершить линию" : "Работа на линии";
+  const lineDisabled = lineBusy || inTrip || (!onLine && (!carSelected || !requirementsMet));
+  const lineLabel = onLine ? "Завершить линию" : "Выйти на линию";
 
   return (
     <>
-      <div className="card">
+      <div className="card taxi-driver-card">
         {onBack ? (
           <CitySectionHeader title={selected.title} onBack={onBack} backLabel="Вакансии" />
         ) : (
@@ -91,6 +93,8 @@ export function TaxiEmployedJobView({
                       ? "идёт поездка"
                       : lineBusy
                         ? "подождите"
+                        : !requirementsMet && !onLine
+                          ? "не выполнены требования"
                         : undefined
                 }
               />

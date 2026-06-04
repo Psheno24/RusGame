@@ -115,22 +115,40 @@ export function TaxiLineSetup({ taxi }: SetupProps) {
 
   return (
     <div className="taxi-line-setup">
-      <p className="shop-owned">
-        Рейтинг: <strong>{status.rating.toFixed(2)}</strong>
-        {onLine && (
-          <>
-            {" "}
-            · сессия: +{status.sessionIncomeRub.toLocaleString("ru-RU")} ₽ · выполнено:{" "}
-            {status.ordersCompleted}
-          </>
-        )}
-      </p>
+      <section className="taxi-driver-profile" aria-label="Профиль таксиста">
+        <div className="taxi-driver-profile-head">
+          <span className="taxi-driver-avatar" aria-hidden>
+            TAXI
+          </span>
+          <div className="taxi-driver-title">
+            <span className="taxi-driver-kicker">Профиль водителя</span>
+            <strong>{onLine ? "На линии" : inTrip ? "В поездке" : "Готов к смене"}</strong>
+          </div>
+        </div>
 
-      {carSelected && status.carLabel && !pickerOpen && (
-        <p className="shop-owned">
-          Автомобиль: <strong>{status.carLabel}</strong>
-        </p>
-      )}
+        <div className="taxi-driver-stats">
+          <div className="taxi-driver-stat">
+            <span>Рейтинг водителя</span>
+            <strong>{status.rating.toFixed(2)}</strong>
+          </div>
+          <div className="taxi-driver-stat">
+            <span>Авто для линии</span>
+            <strong>{status.carLabel ?? "Не выбрано"}</strong>
+            {status.taxiClassTitle && <small>{status.taxiClassTitle}</small>}
+          </div>
+          <div className="taxi-driver-stat">
+            <span>Текущая сессия</span>
+            <strong>+{status.sessionIncomeRub.toLocaleString("ru-RU")} ₽</strong>
+            <small>Заказов: {status.ordersCompleted}</small>
+          </div>
+        </div>
+
+        {!onLine && !inTrip && (
+          <p className="taxi-driver-hint">
+            Выберите автомобиль и выйдите на линию, чтобы получать заказы.
+          </p>
+        )}
+      </section>
 
       {canChangeCar && (
         <div className="taxi-car-actions">
@@ -141,7 +159,7 @@ export function TaxiLineSetup({ taxi }: SetupProps) {
               disabled={busy}
               onClick={() => setPickerOpen(true)}
             >
-              {carSelected ? "Сменить" : "Выбрать"}
+              {carSelected ? "Сменить авто" : "Выбрать авто"}
             </button>
           ) : (
             <button
@@ -161,7 +179,10 @@ export function TaxiLineSetup({ taxi }: SetupProps) {
           cars={status.availableCars}
           busy={busy}
           selectedCarKey={status.selectedCarKey}
-          onPick={(car) => void selectCar(car.source, car.refId)}
+          onPick={(car) => {
+            setPickerOpen(false);
+            void selectCar(car.source, car.refId);
+          }}
         />
       )}
     </div>
@@ -179,9 +200,7 @@ export function TaxiLinePanels({ taxi }: { taxi: TaxiLineHandle }) {
   return (
     <div className="taxi-line-panels">
       {carSelected && !onLine && !inTrip && (
-        <p className="shop-owned taxi-orders-hint">
-          Нажмите «Работа на линии» — заказы появятся здесь, в отдельной карточке ниже.
-        </p>
+        <p className="shop-owned taxi-orders-hint">Заказы появятся здесь после выхода на линию.</p>
       )}
       {inTrip && status.activeTrip && (
         <div className="card taxi-trip-active">

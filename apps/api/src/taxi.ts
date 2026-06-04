@@ -27,7 +27,7 @@ import {
   type TaxiState,
 } from "./playerTaxi.js";
 import { clampVital } from "./playerStats.js";
-import { jobCityId } from "./jobLocation.js";
+import { jobCityId, validateJobWorkAccess } from "./jobLocation.js";
 import { isVehicleRentalActive } from "./vehicleRental.js";
 import {
   cashPaymentRiskChances,
@@ -335,6 +335,18 @@ export function advanceTaxiState(
     };
   }
   s = syncIdleOffline(s, now);
+  if (s.onLine && !s.activeTrip && job) {
+    const accessError = validateJobWorkAccess(player, job.id, now);
+    if (accessError) {
+      s = {
+        ...s,
+        onLine: false,
+        availableOrders: [],
+        ordersRefreshAt: 0,
+        lastActivityAt: now,
+      };
+    }
+  }
   let completedMessage: string | undefined;
   let completedPayout: number | undefined;
 
@@ -530,11 +542,14 @@ export function taxiSelectCar(
 
 export function taxiGoOnline(
   player: PlayerRow,
+  job: JobDef,
   now = Date.now(),
 ): { ok: true; message: string } | { ok: false; error: string } {
   if (player.sleep_started_at != null) {
     return { ok: false, error: "Вы спите — сначала проснитесь" };
   }
+  const accessError = validateJobWorkAccess(player, job.id, now);
+  if (accessError) return { ok: false, error: accessError };
 
   let state = parseTaxiState(player);
   if (!state?.carSelected) {
@@ -604,6 +619,9 @@ export function taxiAcceptOrder(
   orderId: string,
   now = Date.now(),
 ): { ok: true; message: string } | { ok: false; error: string } {
+  const accessError = validateJobWorkAccess(player, job.id, now);
+  if (accessError) return { ok: false, error: accessError };
+
   let state = parseTaxiState(player);
   if (!state?.onLine) return { ok: false, error: "Сначала выйдите на линию" };
   if (state.activeTrip) return { ok: false, error: "Вы уже в поездке" };
