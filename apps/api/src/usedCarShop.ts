@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import { getDb, getPlayer, updatePlayer } from "./db.js";
 import { getCarClassLabel } from "./carMarket.js";
@@ -156,7 +157,7 @@ export function diagnoseUsedCar(
 
   const costRub = listingDiagnoseCostRub(listing);
   if (player.rubles < costRub) {
-    return { ok: false, error: `Нужно ${costRub.toLocaleString("ru-RU")} ₽ за диагностику` };
+    return { ok: false, error: `Нужно ${formatRub(costRub)} за диагностику` };
   }
 
   const diagnosis = buildDiagnosisRanges(listing.condition);
@@ -165,7 +166,7 @@ export function diagnoseUsedCar(
   appendPlayerFeed(
     userId,
     "shop:car",
-    `Диагностика б/у авто (−${costRub.toLocaleString("ru-RU")} ₽)`,
+    `Диагностика б/у авто (−${formatRub(costRub)})`,
     now,
   );
   return { ok: true, diagnosis, costRub };
@@ -187,7 +188,7 @@ export function buyUsedCar(
     return { ok: false, error: `Нужны права категории ${car.licenseCategory}` };
   }
   if (player.rubles < listing.priceRub) {
-    return { ok: false, error: `Нужно ${listing.priceRub.toLocaleString("ru-RU")} ₽` };
+    return { ok: false, error: `Нужно ${formatRub(listing.priceRub)}` };
   }
 
   if (!removeCityListing(player.city_id, listingId, now)) {

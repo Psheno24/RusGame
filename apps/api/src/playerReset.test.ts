@@ -2,8 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createPlayer, createUser, getDb } from "./db.js";
 import { hashPassword, registerUser } from "./auth.js";
-import { listAccountsForTestAdmin, resetPlayerAccount } from "./playerReset.js";
-import { TEST_START_RUBLES } from "./config.js";
+import { listAccountsForTestAdmin, resetPlayerAccount, setPlayerRublesForTestAdmin } from "./playerReset.js";
 
 describe("playerReset", () => {
   it("resets player to starter state", () => {
@@ -31,12 +30,14 @@ describe("playerReset", () => {
   });
 
   it("lists accounts for test admin", () => {
+    const login = `list_${Date.now()}`;
+    registerUser(login, "password123");
     const accounts = listAccountsForTestAdmin();
-    assert.ok(accounts.length > 0);
+    assert.ok(accounts.some((a) => a.login === login));
     assert.ok(accounts.every((a) => a.login && a.displayName));
   });
 
-  it("uses test starter rubles for test users", () => {
+  it("uses zero rubles for test users on reset", () => {
     const login = `testreset_${Date.now()}`;
     const userId = createUser(login, hashPassword("x"), { isTest: true });
     createPlayer(userId, "Тестер", 1);
@@ -44,6 +45,26 @@ describe("playerReset", () => {
     const row = getDb().prepare("SELECT rubles FROM players WHERE user_id = ?").get(userId) as {
       rubles: number;
     };
-    assert.equal(row.rubles, TEST_START_RUBLES);
+    assert.equal(row.rubles, 0);
+  });
+
+  it("sets player rubles for test admin", () => {
+    const login = `balance_${Date.now()}`;
+    const reg = registerUser(login, "password123");
+    assert.equal(reg.ok, true);
+    if (!reg.ok) return;
+
+    const bad = setPlayerRublesForTestAdmin(reg.userId, -1);
+    assert.equal(bad.ok, false);
+
+    const ok = setPlayerRublesForTestAdmin(reg.userId, 123_456);
+    assert.equal(ok.ok, true);
+    if (!ok.ok) return;
+    assert.equal(ok.rubles, 123_456);
+
+    const row = getDb().prepare("SELECT rubles FROM players WHERE user_id = ?").get(reg.userId) as {
+      rubles: number;
+    };
+    assert.equal(row.rubles, 123_456);
   });
 });

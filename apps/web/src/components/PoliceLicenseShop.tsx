@@ -1,3 +1,4 @@
+import { formatRub } from "../formatRub.js";
 import { useEffect, useState } from "react";
 import { buyPoliceLicense, fetchPoliceLicenses, type User } from "../api";
 import { useToastRef } from "../hooks/useToastRef";
@@ -23,7 +24,7 @@ type Props = {
 };
 
 function rub(n: number) {
-  return `${n.toLocaleString("ru-RU")} ₽`;
+  return `${formatRub(n)}`;
 }
 
 export function PoliceLicenseShop({ user, setUser, onToast, registerBack, onExitPlace }: Props) {

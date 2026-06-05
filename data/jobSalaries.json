@@ -21,7 +21,8 @@
     "delivery": 8000,
     "taxi": 5000,
     "cashier": 12000,
-    "night_guard": 25000
+    "night_guard": 25000,
+    "loader": 500
   },
   "skillWeights": {
     "delivery": { "stamina": 1 },

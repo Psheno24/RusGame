@@ -1,22 +1,29 @@
+import { formatRub } from "../formatRub.js";
 import { useCallback, useEffect, useState } from "react";
 import { useNotice } from "../noticeContext";
 import {
   fetchTestAccounts,
   resetTestAccount,
+  setTestAccountBalance,
   type TestAdminAccount,
 } from "../api";
+import { useApp } from "../context";
 import { ConfirmDialog } from "./ConfirmDialog";
 
-type Step = "idle" | "pick" | "confirm";
+type Action = "reset" | "balance";
+type Step = "idle" | "pick" | "confirm" | "balance";
 
 export function TestAdminPanel() {
+  const { user, setUser } = useApp();
   const { showNotice } = useNotice();
   const [step, setStep] = useState<Step>("idle");
+  const [action, setAction] = useState<Action>("reset");
   const [accounts, setAccounts] = useState<TestAdminAccount[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<TestAdminAccount | null>(null);
+  const [balanceInput, setBalanceInput] = useState("");
 
   const loadAccounts = useCallback(async () => {
     setLoading(true);
@@ -38,7 +45,16 @@ export function TestAdminPanel() {
   const closeAll = () => {
     setStep("idle");
     setSelected(null);
+    setBalanceInput("");
     setError(null);
+  };
+
+  const openPick = (nextAction: Action) => {
+    setAction(nextAction);
+    setSelected(null);
+    setBalanceInput("");
+    setError(null);
+    setStep("pick");
   };
 
   const onReset = async () => {
@@ -56,14 +72,52 @@ export function TestAdminPanel() {
     }
   };
 
+  const onSetBalance = async () => {
+    if (!selected) return;
+    const rubles = Number(balanceInput.replace(/\s/g, ""));
+    if (!Number.isFinite(rubles) || !Number.isInteger(rubles) || rubles < 0) {
+      setError("Введите целое число от 0");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await setTestAccountBalance(selected.login, rubles);
+      showNotice(`Баланс «${selected.login}»: ${formatRub(result.rubles)}`, "success");
+      if (user?.player && selected.login.toLowerCase() === user.login.toLowerCase()) {
+        setUser((prev) =>
+          prev ? { ...prev, player: { ...prev.player, rubles: result.rubles } } : prev,
+        );
+      }
+      closeAll();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка изменения баланса");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const pickTitle = action === "reset" ? "Выберите аккаунт" : "Кому изменить баланс";
+  const pickHint =
+    action === "reset"
+      ? "Прогресс, имущество и работа будут сброшены."
+      : "Укажите новый баланс на следующем шаге.";
+
   return (
     <>
       <div className="card test-admin-panel">
         <h2>Админ-панель</h2>
-        <p className="test-admin-hint">Тестовый аккаунт: сброс прогресса любого игрока до стартового состояния.</p>
-        <button className="btn btn-danger" type="button" onClick={() => setStep("pick")}>
-          Обнулить аккаунт
-        </button>
+        <p className="test-admin-hint">
+          Доступно только тестовому аккаунту: сброс прогресса или изменение баланса любого игрока.
+        </p>
+        <div className="test-admin-actions">
+          <button className="btn btn-danger" type="button" onClick={() => openPick("reset")}>
+            Обнулить аккаунт
+          </button>
+          <button className="btn btn-secondary" type="button" onClick={() => openPick("balance")}>
+            Изменить баланс
+          </button>
+        </div>
       </div>
 
       {step === "pick" && (
@@ -75,9 +129,9 @@ export function TestAdminPanel() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="test-admin-pick-title" className="confirm-dialog-title">
-              Выберите аккаунт
+              {pickTitle}
             </h2>
-            <p className="confirm-dialog-text">Прогресс, имущество и работа будут сброшены.</p>
+            <p className="confirm-dialog-text">{pickHint}</p>
             {loading ? (
               <p className="test-admin-hint">Загрузка…</p>
             ) : error ? (
@@ -93,12 +147,14 @@ export function TestAdminPanel() {
                       className="test-admin-account-btn"
                       onClick={() => {
                         setSelected(account);
-                        setStep("confirm");
+                        setBalanceInput(String(account.rubles));
+                        setError(null);
+                        setStep(action === "reset" ? "confirm" : "balance");
                       }}
                     >
                       <span className="test-admin-account-login">{account.login}</span>
                       <span className="test-admin-account-meta">
-                        {account.displayName} · {account.rubles.toLocaleString("ru-RU")} ₽
+                        {account.displayName} · {formatRub(account.rubles)}
                         {account.isTest ? " · тест" : ""}
                       </span>
                     </button>
@@ -129,6 +185,58 @@ export function TestAdminPanel() {
             if (!busy) void onReset();
           }}
         />
+      )}
+
+      {step === "balance" && selected && (
+        <div className="confirm-backdrop" role="presentation" onClick={closeAll}>
+          <div
+            className="confirm-dialog test-admin-dialog"
+            role="dialog"
+            aria-labelledby="test-admin-balance-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="test-admin-balance-title" className="confirm-dialog-title">
+              Новый баланс
+            </h2>
+            <p className="confirm-dialog-text">
+              «{selected.login}» — сейчас {formatRub(selected.rubles)}
+            </p>
+            <label className="test-admin-balance-field">
+              <span className="test-admin-balance-label">Сумма, ₽</span>
+              <input
+                className="test-admin-balance-input"
+                type="number"
+                min={0}
+                step={1}
+                inputMode="numeric"
+                value={balanceInput}
+                onChange={(e) => setBalanceInput(e.target.value)}
+                disabled={busy}
+              />
+            </label>
+            {error ? (
+              <p className="test-admin-error" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <div className="confirm-dialog-actions">
+              <button
+                className="btn btn-secondary"
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setSelected(null);
+                  setStep("pick");
+                }}
+              >
+                Назад
+              </button>
+              <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void onSetBalance()}>
+                {busy ? "Сохранение…" : "Сохранить"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

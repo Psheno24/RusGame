@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import { parsePlatePartsFromRow, type VehiclePlateParts } from "./licensePlate.js";
 import { getCar, getPhone, getVehicleRental } from "./gameData.js";
@@ -35,13 +36,13 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
   if (p.phone_device_id) {
     const phone = getPhone(p.phone_device_id);
     const number = playerHasSim(p) ? formatSimFromPlayer(p) : null;
-    const balance = Math.floor(p.sim_balance_rub ?? 0).toLocaleString("ru-RU");
+    const balanceRub = Math.floor(p.sim_balance_rub ?? 0);
     cards.push({
       id: "phone",
       kind: "phone",
       title: phone ? `${phone.brand} ${phone.model}` : "Телефон",
       rightText: number,
-      rightSubtext: number ? `${balance} ₽` : null,
+      rightSubtext: number ? formatRub(balanceRub) : null,
       plate: null,
       accent: phone?.accent ?? "#3d4f6f",
     });

@@ -5,9 +5,8 @@ import {
   getDb,
   getPlayer,
   getUserByLogin,
-  updatePlayer,
 } from "./db.js";
-import { TEST_COOLDOWN_SEC, TEST_LOGIN, TEST_PASSWORD, TEST_START_RUBLES } from "./config.js";
+import { TEST_COOLDOWN_SEC, TEST_LOGIN, TEST_PASSWORD } from "./config.js";
 
 /** Любое игровое КД у тестера (работа, поездки и т.д.). */
 export const TEST_COOLDOWN_MS = TEST_COOLDOWN_SEC * 1000;
@@ -36,13 +35,13 @@ export function ensureTestAccount(): { created: boolean; login: string } {
       getDb().prepare("UPDATE users SET is_test = 1 WHERE id = ?").run(existing.id);
     }
     const player = getPlayer(existing.id);
-    if (player && player.rubles < TEST_START_RUBLES) {
-      updatePlayer(existing.id, { rubles: TEST_START_RUBLES });
+    if (!player) {
+      createPlayer(existing.id, "Тестер", 0);
     }
     return { created: false, login: TEST_LOGIN };
   }
 
   const userId = createUser(TEST_LOGIN, hashPassword(TEST_PASSWORD), { isTest: true });
-  createPlayer(userId, "Тестер", TEST_START_RUBLES);
+  createPlayer(userId, "Тестер", 0);
   return { created: true, login: TEST_LOGIN };
 }

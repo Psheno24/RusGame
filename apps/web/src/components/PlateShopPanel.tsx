@@ -1,3 +1,4 @@
+import { formatRub } from "../formatRub.js";
 import type { PlateShopCarInfo } from "../api";
 import { VehiclePlate } from "./VehiclePlate";
 
@@ -12,7 +13,7 @@ type Props = {
 };
 
 function rub(n: number) {
-  return `${n.toLocaleString("ru-RU")} ₽`;
+  return `${formatRub(n)}`;
 }
 
 export function PlateShopPanel({ info, spinning, busy, onRegister, onDigits, onLetters, onRegion }: Props) {

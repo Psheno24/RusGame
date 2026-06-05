@@ -28,5 +28,11 @@
     "shiftEndsAtHour": 8,
     "schedule": { "mode": "night", "nightStartHour": 22, "dayStartHour": 8 },
     "skill": "discipline"
+  },
+  "loader": {
+    "title": "Грузчик",
+    "kind": "cooldown",
+    "cooldownMs": 1800000,
+    "skill": "stamina"
   }
 }

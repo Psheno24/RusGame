@@ -84,16 +84,20 @@ import { listActionPreviews, performAction } from "./actions.js";
 import { buyProduct, listProductPreviews, listProducts } from "./products.js";
 import { homeStatusForPlayer, startSleep, wakeUp } from "./playerSleep.js";
 import {
+  getHousingExtendInfo,
   getHousingInfo,
   housingStatusForPlayer,
   payHousingDorm,
   payHousingRent,
   payLiveHere,
+  playerHasAnyHousing,
   quoteHousingBuyDetailed,
   quoteHousingSellById,
   quoteLiveHere,
   sellOwnedHousing,
 } from "./housing.js";
+import { buildEmergencyLoaderJob, buildEmergencyLoaderBrief, shouldOfferEmergencyLoader } from "./emergencyLoader.js";
+import { workCityIdForPlayer } from "./jobLocation.js";
 import {
   afterBuyHousingChoice,
   buyHousingCash,
@@ -120,7 +124,7 @@ import {
 } from "./propertyDetail.js";
 import { activeJobShiftBlock, jobCooldownState, lastWorkRecordForJob } from "./workCooldown.js";
 import { ensureTestAccount, isTestUser, scaleCooldownMs, scaleTravelMs } from "./testAccount.js";
-import { listAccountsForTestAdmin, resetPlayerAccount } from "./playerReset.js";
+import { listAccountsForTestAdmin, resetPlayerAccount, setPlayerRublesForTestAdmin } from "./playerReset.js";
 import { listCityFeed } from "./cityFeed.js";
 import { listPlayerFeed } from "./playerFeed.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
@@ -247,6 +251,17 @@ export async function registerRoutes(app: FastifyInstance) {
     };
 
     const housing = housingStatusForPlayer(player, now);
+    const hasAnyHousing = playerHasAnyHousing(player, now);
+    const emergencyLoader = shouldOfferEmergencyLoader(player, now);
+    const emergencyLoaderBrief = emergencyLoader ? buildEmergencyLoaderBrief(player, now) : null;
+    const needsHousing = !hasAnyHousing && !emergencyLoader;
+
+    let visibleJobs = cityJobs;
+    if (emergencyLoader) {
+      visibleJobs = [buildEmergencyLoaderJob(player.city_id)];
+    } else if (needsHousing) {
+      visibleJobs = [];
+    }
 
     let activeEmployment: {
       job: ReturnType<typeof jobPayload>;
@@ -257,7 +272,7 @@ export async function registerRoutes(app: FastifyInstance) {
       workBlockedReason: string | null;
     } | null = null;
     if (player.job_id) {
-      const wc = jobCityId(player.job_id);
+      const wc = workCityIdForPlayer(player, player.job_id);
       const aj = wc ? findCityJob(wc, player.job_id) : null;
       if (aj && wc) {
         const access = jobAccessStatus(player, player.job_id, now);
@@ -287,7 +302,13 @@ export async function registerRoutes(app: FastifyInstance) {
         : null,
       player: serializePlayer(player),
       housing: getHousingInfo(player, now),
-      jobs: cityJobs.length > 0 ? cityJobs.map(jobPayload) : null,
+      jobs: visibleJobs.length > 0 ? visibleJobs.map(jobPayload) : null,
+      workAccess: {
+        hasAnyHousing,
+        emergencyLoader,
+        needsHousing,
+        emergencyLoaderBrief,
+      },
       activeEmployment,
       traveling: player.status === "traveling",
       travelArrivesAt: player.travel_arrives_at,
@@ -488,8 +509,14 @@ export async function registerRoutes(app: FastifyInstance) {
     if (!player) return reply.code(404).send({ error: "Игрок не найден" });
     const housing = housingStatusForPlayer(player, now);
     return {
-      home: homeStatusForPlayer(player, now),
-      housing,
+      home: {
+        ...homeStatusForPlayer(player, now),
+        hasAnyHousing: playerHasAnyHousing(player, now),
+      },
+      housing: {
+        ...housing,
+        extend: getHousingExtendInfo(player, now),
+      },
       player: serializePlayer(player),
     };
   });
@@ -1110,6 +1137,24 @@ export async function registerRoutes(app: FastifyInstance) {
     }
 
     return { ok: true, login: target.login };
+  });
+
+  app.post<{ Body: { login?: string; rubles?: number } }>("/api/test/set-balance", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    if (!isTestUser(userId)) return reply.code(403).send({ error: "Только тестовый аккаунт" });
+
+    const login = req.body?.login?.trim();
+    if (!login) return reply.code(400).send({ error: "Укажите login" });
+    if (typeof req.body?.rubles !== "number") return reply.code(400).send({ error: "Укажите rubles" });
+
+    const target = getUserByLogin(login);
+    if (!target) return reply.code(404).send({ error: "Пользователь не найден" });
+
+    const result = setPlayerRublesForTestAdmin(target.id, req.body.rubles);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+
+    return { ok: true, login: target.login, rubles: result.rubles };
   });
 
   // ——— Admin ———

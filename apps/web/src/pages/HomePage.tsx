@@ -1,17 +1,22 @@
+import { formatRub } from "../formatRub.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   fetchHome,
   formatDuration,
+  payHousingDorm,
+  payHousingRent,
   startHomeSleep,
   wakeUpHome,
   type HomeStatus,
+  type HousingExtendInfo,
   type Player,
 } from "../api";
 import { useApp } from "../context";
 import { useNotice } from "../noticeContext";
 import { TravelingCard } from "../components/TravelingCard";
 import { CitySectionHeader } from "../components/ui/CitySectionHeader";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { useIntervalTick } from "../hooks/useIntervalTick";
 import { useHomeNav } from "../homeNav";
 import { SLEEP_MS_FOR_FULL_ENERGY } from "../sleepConstants";
@@ -42,6 +47,9 @@ export function HomePage() {
   const navigate = useNavigate();
   const [home, setHome] = useState<HomeStatus | null>(null);
   const [housingLabel, setHousingLabel] = useState("");
+  const [housingExtend, setHousingExtend] = useState<HousingExtendInfo | null>(null);
+  const [housingType, setHousingType] = useState<Player["housingType"]>(null);
+  const [extendPending, setExtendPending] = useState(false);
   const [traveling, setTraveling] = useState(false);
   const [arrivesAt, setArrivesAt] = useState<number | null>(null);
   const [targetEnergy, setTargetEnergy] = useState(100);
@@ -51,6 +59,8 @@ export function HomePage() {
     const data = await fetchHome();
     setHome(data.home);
     setHousingLabel(data.housing.statusLabel);
+    setHousingExtend(data.housing.extend);
+    setHousingType(data.housing.housingType);
     setTraveling(data.player.status === "traveling");
     setArrivesAt(data.player.travelArrivesAt);
     setUser((prev) => (prev ? { ...prev, player: data.player } : prev));
@@ -138,6 +148,22 @@ export function HomePage() {
     );
   }
 
+  if (!home.hasAnyHousing) {
+    return (
+      <div className="card work-empty-card">
+        <h2 className="work-empty-title">Нет жилья</h2>
+        <p>У вас нигде нет жилья — оформите общежитие, аренду или купите квартиру.</p>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => navigate("/city", { state: { openSection: "housing" } })}
+        >
+          Перейти к недвижимости
+        </button>
+      </div>
+    );
+  }
+
   if (!home.isResident) {
     return (
       <div className="card work-empty-card">
@@ -216,6 +242,36 @@ export function HomePage() {
     );
   }
 
+  const canExtendDorm = housingExtend?.canExtendDorm ?? false;
+  const canExtendRent = housingExtend?.canExtendRent ?? false;
+  const showExtendBtn = canExtendDorm || canExtendRent;
+  const extendDisabledReason = canExtendDorm
+    ? housingExtend?.dormDisabledReason
+    : canExtendRent
+      ? housingExtend?.rentDisabledReason
+      : housingType === "dorm"
+        ? housingExtend?.dormDisabledReason
+        : housingExtend?.rentDisabledReason;
+
+  const extendConfirmText = canExtendDorm
+    ? `Продлить общежитие на ${housingExtend?.dormExtendLabel} за ${formatRub(housingExtend?.dormExtendRub)}?`
+    : `Продлить аренду на ${housingExtend?.rentExtendLabel} за ${formatRub(housingExtend?.rentExtendRub)}?`;
+
+  const onExtendRent = async () => {
+    setExtendPending(false);
+    setBusy(true);
+    try {
+      const r = canExtendDorm ? await payHousingDorm() : await payHousingRent();
+      setUser(r.user);
+      showNotice(r.message, "success");
+      await load();
+    } catch (e) {
+      showNotice(e instanceof Error ? e.message : "Ошибка", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="home-page">
       <div className="card city-header-card home-header-card">
@@ -252,18 +308,50 @@ export function HomePage() {
       ) : (
         <div className="card">
           {sleepBlocked && <p className="work-empty-hint">{sleepBlocked}</p>}
-          <button
-            type="button"
-            className="btn btn-primary btn-block job-detail-action-btn"
-            onClick={() => {
-              setTargetEnergy(maxEnergy);
-              setShowRest(true);
-            }}
-            disabled={startEnergy >= 100 || !!sleepBlocked}
-          >
-            Отдохнуть
-          </button>
+          <div className={`home-action-row${showExtendBtn ? "" : " home-action-row--single"}`}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                setTargetEnergy(maxEnergy);
+                setShowRest(true);
+              }}
+              disabled={startEnergy >= 100 || !!sleepBlocked}
+            >
+              Отдохнуть
+            </button>
+            {showExtendBtn ? (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={busy || (!canExtendDorm && !canExtendRent)}
+                title={extendDisabledReason ?? undefined}
+                onClick={() => setExtendPending(true)}
+              >
+                Продлить аренду
+              </button>
+            ) : housingType === "dorm" || housingType === "rent" ? (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled
+                title={extendDisabledReason ?? undefined}
+              >
+                Продлить аренду
+              </button>
+            ) : null}
+          </div>
         </div>
+      )}
+      {extendPending && (
+        <ConfirmDialog
+          title="Продлить аренду?"
+          text={extendConfirmText}
+          confirmLabel="Продлить"
+          confirmClassName="btn-primary"
+          onCancel={() => setExtendPending(false)}
+          onConfirm={() => void onExtendRent()}
+        />
       )}
     </div>
   );

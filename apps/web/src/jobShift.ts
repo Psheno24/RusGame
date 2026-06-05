@@ -51,6 +51,7 @@ export function getShiftDurationLabel(
     shiftHoursMax?: number | null;
     shiftHours?: number | null;
     shiftEndsAtHour?: number | null;
+    cooldownMs?: number;
   },
   local?: Pick<CityLocalTime, "hour" | "minute">,
 ): string {
@@ -71,6 +72,12 @@ export function getShiftDurationLabel(
     return `до ${end}:00`;
   }
   if (job.shiftHours != null) return `${job.shiftHours} ч`;
+  if (job.templateKey === "loader" && job.cooldownMs) {
+    return formatDuration(job.cooldownMs);
+  }
+  if (job.kind === "cooldown" && job.cooldownMs) {
+    return formatDuration(job.cooldownMs);
+  }
   return "—";
 }
 

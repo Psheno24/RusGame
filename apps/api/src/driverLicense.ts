@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { getCarCategories } from "./gameData.js";
 import { addDriverLicense, hasDriverLicense, parseDriverLicenses } from "./playerCars.js";
@@ -23,7 +24,7 @@ export function buyDriverLicenseCategory(
     return { ok: false, error: `Права категории ${category} уже есть` };
   }
   if (player.rubles < def.licensePriceRub) {
-    return { ok: false, error: `Нужно ${def.licensePriceRub.toLocaleString("ru-RU")} ₽` };
+    return { ok: false, error: `Нужно ${formatRub(def.licensePriceRub)}` };
   }
   updatePlayer(userId, { rubles: player.rubles - def.licensePriceRub });
   addDriverLicense(userId, category);

@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { computeResaleValue } from "./assetTrade.js";
@@ -27,7 +28,6 @@ import {
 import {
   findCityJob,
   getCity,
-  getCityJobs,
   getPhone,
   getPhones,
   getTravel,
@@ -36,7 +36,16 @@ import {
 } from "./gameData.js";
 import type { TravelMode } from "./travelCalc.js";
 import { isCityResident, requireCityResident, syncPlayerHousing } from "./housing.js";
-import { jobCityId, validateJobWorkAccess } from "./jobLocation.js";
+import {
+  isEmergencyLoaderJob,
+  LOADER_JOB_ID,
+  LOADER_PAYOUT_RUB,
+  playerEmployedAsLoader,
+  playerWorksJob,
+  shouldOfferEmergencyLoader,
+  syncEmergencyLoaderEmployment,
+} from "./emergencyLoader.js";
+import { jobCityId, validateJobWorkAccess, workCityIdForPlayer } from "./jobLocation.js";
 import {
   clampReputation,
   workPayoutMultiplier,
@@ -191,7 +200,7 @@ function calculateDurationJobPayout(
 }
 
 function payoutMessage(job: JobDef, payout: number, multiplier: number): string {
-  const amount = `${payout.toLocaleString("ru-RU")} ₽`;
+  const amount = `${formatRub(payout)}`;
   if (multiplier > 1) {
     const multLabel = multiplier.toFixed(2).replace(/\.?0+$/, "");
     return `${job.title}: +${amount} (×${multLabel})`;
@@ -231,19 +240,29 @@ export function applyJob(
   const sleepErr = sleepBlockMessage(player, now);
   if (sleepErr) return { ok: false, error: sleepErr };
 
-  const guestErr = requireCityResident(player, now);
-  if (guestErr) return { ok: false, error: guestErr, code: "guest_no_housing" };
-
-  const cityJobs = getCityJobs(player.city_id);
-  if (cityJobs.length === 0) return { ok: false, error: "В этом городе пока нет вакансий" };
-
   const job = findCityJob(player.city_id, jobId);
   if (!job) return { ok: false, error: "Вакансия не найдена" };
 
+  const isLoader = isEmergencyLoaderJob(job);
+  if (isLoader) {
+    if (!shouldOfferEmergencyLoader(player, now)) {
+      return { ok: false, error: "Подработка «Грузчик» недоступна" };
+    }
+  } else {
+    const guestErr = requireCityResident(player, now);
+    if (guestErr) return { ok: false, error: guestErr, code: "guest_no_housing" };
+  }
+
+  if (isLoader && playerEmployedAsLoader(player)) {
+    return { ok: false, error: "Вы уже устроены на эту работу" };
+  }
+
   if (player.job_id === jobId) return { ok: false, error: "Вы уже устроены на эту работу" };
 
-  const reqErr = checkJobRequirements(player, job);
-  if (reqErr) return { ok: false, error: reqErr };
+  if (!isLoader) {
+    const reqErr = checkJobRequirements(player, job);
+    if (reqErr) return { ok: false, error: reqErr };
+  }
 
   if (player.job_id) {
     const workCity = jobCityId(player.job_id);
@@ -274,7 +293,7 @@ export function applyJob(
   }
 
   const prevJobId = player.job_id;
-  updatePlayer(userId, { job_id: jobId });
+  updatePlayer(userId, { job_id: isLoader ? LOADER_JOB_ID : jobId });
   if (prevJobId && prevJobId !== jobId) {
     const prevCity = jobCityId(prevJobId);
     const prevJob = prevCity ? findCityJob(prevCity, prevJobId) : null;
@@ -296,12 +315,12 @@ export function quitJob(
   const sleepErr = sleepBlockMessage(player, now);
   if (sleepErr) return { ok: false, error: sleepErr };
 
-  const workCity = jobCityId(jobId);
+  const workCity = workCityIdForPlayer(player, jobId);
   if (!workCity) return { ok: false, error: "Вакансия не найдена" };
   const job = findCityJob(workCity, jobId);
   if (!job) return { ok: false, error: "Вакансия не найдена" };
 
-  if (player.job_id !== jobId) return { ok: false, error: "Вы не устроены на эту работу" };
+  if (!playerWorksJob(player, job)) return { ok: false, error: "Вы не устроены на эту работу" };
 
   if (taxiBlocksShift(player)) {
     return {
@@ -334,23 +353,30 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
   if (sleepErr) return { ok: false, error: sleepErr };
   player = syncPlayerSimTariffBilling(userId, now) ?? player;
 
-  const workCity = jobCityId(jobId);
+  const workCity = workCityIdForPlayer(player, jobId);
   if (!workCity) return { ok: false, error: "Вакансия не найдена" };
   const job = findCityJob(workCity, jobId);
   if (!job) return { ok: false, error: "Вакансия не найдена" };
 
-  const workErr = validateJobWorkAccess(player, jobId, now);
-  if (workErr) {
-    const guestNoHousing = !isCityResident(player, workCity, now);
-    return {
-      ok: false,
-      error: workErr,
-      code: guestNoHousing ? "guest_no_housing" : "remote_work_blocked",
-      guestNoHousing,
-    };
+  const isLoader = isEmergencyLoaderJob(job);
+  if (isLoader) {
+    if (!shouldOfferEmergencyLoader(player, now)) {
+      return { ok: false, error: "Подработка «Грузчик» недоступна" };
+    }
+  } else {
+    const workErr = validateJobWorkAccess(player, jobId, now);
+    if (workErr) {
+      const guestNoHousing = !isCityResident(player, workCity, now);
+      return {
+        ok: false,
+        error: workErr,
+        code: guestNoHousing ? "guest_no_housing" : "remote_work_blocked",
+        guestNoHousing,
+      };
+    }
   }
 
-  if (player.job_id !== job.id) {
+  if (!playerWorksJob(player, job)) {
     return { ok: false, error: "Сначала устройтесь на эту работу" };
   }
 
@@ -358,8 +384,10 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
     return { ok: false, error: "Таксист работает на линии — используйте раздел заказов" };
   }
 
-  const reqErr = checkJobRequirements(player, job);
-  if (reqErr) return { ok: false, error: reqErr };
+  if (!isLoader) {
+    const reqErr = checkJobRequirements(player, job);
+    if (reqErr) return { ok: false, error: reqErr };
+  }
 
   const schedule = checkJobSchedule(player, job, now);
   if (!schedule.ok) {
@@ -420,8 +448,9 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
     };
   }
 
-  const payoutResult =
-    job.kind === "duration"
+  const payoutResult = isLoader
+    ? { payout: LOADER_PAYOUT_RUB, multiplier: 1 }
+    : job.kind === "duration"
       ? calculateDurationJobPayout(player, job, schedule.localTime, shiftHours)
       : isNightGuardJob(job)
         ? calculateNightGuardPayout(player, job, schedule.localTime, shiftHours)
@@ -438,8 +467,9 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
 
   let skillGain: { key: SkillKey; amount: number } | undefined;
   const grantSkillProgress =
-    !isNightGuardJob(job) ||
-    nightGuardStaminaEligible(schedule.localTime, job.shiftEndsAtHour ?? 8);
+    !isLoader &&
+    (!isNightGuardJob(job) ||
+      nightGuardStaminaEligible(schedule.localTime, job.shiftEndsAtHour ?? 8));
   if (grantSkillProgress && job.templateKey) {
     const skillResult = recordSkillActionForTemplate(player, job.templateKey);
     Object.assign(patch, skillResult.patch);
@@ -448,10 +478,12 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
 
   updatePlayer(userId, patch);
 
+  if (isLoader) syncEmergencyLoaderEmployment(userId, now);
+
   const { payout, multiplier } = payoutResult;
   let message =
     job.kind === "duration"
-      ? `${job.title} (${shiftHours} ч): +${payout.toLocaleString("ru-RU")} ₽`
+      ? `${job.title} (${shiftHours} ч): +${formatRub(payout)}`
       : isNightGuardJob(job)
         ? `${job.title} (до ${String(job.shiftEndsAtHour ?? 8).padStart(2, "0")}:00, ${formatShiftMinutesRu(
             computeNightGuardShiftMinutes(
@@ -459,7 +491,7 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
               schedule.localTime.minute,
               job.shiftEndsAtHour ?? 8,
             ),
-          )}): +${payout.toLocaleString("ru-RU")} ₽`
+          )}): +${formatRub(payout)}`
         : payoutMessage(job, payout, multiplier);
 
   if (multiplier > 1 && job.kind === "duration") {
@@ -470,8 +502,8 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
   const feedType = job.kind === "duration" ? "work:shift" : "work:side";
   const feedText =
     job.kind === "duration"
-      ? `Смена «${job.title}» (${shiftHours} ч): +${payout.toLocaleString("ru-RU")} ₽`
-      : `Работа «${job.title}»: +${payout.toLocaleString("ru-RU")} ₽`;
+      ? `Смена «${job.title}» (${shiftHours} ч): +${formatRub(payout)}`
+      : `Работа «${job.title}»: +${formatRub(payout)}`;
   appendPlayerFeed(userId, feedType, feedText, now);
 
   return { ok: true, payout, message, skillGain };
@@ -525,14 +557,14 @@ export function startTravel(
   }
 
   if (player.rubles < route.priceRub) {
-    return { ok: false, error: `Не хватает денег (нужно ${route.priceRub.toLocaleString("ru-RU")} ₽)` };
+    return { ok: false, error: `Не хватает денег (нужно ${formatRub(route.priceRub)})` };
   }
 
   const arrivesAt = now + scaleTravelMs(route.durationMs, userId);
   appendPlayerFeed(
     userId,
     "travel:depart",
-    `${route.mode === "plane" ? "Перелёт" : "Поездка"} в ${dest.name} (−${route.priceRub.toLocaleString("ru-RU")} ₽)`,
+    `${route.mode === "plane" ? "Перелёт" : "Поездка"} в ${dest.name} (−${formatRub(route.priceRub)})`,
     now,
   );
   updatePlayer(userId, {
@@ -680,7 +712,7 @@ export function buyPhoneDevice(
   const quote = quotePhonePurchase(player, deviceId, now);
   if ("error" in quote) return { ok: false, error: quote.error };
   if (player.rubles < quote.netPriceRub) {
-    return { ok: false, error: `Нужно ${quote.netPriceRub.toLocaleString("ru-RU")} ₽` };
+    return { ok: false, error: `Нужно ${formatRub(quote.netPriceRub)}` };
   }
   updatePlayer(userId, {
     rubles: player.rubles - quote.netPriceRub,
@@ -725,7 +757,7 @@ export function sellPhoneDevice(
   appendPlayerFeed(
     userId,
     "shop:phone",
-    `Продали телефон ${current.brand} ${current.model} (+${amountRub.toLocaleString("ru-RU")} ₽)`,
+    `Продали телефон ${current.brand} ${current.model} (+${formatRub(amountRub)})`,
     now,
   );
   return { ok: true, amountRub };

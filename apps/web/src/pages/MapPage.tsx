@@ -9,6 +9,7 @@ import {
   type TravelMode,
   type TravelQuoteOption,
 } from "../api";
+import { formatRub } from "../formatRub.js";
 import { MapActionPanel } from "../components/MapActionPanel";
 import { useApp } from "../context";
 import { useNotice } from "../noticeContext";
@@ -17,6 +18,7 @@ import { MapZoomViewport } from "../components/MapZoomViewport";
 import { viewBoxToString } from "../mapViewBox";
 import { chainToPoints, CITY_NODES, MAP_VB, ROUTE_CHAINS } from "../mapMetroLayout";
 import { staticMapCities } from "../mapStaticCities";
+import type { MapOpenState } from "./mapRouteState";
 
 const ROUTE_UNAVAILABLE = "Маршрут на карте не найден";
 
@@ -59,6 +61,7 @@ export function MapPage() {
   const focusHomeOnMount = useRef(
     (location.state as { focusHome?: boolean } | null)?.focusHome === true,
   ).current;
+  const mapFocusConsumed = useRef(false);
   const [cities, setCities] = useState<CityPin[]>(staticMapCities);
   const [currentId, setCurrentId] = useState(() => user?.player?.cityId ?? "omsk");
   const [traveling, setTraveling] = useState(false);
@@ -137,6 +140,20 @@ export function MapPage() {
     }
   };
 
+  const pickCityRef = useRef(pickCity);
+  pickCityRef.current = pickCity;
+
+  useEffect(() => {
+    if (mapFocusConsumed.current) return;
+    const st = location.state as MapOpenState | null;
+    if (!st?.selectCityOnMount || !st.focusCityId) return;
+    const city = cities.find((c) => c.id === st.focusCityId);
+    if (!city) return;
+    mapFocusConsumed.current = true;
+    setView("map");
+    void pickCityRef.current(city);
+  }, [cities, location.state]);
+
   const goTravel = async () => {
     if (!selected || jobShiftBlocked) return;
     try {
@@ -211,7 +228,7 @@ export function MapPage() {
             )}
             <p>
               {travelMode === "plane" ? "Самолёт" : "Поезд"}:{" "}
-              <strong>{selectedQuote.priceRub.toLocaleString("ru-RU")} ₽</strong>, в пути{" "}
+              <strong className="rub-amount">{formatRub(selectedQuote.priceRub)}</strong>, в пути{" "}
               <strong>{formatDuration(selectedQuote.durationMs)}</strong>
             </p>
             <button

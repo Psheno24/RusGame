@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DATA_DIR } from "./config.js";
@@ -199,8 +200,8 @@ export function listTariffsForCity(cityId: string) {
     weeklyRub: getWeeklyTariffPrice(plan.id as SimTariffId, cityId),
     priceLabel:
       plan.weeklyRubBase <= 0
-        ? "0 ₽"
-        : `${getWeeklyTariffPrice(plan.id as SimTariffId, cityId).toLocaleString("ru-RU")} ₽/нед`,
+        ? formatRub(0)
+        : `${formatRub(getWeeklyTariffPrice(plan.id as SimTariffId, cityId))}/нед`,
   }));
 }
 
@@ -274,7 +275,7 @@ export function quoteSimTariff(player: PlayerRow, planId: string, now = Date.now
     const chargeRub = calcUpgradeTopUpRub(currentId, id, player.city_id, paidUntil, now);
     if (chargeRub > balance) {
       return {
-        error: `На балансе сим ${balance.toLocaleString("ru-RU")} ₽, нужно ${chargeRub.toLocaleString("ru-RU")} ₽`,
+        error: `На балансе сим ${formatRub(balance)}, нужно ${formatRub(chargeRub)}`,
       };
     }
     return {
@@ -321,7 +322,7 @@ export function quoteSimTariff(player: PlayerRow, planId: string, now = Date.now
   const chargeRub = weeklyRub;
   if (chargeRub > balance) {
     return {
-      error: `На балансе сим ${balance.toLocaleString("ru-RU")} ₽, нужно ${chargeRub.toLocaleString("ru-RU")} ₽`,
+      error: `На балансе сим ${formatRub(balance)}, нужно ${formatRub(chargeRub)}`,
     };
   }
 

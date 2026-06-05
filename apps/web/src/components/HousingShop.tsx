@@ -1,3 +1,4 @@
+import { formatRub } from "../formatRub.js";
 import { useEffect, useState } from "react";
 import {
   afterBuyHousingChoice,
@@ -46,7 +47,7 @@ type Props = {
 };
 
 function rub(n: number) {
-  return `${n.toLocaleString("ru-RU")} ₽`;
+  return `${formatRub(n)}`;
 }
 
 export function HousingShop({

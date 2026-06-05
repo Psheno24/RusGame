@@ -1,3 +1,4 @@
+import { formatRub } from "../formatRub.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   buyPhone,
@@ -31,7 +32,7 @@ type Props = {
 };
 
 function rub(n: number) {
-  return `${n.toLocaleString("ru-RU")} ₽`;
+  return `${formatRub(n)}`;
 }
 
 export function PhoneShop({ user, setUser, onToast, onNavChange, registerBack }: Props) {
@@ -255,7 +256,7 @@ export function PhoneShop({ user, setUser, onToast, onNavChange, registerBack }:
                     <span className="phone-list-price">
                       {d.isOwned
                         ? "ваш"
-                        : `${(d.netPriceRub ?? d.priceRub).toLocaleString("ru-RU")} ₽`}
+                        : `${formatRub((d.netPriceRub ?? d.priceRub))}`}
                     </span>
                   </span>
                   {d.isOwned && <span className="phone-list-badge">ваш</span>}

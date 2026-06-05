@@ -1,4 +1,4 @@
-import { TEST_START_RUBLES } from "./config.js";
+import { formatRub } from "./formatRub.js";
 import { getDb, getPlayer, getUserById, updatePlayer } from "./db.js";
 
 const STARTER_RUBLES = 5000;
@@ -40,7 +40,7 @@ export function resetPlayerAccount(targetUserId: number, now = Date.now()): bool
 
   updatePlayer(targetUserId, {
     display_name: user.is_test ? "Тестер" : user.login,
-    rubles: user.is_test ? TEST_START_RUBLES : STARTER_RUBLES,
+    rubles: user.is_test ? 0 : STARTER_RUBLES,
     city_id: "omsk",
     status: "idle",
     travel_to_city_id: null,
@@ -99,4 +99,25 @@ export function resetPlayerAccount(targetUserId: number, now = Date.now()): bool
   });
 
   return true;
+}
+
+const MAX_TEST_ADMIN_RUBLES = 999_999_999_999;
+
+export function setPlayerRublesForTestAdmin(
+  targetUserId: number,
+  rubles: number,
+): { ok: true; rubles: number } | { ok: false; error: string } {
+  if (!Number.isFinite(rubles) || !Number.isInteger(rubles)) {
+    return { ok: false, error: "Сумма должна быть целым числом" };
+  }
+  if (rubles < 0) return { ok: false, error: "Баланс не может быть отрицательным" };
+  if (rubles > MAX_TEST_ADMIN_RUBLES) {
+    return { ok: false, error: `Максимум ${formatRub(MAX_TEST_ADMIN_RUBLES)}` };
+  }
+
+  const player = getPlayer(targetUserId);
+  if (!player) return { ok: false, error: "Игрок не найден" };
+
+  updatePlayer(targetUserId, { rubles });
+  return { ok: true, rubles };
 }

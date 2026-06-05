@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { HousingType, PlayerRow } from "./db.js";
@@ -14,7 +15,9 @@ import {
 } from "./housingCatalog.js";
 import {
   migrateLegacyHousingLast,
+  parseHousingStack,
   pushCurrentResidenceToStack,
+  purgeExpiredStackEntries,
   restoreFromHousingStack,
 } from "./housingStack.js";
 import {
@@ -40,6 +43,8 @@ const config = JSON.parse(readFileSync(join(DATA_DIR, "housing.json"), "utf-8"))
 const MS_HOUR = 60 * 60 * 1000;
 const MS_DAY = 24 * MS_HOUR;
 const MS_WEEK = 7 * MS_DAY;
+const MAX_DORM_AHEAD_MS = 7 * MS_DAY;
+const RENT_EXTEND_WINDOW_MS = 7 * MS_DAY;
 const SUBLET_MONTH_MS = config.rentDays * MS_DAY;
 
 function weeklyNetForProperty(cityId: string, propertyId: string): number {
@@ -109,6 +114,11 @@ export function getHousingPrices(cityId: string) {
   };
 }
 
+/** Цена суток в общежитии (dormHours = 24). */
+export function dormDayPriceRub(cityId: string): number {
+  return getHousingPrices(cityId).dormRub;
+}
+
 function extendExpiry(current: number | null, addMs: number, now: number): number {
   const base = current != null && current > now ? current : now;
   return base + addMs;
@@ -171,6 +181,7 @@ function extendActiveSublets(player: PlayerRow, addMs: number, now: number): num
 
 export function syncPlayerHousing(player: PlayerRow, now = Date.now()): PlayerRow {
   let p = migrateLegacyHousingLast(player);
+  p = purgeExpiredStackEntries(p, now);
   let residenceChanged = p !== player;
   let rublesChanged = false;
 
@@ -372,6 +383,88 @@ export function isCityResident(player: PlayerRow, cityId?: string, now = Date.no
     return p.housing_expires_at != null && p.housing_expires_at > now;
   }
   return false;
+}
+
+/** Есть ли у игрока активное жильё (аренда или своё, где он живёт) в любом городе. */
+export function playerHasAnyHousing(player: PlayerRow, now = Date.now()): boolean {
+  const p = syncPlayerHousing(player, now);
+  if (!p.housing_type || !p.housing_city_id) return false;
+  if (p.housing_type === "dorm" || p.housing_type === "rent") {
+    return p.housing_expires_at != null && p.housing_expires_at > now;
+  }
+  if (p.housing_type === "owned") {
+    const row = activeOwnedRecord(p);
+    return row != null && !isSubletActive(row, now);
+  }
+  return false;
+}
+
+export type HousingExtendInfo = {
+  canExtendDorm: boolean;
+  canExtendRent: boolean;
+  dormExtendRub: number;
+  rentExtendRub: number;
+  dormExtendLabel: string;
+  rentExtendLabel: string;
+  dormDisabledReason: string | null;
+  rentDisabledReason: string | null;
+};
+
+export function getHousingExtendInfo(player: PlayerRow, now = Date.now()): HousingExtendInfo {
+  const p = syncPlayerHousing(player, now);
+  const prices = getHousingPrices(p.city_id);
+  const addDormMs = config.dormHours * MS_HOUR;
+  const addRentMs = config.rentDays * MS_DAY;
+
+  let canExtendDorm = false;
+  let canExtendRent = false;
+  let dormDisabledReason: string | null = null;
+  let rentDisabledReason: string | null = null;
+
+  const dormActive =
+    p.housing_type === "dorm" &&
+    p.housing_city_id === p.city_id &&
+    p.housing_expires_at != null &&
+    p.housing_expires_at > now;
+
+  if (dormActive) {
+    const newExpiry = extendExpiry(p.housing_expires_at, addDormMs, now);
+    if (newExpiry - now > MAX_DORM_AHEAD_MS) {
+      dormDisabledReason = "Не более 7 суток вперёд";
+    } else if (p.rubles < prices.dormRub) {
+      dormDisabledReason = `Нужно ${formatRub(prices.dormRub)}`;
+    } else {
+      canExtendDorm = true;
+    }
+  }
+
+  const rentActive =
+    p.housing_type === "rent" &&
+    p.housing_city_id === p.city_id &&
+    p.housing_expires_at != null &&
+    p.housing_expires_at > now;
+
+  if (rentActive) {
+    const remaining = p.housing_expires_at! - now;
+    if (remaining >= RENT_EXTEND_WINDOW_MS) {
+      rentDisabledReason = "Продление доступно, когда осталось меньше 7 дней";
+    } else if (p.rubles < prices.rentRub) {
+      rentDisabledReason = `Нужно ${formatRub(prices.rentRub)}`;
+    } else {
+      canExtendRent = true;
+    }
+  }
+
+  return {
+    canExtendDorm,
+    canExtendRent,
+    dormExtendRub: prices.dormRub,
+    rentExtendRub: prices.rentRub,
+    dormExtendLabel: `+${config.dormHours} ч`,
+    rentExtendLabel: `+${config.rentDays} дн.`,
+    dormDisabledReason,
+    rentDisabledReason,
+  };
 }
 
 export function housingStatusForPlayer(player: PlayerRow, now = Date.now()) {
@@ -591,7 +684,7 @@ export function payLiveHere(player: PlayerRow, ownedId: number, now = Date.now()
   if (p.rubles < totalCost) {
     return {
       ok: false,
-      error: `Не хватает денег (нужно ${totalCost.toLocaleString("ru-RU")} ₽)`,
+      error: `Не хватает денег (нужно ${formatRub(totalCost)})`,
     };
   }
 
@@ -614,10 +707,10 @@ export function payLiveHere(player: PlayerRow, ownedId: number, now = Date.now()
 
   const parts: string[] = [`Теперь вы живёте: ${quote.title} (${quote.cityName})`];
   if (quote.repayRub > 0) {
-    parts.push(`возврат жильцам −${quote.repayRub.toLocaleString("ru-RU")} ₽`);
+    parts.push(`возврат жильцам −${formatRub(quote.repayRub)}`);
   }
   if (income > 0) {
-    parts.push(`остальные квартиры сданы (+${income.toLocaleString("ru-RU")} ₽)`);
+    parts.push(`остальные квартиры сданы (+${formatRub(income)})`);
   }
   const msg = parts.join(". ") + ".";
   appendPlayerFeed(p.user_id, "housing:live", `Переезд: ${quote.title} (${quote.cityName})`, now);
@@ -627,7 +720,7 @@ export function payLiveHere(player: PlayerRow, ownedId: number, now = Date.now()
 function payDorm(player: PlayerRow, now: number): HousingPayResult {
   const prices = getHousingPrices(player.city_id);
   if (player.rubles < prices.dormRub) {
-    return { ok: false, error: `Не хватает денег (нужно ${prices.dormRub.toLocaleString("ru-RU")} ₽)` };
+    return { ok: false, error: `Не хватает денег (нужно ${formatRub(prices.dormRub)})` };
   }
 
   const addMs = config.dormHours * MS_HOUR;
@@ -637,6 +730,13 @@ function payDorm(player: PlayerRow, now: number): HousingPayResult {
   const extend = extending
     ? extendExpiry(player.housing_expires_at, addMs, now)
     : now + addMs;
+
+  if (extending && extend - now > MAX_DORM_AHEAD_MS) {
+    return {
+      ok: false,
+      error: "Общежитие можно продлить максимум на 7 суток вперёд",
+    };
+  }
 
   if (player.housing_type != null && !extending) {
     pushCurrentResidenceToStack(player);
@@ -663,8 +763,8 @@ function payDorm(player: PlayerRow, now: number): HousingPayResult {
   const days = Math.round((extend - (extending ? player.housing_expires_at! : now)) / MS_DAY);
   const msg =
     income > 0
-      ? `Общежитие на ${config.dormHours} ч (−${prices.dormRub.toLocaleString("ru-RU")} ₽). Квартиры сданы/продлены (+${income.toLocaleString("ru-RU")} ₽).`
-      : `Общежитие оплачено на ${config.dormHours} ч (−${prices.dormRub.toLocaleString("ru-RU")} ₽)`;
+      ? `Общежитие на ${config.dormHours} ч (−${formatRub(prices.dormRub)}). Квартиры сданы/продлены (+${formatRub(income)}).`
+      : `Общежитие оплачено на ${config.dormHours} ч (−${formatRub(prices.dormRub)})`;
   appendPlayerFeed(player.user_id, "housing:dorm", msg, now);
   return { ok: true, message: msg };
 }
@@ -672,7 +772,7 @@ function payDorm(player: PlayerRow, now: number): HousingPayResult {
 function payRent(player: PlayerRow, now: number): HousingPayResult {
   const prices = getHousingPrices(player.city_id);
   if (player.rubles < prices.rentRub) {
-    return { ok: false, error: `Не хватает денег (нужно ${prices.rentRub.toLocaleString("ru-RU")} ₽)` };
+    return { ok: false, error: `Не хватает денег (нужно ${formatRub(prices.rentRub)})` };
   }
 
   const addMs = config.rentDays * MS_DAY;
@@ -682,6 +782,16 @@ function payRent(player: PlayerRow, now: number): HousingPayResult {
   const extend = extending
     ? extendExpiry(player.housing_expires_at, addMs, now)
     : now + addMs;
+
+  if (extending) {
+    const remaining = player.housing_expires_at! - now;
+    if (remaining >= RENT_EXTEND_WINDOW_MS) {
+      return {
+        ok: false,
+        error: "Продлить аренду можно, когда осталось меньше 7 дней",
+      };
+    }
+  }
 
   if (player.housing_type != null && !extending) {
     pushCurrentResidenceToStack(player);
@@ -706,8 +816,8 @@ function payRent(player: PlayerRow, now: number): HousingPayResult {
   }
   const msg =
     income > 0
-      ? `Аренда на ${config.rentDays} дн. (−${prices.rentRub.toLocaleString("ru-RU")} ₽). Квартиры сданы/продлены (+${income.toLocaleString("ru-RU")} ₽).`
-      : `Аренда на ${config.rentDays} дн. (−${prices.rentRub.toLocaleString("ru-RU")} ₽)`;
+      ? `Аренда на ${config.rentDays} дн. (−${formatRub(prices.rentRub)}). Квартиры сданы/продлены (+${formatRub(income)}).`
+      : `Аренда на ${config.rentDays} дн. (−${formatRub(prices.rentRub)})`;
   appendPlayerFeed(player.user_id, "housing:rent", msg, now);
   return { ok: true, message: msg };
 }
@@ -827,7 +937,7 @@ export function sellOwnedHousing(
   if (p.rubles < tenantPenalty) {
     return {
       ok: false,
-      error: `Не хватает на возврат жильцам за неиспользованные дни (${tenantPenalty.toLocaleString("ru-RU")} ₽)`,
+      error: `Не хватает на возврат жильцам за неиспользованные дни (${formatRub(tenantPenalty)})`,
     };
   }
 
@@ -849,14 +959,14 @@ export function sellOwnedHousing(
 
   const prop = getHousingProperty(row.city_id, row.property_id);
   const penaltyNote =
-    tenantPenalty > 0 ? `, жильцам −${tenantPenalty.toLocaleString("ru-RU")} ₽` : "";
-  const message = `${prop?.title ?? "Квартира"} продана (+${sellQuote.amountRub.toLocaleString("ru-RU")} ₽${penaltyNote})${
+    tenantPenalty > 0 ? `, жильцам −${formatRub(tenantPenalty)}` : "";
+  const message = `${prop?.title ?? "Квартира"} продана (+${formatRub(sellQuote.amountRub)}${penaltyNote})${
     wasHome ? ". Восстановлено прежнее жильё." : ""
   }`;
   appendPlayerFeed(
     p.user_id,
     "housing:sell",
-    `Продали «${prop?.title ?? "квартиру"}» (+${sellQuote.amountRub.toLocaleString("ru-RU")} ₽)`,
+    `Продали «${prop?.title ?? "квартиру"}» (+${formatRub(sellQuote.amountRub)})`,
     now,
   );
   return { ok: true, message };

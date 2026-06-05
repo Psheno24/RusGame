@@ -1,3 +1,4 @@
+import { formatRub } from "../formatRub.js";
 import { useCallback, useEffect, useState } from "react";
 import { useToastRef } from "../hooks/useToastRef";
 import {
@@ -35,6 +36,7 @@ import {
 import type { NavBackHandler } from "../navBack";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CityGridButton } from "./ui/CityGridButton";
+import { TimerIcon } from "./ui/TimerIcon";
 import { PlateShopPanel } from "./PlateShopPanel";
 import { VehiclePlate } from "./VehiclePlate";
 
@@ -75,7 +77,7 @@ type Props = {
 };
 
 function rub(n: number) {
-  return `${n.toLocaleString("ru-RU")} ₽`;
+  return `${formatRub(n)}`;
 }
 
 function formatRefreshAt(ts: number): string {
@@ -741,7 +743,9 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
             )}
             <div>
               <dt>Скорость / доставка</dt>
-              <dd>−{selected.cooldownReducePct}% к КД</dd>
+              <dd className="car-spec-cooldown">
+                <TimerIcon /> −{selected.cooldownReducePct}% к ожиданию доставки
+              </dd>
             </div>
             {selected.comfort != null && (
               <div>

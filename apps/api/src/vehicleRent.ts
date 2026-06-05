@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { appendPlayerFeed } from "./playerFeed.js";
 import { getVehicleRental } from "./gameData.js";
@@ -22,7 +23,7 @@ export function rentVehicle(
     return { ok: false, error: "Нужны права категории B — оформите в полиции" };
   }
   if (player.rubles < rental.priceRub) {
-    return { ok: false, error: `Нужно ${rental.priceRub.toLocaleString("ru-RU")} ₽` };
+    return { ok: false, error: `Нужно ${formatRub(rental.priceRub)}` };
   }
   if (playerHasVehicleRentalRecord(player)) {
     return {

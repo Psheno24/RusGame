@@ -1412,6 +1412,21 @@ body {
   font-size: 0.95rem;
 }
 
+.home-action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.home-action-row--single {
+  grid-template-columns: 1fr;
+}
+
+.home-action-row .btn {
+  width: 100%;
+  min-height: 48px;
+}
+
 .home-energy-meter {
   height: 8px;
   border-radius: 999px;
@@ -2581,9 +2596,27 @@ body {
   opacity: 0.92;
 }
 
-.job-btn-text,
-.job-btn-cooldown {
+.job-btn-text {
   white-space: nowrap;
+}
+
+.job-btn-cooldown {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.ui-timer-icon {
+  width: 0.95em;
+  height: 0.95em;
+  flex-shrink: 0;
+}
+
+.car-spec-cooldown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .job-list-item .btn {
@@ -2734,6 +2767,117 @@ body {
 
 .test-admin-panel .btn {
   margin-top: 0.75rem;
+}
+
+.test-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 0.75rem;
+}
+
+.test-admin-actions .btn {
+  margin-top: 0;
+  flex: 1 1 140px;
+}
+
+.test-admin-balance-field {
+  display: block;
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+}
+
+.test-admin-dialog .confirm-dialog-actions {
+  margin-top: 16px;
+}
+
+.test-admin-balance-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.test-admin-balance-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #2d3f56;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+}
+
+.emergency-loader-brief {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(212, 168, 75, 0.28);
+  background: rgba(212, 168, 75, 0.06);
+}
+
+.emergency-loader-brief-list {
+  margin: 0;
+  padding: 0 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.emergency-loader-brief-list strong {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.emergency-loader-travel {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.emergency-loader-travel-title {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.emergency-loader-travel p {
+  margin: 0 0 8px;
+}
+
+.emergency-loader-travel-status--ready {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.emergency-loader-travel-check {
+  width: 1.15em;
+  height: 1.15em;
+  flex-shrink: 0;
+  margin-top: 0.1em;
+}
+
+.emergency-loader-map-btn {
+  margin-top: 4px;
+}
+
+.city-ref {
+  white-space: nowrap;
+}
+
+.rub-amount {
+  white-space: nowrap;
 }
 
 .test-admin-hint {
@@ -4504,9 +4648,12 @@ body {
 
 .job-list-pay,
 .job-list-cooldown {
-  display: block;
   font-family: "Cascadia Mono", "JetBrains Mono", "Roboto Mono", monospace;
   line-height: 1.25;
+}
+
+.job-list-pay {
+  display: block;
 }
 
 .job-list-cooldown {
@@ -4514,6 +4661,9 @@ body {
   color: var(--accent);
   font-size: 0.78rem;
   font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .phone-specs > div {

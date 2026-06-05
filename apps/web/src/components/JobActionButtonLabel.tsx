@@ -1,4 +1,5 @@
 import { formatDuration } from "../api";
+import { TimerIcon } from "./ui/TimerIcon";
 
 export function JobActionButtonLabel({
   base,
@@ -22,7 +23,11 @@ export function JobActionButtonLabel({
     <span className="job-btn-label job-btn-label--stack">
       <span className="job-btn-text">{base}</span>
       {disabledReason ? <span className="job-btn-reason">{disabledReason}</span> : null}
-      {mins ? <span className="job-btn-cooldown">(⏱&nbsp;{mins})</span> : null}
+      {mins ? (
+        <span className="job-btn-cooldown">
+          (<TimerIcon /> {mins})
+        </span>
+      ) : null}
     </span>
   );
 }

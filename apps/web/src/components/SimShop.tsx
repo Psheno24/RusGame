@@ -1,3 +1,4 @@
+import { formatRub } from "../formatRub.js";
 import { useCallback, useEffect, useState } from "react";
 import { useToastRef } from "../hooks/useToastRef";
 import type { NavBackHandler } from "../navBack";
@@ -77,7 +78,7 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
       const r = await fn();
       setUser(r.user);
       if (r.number) onToast(`Номер: ${r.number}`);
-      else if (r.simBalanceRub != null) onToast(`Баланс сим: ${r.simBalanceRub.toLocaleString("ru-RU")} ₽`);
+      else if (r.simBalanceRub != null) onToast(`Баланс сим: ${formatRub(r.simBalanceRub)}`);
       else onToast("Готово");
       await reload();
     } catch (e) {
@@ -90,7 +91,7 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
   const requestTopup = () => {
     const amount = Math.floor(Number(topupAmount));
     if (!Number.isFinite(amount) || amount < 1) {
-      onToast("Введите сумму от 1 ₽", true);
+      onToast(`Введите сумму от ${formatRub(1)}`, true);
       return;
     }
     setPending({ type: "topup", amount });
@@ -123,7 +124,7 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
       if (action.quote.kind === "downgrade") {
         onToast(`С ${action.quote.effectiveAtLabel ?? "следующего списания"} подключится «${action.quote.title}»`);
       } else if (action.quote.kind === "upgrade") {
-        onToast(`Тариф «${action.quote.title}» активен. Доплата ${action.quote.chargeRub.toLocaleString("ru-RU")} ₽`);
+        onToast(`Тариф «${action.quote.title}» активен. Доплата ${formatRub(action.quote.chargeRub)}`);
       } else {
         onToast(`Тариф «${action.quote.title}» подключён`);
       }
@@ -140,7 +141,7 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
     if (pending.type === "topup") {
       return {
         title: "Пополнить сим?",
-        text: `${pending.amount.toLocaleString("ru-RU")} ₽ с основного счёта`,
+        text: `${formatRub(pending.amount)} с основного счёта`,
         confirmLabel: "Пополнить",
         confirmClassName: "btn-primary",
       };
@@ -157,7 +158,7 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
     if (q.kind === "upgrade") {
       return {
         title: `«${q.title}»?`,
-        text: `Доплата ${q.chargeRub.toLocaleString("ru-RU")} ₽ · до ${q.paidUntilLabel}`,
+        text: `Доплата ${formatRub(q.chargeRub)} · до ${q.paidUntilLabel}`,
         confirmLabel: "Подтвердить",
         confirmClassName: "btn-primary",
       };
@@ -172,7 +173,7 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
     }
     return {
       title: `«${q.title}»?`,
-      text: `${q.chargeRub.toLocaleString("ru-RU")} ₽ · до ${q.paidUntilLabel}`,
+      text: `${formatRub(q.chargeRub)} · до ${q.paidUntilLabel}`,
       confirmLabel: "Подтвердить",
       confirmClassName: "btn-primary",
     };
@@ -219,7 +220,7 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
             >
               <span className="city-grid-title">{part.label}</span>
               <span className="city-grid-hint">
-                {part.hint} · {part.price.toLocaleString("ru-RU")} ₽
+                {part.hint} · {formatRub(part.price)}
               </span>
             </button>
           ))}
@@ -282,7 +283,7 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
       >
         <span className="sim-card-chip" aria-hidden />
         {info.hasSim && (
-          <span className="sim-card-balance">{info.simBalanceRub.toLocaleString("ru-RU")} ₽</span>
+          <span className="sim-card-balance rub-amount">{formatRub(info.simBalanceRub)}</span>
         )}
         {info.hasSim && (
           <>
@@ -339,10 +340,10 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
       ) : (
         <>
           <p className="shop-price">
-            Первая симка: <strong>{info.prices.register.toLocaleString("ru-RU")} ₽</strong>
+            Первая симка: <strong>{formatRub(info.prices.register)}</strong>
           </p>
           <p className="sim-shop-note">
-            Случайный свободный номер, на баланс сим +{info.prices.startBalance} ₽. Тариф «Только входящие».
+            Случайный свободный номер, на баланс сим +{formatRub(info.prices.startBalance)}. Тариф «Только входящие».
           </p>
           <button
             className="btn btn-primary"

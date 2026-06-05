@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import { appendPlayerFeed } from "./playerFeed.js";
 import { getDb, getPlayer, updatePlayer, type PlayerRow } from "./db.js";
 import {
@@ -67,7 +68,7 @@ export function registerSim(userId: number): { ok: true; number: string } | { ok
   if (needPhone) return { ok: false, error: needPhone };
   if (playerHasSim(player)) return { ok: false, error: "Симка уже оформлена" };
   if (player.rubles < SHOP_SIM_REGISTER_BASE_RUB) {
-    return { ok: false, error: `Нужно ${SHOP_SIM_REGISTER_BASE_RUB} ₽` };
+    return { ok: false, error: `Нужно ${formatRub(SHOP_SIM_REGISTER_BASE_RUB)}` };
   }
 
   const parts = rollUniqueSimNumberParts(takenSimKeys(userId));
@@ -102,7 +103,7 @@ export function changeSimPart(
     last: SHOP_SIM_CHANGE_LAST_BASE_RUB,
   };
   const cost = costs[part];
-  if (player.rubles < cost) return { ok: false, error: `Нужно ${cost.toLocaleString("ru-RU")} ₽` };
+  if (player.rubles < cost) return { ok: false, error: `Нужно ${formatRub(cost)}` };
 
   const taken = takenSimKeys(userId);
   let next: SimNumberParts;
@@ -129,8 +130,8 @@ export function topupSim(userId: number, amount: number): { ok: true; simBalance
   if (!playerHasSim(player)) return { ok: false, error: "Сначала оформите симку" };
 
   const rub = Math.floor(amount);
-  if (!Number.isFinite(rub) || rub < 1) return { ok: false, error: "Введите сумму от 1 ₽" };
-  if (player.rubles < rub) return { ok: false, error: `На счёте только ${Math.floor(player.rubles).toLocaleString("ru-RU")} ₽` };
+  if (!Number.isFinite(rub) || rub < 1) return { ok: false, error: `Введите сумму от ${formatRub(1)}` };
+  if (player.rubles < rub) return { ok: false, error: `На счёте только ${formatRub(Math.floor(player.rubles))}` };
 
   const simBalance = Math.floor(player.sim_balance_rub ?? 0) + rub;
   updatePlayer(userId, {

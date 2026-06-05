@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { buyProduct, fetchShopProducts, type ProductPreview, type User } from "../api";
+import { formatRub } from "../formatRub.js";
 import { useToastRef } from "../hooks/useToastRef";
 
 type Props = {
@@ -59,7 +60,7 @@ export function ProductsShop({ user, setUser, onToast }: Props) {
           <li key={p.id} className="card product-card">
             <div className="product-card-head">
               <h3>{p.title}</h3>
-              <span className="product-price">{p.priceRub.toLocaleString("ru-RU")} ₽</span>
+              <span className="product-price rub-amount">{formatRub(p.priceRub)}</span>
             </div>
             <p className="product-desc">{p.description}</p>
             {p.gains && <p className="product-gains">{gainsLabel(p)}</p>}

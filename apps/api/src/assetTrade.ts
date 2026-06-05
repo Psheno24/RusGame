@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 export type AssetKind = "phone" | "car" | "housing";
 export type ResaleMode = "trade_in" | "sell";
 
@@ -62,6 +63,6 @@ export function formatMarketLossLossLine(catalogPriceRub: number, payoutRub: num
   const lossRub = Math.max(0, catalogPriceRub - payoutRub);
   const lossPct =
     catalogPriceRub > 0 ? Math.round((lossRub / catalogPriceRub) * 100) : 0;
-  return `${lossPct}% от текущей стоимости на рынке (${lossRub.toLocaleString("ru-RU")} ₽)`;
+  return `${lossPct}% от текущей стоимости на рынке (${formatRub(lossRub)})`;
 }
 

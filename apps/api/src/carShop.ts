@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { computeResaleValue } from "./assetTrade.js";
@@ -276,7 +277,7 @@ export function buyCar(
     return { ok: false, error: "Эта модель не продаётся в вашем городе" };
   }
   if (player.rubles < listPriceRub) {
-    return { ok: false, error: `Нужно ${listPriceRub.toLocaleString("ru-RU")} ₽` };
+    return { ok: false, error: `Нужно ${formatRub(listPriceRub)}` };
   }
   const now = Date.now();
   updatePlayer(userId, { rubles: player.rubles - listPriceRub });
@@ -304,7 +305,7 @@ export function tradeInForCar(
   const quote = quoteCarPurchase(player, carId, tradeInCarIds);
   if ("error" in quote) return { ok: false, error: quote.error };
   if (player.rubles < quote.netPriceRub) {
-    return { ok: false, error: `Нужно ${quote.netPriceRub.toLocaleString("ru-RU")} ₽` };
+    return { ok: false, error: `Нужно ${formatRub(quote.netPriceRub)}` };
   }
   const car = getCar(carId);
   if (!car) return { ok: false, error: "Модель не найдена" };
@@ -362,7 +363,7 @@ export function sellCar(
   appendPlayerFeed(
     userId,
     "shop:car",
-    `Продали авто (+${sell.amountRub.toLocaleString("ru-RU")} ₽)`,
+    `Продали авто (+${formatRub(sell.amountRub)})`,
     Date.now(),
   );
   return { ok: true, amountRub: sell.amountRub };

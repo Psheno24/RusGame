@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatDuration, type TaxiOrderView, type TaxiStatus } from "../api";
+import { formatRub } from "../formatRub.js";
 import { type TaxiLineHandle } from "../hooks/useTaxiLine";
 
 type TaxiCarOption = TaxiStatus["availableCars"][number];
@@ -77,7 +78,7 @@ function OrderCard({
         )}
       </p>
       <p className="taxi-order-pay">
-        Выплата: <strong>{order.payoutRub.toLocaleString("ru-RU")} ₽</strong>
+        Выплата: <strong className="rub-amount">{formatRub(order.payoutRub)}</strong>
       </p>
       {blocked && order.acceptBlockReason && (
         <p className="taxi-order-block-reason">{order.acceptBlockReason}</p>
@@ -138,7 +139,7 @@ export function TaxiLineSetup({ taxi }: SetupProps) {
           </div>
           <div className="taxi-driver-stat">
             <span>Текущая сессия</span>
-            <strong>+{status.sessionIncomeRub.toLocaleString("ru-RU")} ₽</strong>
+            <strong className="rub-amount">+{formatRub(status.sessionIncomeRub)}</strong>
             <small>Заказов: {status.ordersCompleted}</small>
           </div>
         </div>
@@ -211,7 +212,7 @@ export function TaxiLinePanels({ taxi }: { taxi: TaxiLineHandle }) {
           </p>
           <p>
             Выплата по прибытии:{" "}
-            <strong>{status.activeTrip.order.payoutRub.toLocaleString("ru-RU")} ₽</strong>
+            <strong className="rub-amount">{formatRub(status.activeTrip.order.payoutRub)}</strong>
           </p>
           <p className="shop-owned">Новые заказы появятся после завершения поездки.</p>
         </div>

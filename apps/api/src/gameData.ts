@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DATA_DIR } from "./config.js";
 import { applyCitySalaryToTemplate } from "./jobSalaries.js";
+import { resolveEmergencyLoaderJob } from "./emergencyLoader.js";
 import { computeTravelRoute, type TravelMode } from "./travelCalc.js";
 
 export type City = {
@@ -187,7 +188,9 @@ export function getCityJobs(cityId: string): JobDef[] {
 }
 
 export function findCityJob(cityId: string, jobId: string): JobDef | undefined {
-  return getCityJobs(cityId).find((j) => j.id === jobId);
+  const fromCity = getCityJobs(cityId).find((j) => j.id === jobId);
+  if (fromCity) return fromCity;
+  return resolveEmergencyLoaderJob(cityId, jobId);
 }
 
 export function getTravel(

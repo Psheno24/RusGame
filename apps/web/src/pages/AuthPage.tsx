@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../context";
+import { formatRub } from "../formatRub.js";
 
 export function AuthPage() {
   const { login, register } = useApp();
@@ -61,7 +62,7 @@ export function AuthPage() {
             {busy ? "Подождите…" : mode === "login" ? "Войти" : "Создать аккаунт"}
           </button>
         </form>
-        <p className="auth-footnote">Старт в Омске · 5 000 ₽ · сессия запоминается на телефоне</p>
+        <p className="auth-footnote">Старт в Омске · {formatRub(5000)} · сессия запоминается на телефоне</p>
       </section>
     </div>
   );

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { formatRub } from "./formatRub.js";
 import {
   computeResaleValue,
   formatMarketLossLossLine,
@@ -62,7 +63,7 @@ describe("assetTrade", () => {
   it("formatMarketLossLossLine for 60% sell", () => {
     assert.equal(
       formatMarketLossLossLine(12_000_000, 7_200_000),
-      "40% от текущей стоимости на рынке (4 800 000 ₽)",
+      `40% от текущей стоимости на рынке (${formatRub(4_800_000)})`,
     );
   });
 });

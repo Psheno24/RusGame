@@ -1,3 +1,5 @@
+import { formatRub } from "./formatRub.js";
+
 export type PlaceId =
   | "flea_market"
   | "cinema"
@@ -9,7 +11,7 @@ export type PlaceId =
 
 export const CITY_PLACES: { id: PlaceId; title: string; hint?: string }[] = [
   { id: "flea_market", title: "Барахолка" },
-  { id: "cinema", title: "Кино", hint: "500 ₽ · +22 настроение" },
+  { id: "cinema", title: "Кино", hint: `${formatRub(500)} · +22 настроение` },
   { id: "car_repair", title: "Ремонт авто" },
   { id: "phone_repair", title: "Ремонт телефона" },
   { id: "police", title: "Полиция" },

@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { getCar } from "./gameData.js";
@@ -29,7 +30,7 @@ export function syncPlayerCarMaintenance(userId: number, now = Date.now()): Play
     totalCharge += charge;
     const car = getCar(row.car_model_id);
     const name = car ? `${car.brand} ${car.model}` : row.car_model_id;
-    lines.push(`${name}: ${charge.toLocaleString("ru-RU")} ₽`);
+    lines.push(`${name}: ${formatRub(charge)}`);
   }
 
   if (totalCharge <= 0) {
@@ -43,7 +44,7 @@ export function syncPlayerCarMaintenance(userId: number, now = Date.now()): Play
   const summary =
     lines.length === 1
       ? `ТО: ${lines[0]}`
-      : `ТО автомобилей (−${totalCharge.toLocaleString("ru-RU")} ₽)`;
+      : `ТО автомобилей (−${formatRub(totalCharge)})`;
   appendPlayerFeed(userId, "shop:car", summary, now);
 
   return getPlayer(userId) ?? player;

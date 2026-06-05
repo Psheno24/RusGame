@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import { getDb, getPlayer, updatePlayer } from "./db.js";
 import { getCar } from "./gameData.js";
@@ -118,7 +119,7 @@ export function registerVehiclePlate(
   if (!row) return { ok: false, error: "Автомобиль не найден" };
   if (parsePlatePartsFromRow(row)) return { ok: false, error: "Госномер уже оформлен" };
   if (player.rubles < PLATE_PRICES.register) {
-    return { ok: false, error: `Нужно ${PLATE_PRICES.register.toLocaleString("ru-RU")} ₽` };
+    return { ok: false, error: `Нужно ${formatRub(PLATE_PRICES.register)}` };
   }
   const taken = listTakenVehiclePlateKeys(playerCarId);
   const parts = rollUniqueVehiclePlateParts(taken);
@@ -146,7 +147,7 @@ export function changePlateDigits(
   const current = parsePlatePartsFromRow(row);
   if (!current) return { ok: false, error: "Сначала оформите госномер" };
   if (player.rubles < PLATE_PRICES.digits) {
-    return { ok: false, error: `Нужно ${PLATE_PRICES.digits.toLocaleString("ru-RU")} ₽` };
+    return { ok: false, error: `Нужно ${formatRub(PLATE_PRICES.digits)}` };
   }
   const taken = listTakenVehiclePlateKeys(playerCarId);
   const digits = rollUniqueVehiclePlateDigits(taken, current);
@@ -164,7 +165,7 @@ export function changePlateLetters(
   const current = parsePlatePartsFromRow(row);
   if (!current) return { ok: false, error: "Сначала оформите госномер" };
   if (player.rubles < PLATE_PRICES.letters) {
-    return { ok: false, error: `Нужно ${PLATE_PRICES.letters.toLocaleString("ru-RU")} ₽` };
+    return { ok: false, error: `Нужно ${formatRub(PLATE_PRICES.letters)}` };
   }
   const taken = listTakenVehiclePlateKeys(playerCarId);
   const letters = rollUniqueVehiclePlateLetters(taken, current);
@@ -182,7 +183,7 @@ export function changePlateRegion(
   const current = parsePlatePartsFromRow(row);
   if (!current) return { ok: false, error: "Сначала оформите госномер" };
   if (player.rubles < PLATE_PRICES.region) {
-    return { ok: false, error: `Нужно ${PLATE_PRICES.region.toLocaleString("ru-RU")} ₽` };
+    return { ok: false, error: `Нужно ${formatRub(PLATE_PRICES.region)}` };
   }
   const taken = listTakenVehiclePlateKeys(playerCarId);
   const region = rollUniqueVehiclePlateRegion(taken, current);

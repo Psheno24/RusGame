@@ -1,15 +1,7 @@
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { before, describe, it } from "node:test";
+import { describe, it } from "node:test";
 
 describe("test account", () => {
-  before(() => {
-    const dir = mkdtempSync(join(tmpdir(), "rg-test-"));
-    process.env.DB_PATH = join(dir, "t.db");
-  });
-
   it("uses flat test cooldown, skips feed, excludes population", async () => {
     const { ensureTestAccount, scaleCooldownMs, isTestUser, TEST_COOLDOWN_MS } = await import(
       "./testAccount.js"
@@ -30,7 +22,7 @@ describe("test account", () => {
     const testPlayer = getPlayer(testUser.id)!;
 
     assert.equal(isTestUser(testUser.id), true);
-    assert.ok(testPlayer.rubles >= 99_000_000);
+    assert.equal(testPlayer.rubles, 0);
     assert.equal(scaleCooldownMs(3_600_000, testUser.id), TEST_COOLDOWN_MS);
     assert.equal(scaleCooldownMs(60_000, testUser.id), TEST_COOLDOWN_MS);
     assert.equal(scaleCooldownMs(5_000, testUser.id), 10_000);

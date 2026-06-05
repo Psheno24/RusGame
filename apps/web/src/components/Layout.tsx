@@ -5,6 +5,7 @@ import { useApp } from "../context";
 import { cityDisplayName } from "../cityNames";
 import { useHomeNav } from "../homeNav";
 import { useWorkNav } from "../workNav";
+import { formatRub } from "../formatRub.js";
 
 const PAGE_TITLES: { path: string; title: string }[] = [
   { path: "/home", title: "Мой дом" },
@@ -155,7 +156,7 @@ export function Layout() {
             {headerTitle && <span className="money-bar-title">{headerTitle}</span>}
             <span className="money-bar-wallet">
               <span className="money-bar-wallet-label">Баланс</span>
-              <span className="money-bar-rubles">{p.rubles.toLocaleString("ru-RU")} ₽</span>
+              <span className="money-bar-rubles rub-amount">{formatRub(p.rubles)}</span>
             </span>
           </div>
         </header>

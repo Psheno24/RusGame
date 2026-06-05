@@ -1,3 +1,4 @@
+import { formatRub } from "../formatRub.js";
 import { useCallback, useEffect, useState } from "react";
 import { useToastRef } from "../hooks/useToastRef";
 import {
@@ -21,7 +22,7 @@ type Props = {
 };
 
 function rub(n: number) {
-  return `${n.toLocaleString("ru-RU")} ₽`;
+  return `${formatRub(n)}`;
 }
 
 function condClass(pct: number): string {
@@ -93,7 +94,7 @@ export function CarRepairPlace({ user, setUser, onToast, registerBack, onExitPla
     try {
       const r = await repairCarNode(serviceId, car.playerCarId, nodeId);
       setUser(r.user);
-      onToast(`${car.brand} ${car.model}: ${r.costRub.toLocaleString("ru-RU")} ₽`);
+      onToast(`${car.brand} ${car.model}: ${formatRub(r.costRub)}`);
       if (serviceId) await reload(serviceId);
     } catch (e) {
       onToastRef.current(e instanceof Error ? e.message : "Ошибка", true);

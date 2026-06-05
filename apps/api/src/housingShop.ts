@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { computeResaleValue, housingTradeInRateHint } from "./assetTrade.js";
@@ -148,7 +149,7 @@ function completeHousingPurchase(
   if (p.rubles < quote.netPriceRub) {
     return {
       ok: false,
-      error: `Не хватает денег (нужно ${quote.netPriceRub.toLocaleString("ru-RU")} ₽)`,
+      error: `Не хватает денег (нужно ${formatRub(quote.netPriceRub)})`,
     };
   }
 
@@ -180,7 +181,7 @@ function completeHousingPurchase(
     const prop = getHousingProperty(p.city_id, propertyId);
     const msg =
       income > 0
-        ? `${prop?.title ?? "Квартира"} куплена. Вы переехали. Остальные сданы (+${income.toLocaleString("ru-RU")} ₽).`
+        ? `${prop?.title ?? "Квартира"} куплена. Вы переехали. Остальные сданы (+${formatRub(income)}).`
         : `${prop?.title ?? "Квартира"} куплена. Вы переехали.`;
     appendPlayerFeed(
       p.user_id,
@@ -242,7 +243,7 @@ export function afterBuyHousingChoice(
   const prop = getHousingProperty(row.city_id, row.property_id);
   const weekly = prop?.weeklyNetIncomeRub ?? 0;
   syncPlayerHousing(getPlayer(p.user_id)!, now);
-  const subletMsg = `${prop?.title ?? "Квартира"} сдаётся 30 дн. (${weekly.toLocaleString("ru-RU")} ₽/нед, до ${income.toLocaleString("ru-RU")} ₽).`;
+  const subletMsg = `${prop?.title ?? "Квартира"} сдаётся 30 дн. (${formatRub(weekly)}/нед, до ${formatRub(income)}).`;
   appendPlayerFeed(p.user_id, "housing:live", `Сдача: ${prop?.title ?? "квартира"}`, now);
   return { ok: true, message: subletMsg };
 }

@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import { getPlayer } from "./db.js";
 import { formatMarketLossLossLine } from "./assetTrade.js";
@@ -121,7 +122,7 @@ export function getPropertyDetail(
       status.push({
         label: "Сим-карта",
         value: number,
-        hint: `Баланс: ${Math.floor(p.sim_balance_rub ?? 0).toLocaleString("ru-RU")} ₽`,
+        hint: `Баланс: ${formatRub(Math.floor(p.sim_balance_rub ?? 0))}`,
       });
     } else {
       status.push({ label: "Сим-карта", value: "не оформлена" });
@@ -188,13 +189,13 @@ export function getPropertyDetail(
       specs: car
         ? [
             { label: "Класс", value: getCarClassLabel(car.carClass ?? "economy") },
-            { label: "Скорость", value: `${getCarSpeed(car)} (−${getCarCooldownReducePct(car)}% КД доставки)` },
+            { label: "Скорость", value: `${getCarSpeed(car)} (−${getCarCooldownReducePct(car)}% к ожиданию доставки)` },
             { label: "Комфорт", value: String(getCarComfort(car)) },
             { label: "Надёжность", value: String(getCarReliability(car)) },
             { label: "Престиж", value: `${getCarPrestige(car)} (+${prestigeToMoodBonus(getCarPrestige(car))} настроения)` },
             {
               label: "ТО в месяц",
-              value: `${monthlyMaintenanceRub(car, row.purchase_price_rub ?? car.priceRub).toLocaleString("ru-RU")} ₽`,
+              value: `${formatRub(monthlyMaintenanceRub(car, row.purchase_price_rub ?? car.priceRub))}`,
             },
           ]
         : [],
@@ -337,9 +338,9 @@ export function getPropertyDetail(
     }
     status.push({
       label: "Чистый доход / нед.",
-      value: `${(prop?.weeklyNetIncomeRub ?? 0).toLocaleString("ru-RU")} ₽`,
+      value: `${formatRub((prop?.weeklyNetIncomeRub ?? 0))}`,
       hint: prop
-        ? `За период до ${row.sublet_income_rub.toLocaleString("ru-RU")} ₽ (выплаты еженедельно, получено ${row.sublet_paid_rub.toLocaleString("ru-RU")} ₽)`
+        ? `За период до ${formatRub(row.sublet_income_rub)} (выплаты еженедельно, получено ${formatRub(row.sublet_paid_rub)})`
         : undefined,
     });
   } else {
@@ -371,15 +372,15 @@ export function getPropertyDetail(
           { label: "Престиж", value: `${prop.prestige}/100` },
           { label: "Комнаты", value: prop.rooms },
           { label: "Площадь", value: `${prop.areaSqm} м²` },
-          { label: "Стоимость", value: `${prop.priceRub.toLocaleString("ru-RU")} ₽` },
+          { label: "Стоимость", value: `${formatRub(prop.priceRub)}` },
           {
             label: "Аренда / мес.",
-            value: `${prop.monthlyRentRub.toLocaleString("ru-RU")} ₽`,
+            value: `${formatRub(prop.monthlyRentRub)}`,
           },
           {
             label: "Чистый доход / нед.",
-            value: `${prop.weeklyNetIncomeRub.toLocaleString("ru-RU")} ₽`,
-            hint: `≈ ${prop.monthlyNetIncomeRub.toLocaleString("ru-RU")} ₽/мес после расходов ${prop.monthlyExpensesRub.toLocaleString("ru-RU")} ₽`,
+            value: `${formatRub(prop.weeklyNetIncomeRub)}`,
+            hint: `≈ ${formatRub(prop.monthlyNetIncomeRub)}/мес после расходов ${formatRub(prop.monthlyExpensesRub)}`,
           },
         ]
       : [],
@@ -452,7 +453,7 @@ export function getPropertySellQuote(
     const losses: string[] = [`Квартира «${detail.title}» (${detail.subtitle}) будет продана`];
     if (penalty > 0) {
       losses.push(
-        `Возврат жильцам за неиспользованные дни сдачи: −${penalty.toLocaleString("ru-RU")} ₽`,
+        `Возврат жильцам за неиспользованные дни сдачи: −${formatRub(penalty)}`,
       );
     }
     if (wasHome) {
@@ -497,7 +498,7 @@ export function sellPropertyById(
     if (!r.ok) return r;
     return {
       ok: true,
-      message: `Телефон продан (+${r.amountRub.toLocaleString("ru-RU")} ₽). Сим-карта сохранена.`,
+      message: `Телефон продан (+${formatRub(r.amountRub)}). Сим-карта сохранена.`,
       receiveRub: r.amountRub,
     };
   }
@@ -507,7 +508,7 @@ export function sellPropertyById(
     if (!r.ok) return r;
     return {
       ok: true,
-      message: `Автомобиль продан (+${r.amountRub.toLocaleString("ru-RU")} ₽)`,
+      message: `Автомобиль продан (+${formatRub(r.amountRub)})`,
       receiveRub: r.amountRub,
     };
   }

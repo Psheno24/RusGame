@@ -27,26 +27,37 @@ function clearTaxiRentalCar(state: TaxiState): TaxiState | null {
   return null;
 }
 
-/** Сброс выбора такси на аренде; просроченную аренду в БД не трогаем — снимает игрок в профиле. */
+/** Сбрасывает просроченную аренду транспорта и выбор такси на арендованном авто. */
 export function syncPlayerVehicleRental(player: PlayerRow, now = Date.now()): PlayerRow {
-  const p = player;
   const rentalExpired =
-    p.vehicle_rental_id != null &&
-    (p.vehicle_rental_expires_at == null || p.vehicle_rental_expires_at <= now);
+    player.vehicle_rental_id != null &&
+    (player.vehicle_rental_expires_at == null || player.vehicle_rental_expires_at <= now);
 
-  const state = parseTaxiState(p);
-  if (!state) return p;
+  if (rentalExpired) {
+    const state = parseTaxiState(player);
+    if (state?.carSource === "rental") {
+      saveTaxiState(player.user_id, clearTaxiRentalCar(state) ?? null);
+    }
+    updatePlayer(player.user_id, {
+      vehicle_rental_id: null,
+      vehicle_rental_expires_at: null,
+    });
+    return getPlayer(player.user_id) ?? player;
+  }
+
+  const state = parseTaxiState(player);
+  if (!state) return player;
 
   const shouldClearTaxi =
-    rentalExpired || (p.vehicle_rental_id != null && !isVehicleRentalActive(p, now));
-  if (!shouldClearTaxi) return p;
+    player.vehicle_rental_id != null && !isVehicleRentalActive(player, now);
+  if (!shouldClearTaxi) return player;
 
   const next = clearTaxiRentalCar(state);
   if (next !== state) {
-    saveTaxiState(p.user_id, next ?? null);
+    saveTaxiState(player.user_id, next ?? null);
   }
 
-  return getPlayer(p.user_id) ?? p;
+  return getPlayer(player.user_id) ?? player;
 }
 
 export function cancelVehicleRental(

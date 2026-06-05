@@ -68,6 +68,9 @@ export function CityPage() {
   const { register: registerSectionBack, tryBack: trySectionBack } = useNavBackSlot();
   const [jobsSelectedId, setJobsSelectedId] = useState<string | null>(null);
   const [cityJobs, setCityJobs] = useState<JobView[]>([]);
+  const [workAccess, setWorkAccess] = useState<Awaited<
+    ReturnType<typeof fetchCityCached>
+  >["workAccess"] | null>(null);
   const [activeEmployment, setActiveEmployment] = useState<Awaited<
     ReturnType<typeof fetchCityCached>
   >["activeEmployment"]>(null);
@@ -84,6 +87,7 @@ export function CityPage() {
     setTraveling(data.traveling);
     setArrivesAt(data.travelArrivesAt);
     setCityJobs(data.jobs ?? []);
+    setWorkAccess(data.workAccess ?? null);
     setActiveEmployment(data.activeEmployment ?? null);
     setCityFeed(data.feed ?? []);
     setUser((prev) => (prev ? { ...prev, player: data.player } : prev));
@@ -122,8 +126,8 @@ export function CityPage() {
 
   useEffect(() => {
     if (!traveling || !arrivesAt) return;
-    if (Date.now() >= arrivesAt) load();
-  }, [traveling, arrivesAt, load]);
+    if (Date.now() >= arrivesAt) load(true);
+  }, [traveling, arrivesAt, load, tick]);
 
   useEffect(() => {
     if (section !== "shop") {
@@ -167,7 +171,8 @@ export function CityPage() {
     setCarNav({ inSub: false, title: "Авто", backLabel: "Магазин" });
     setHousingNav({ inSub: false, title: "Недвижимость", backLabel: "Город" });
     setJobsSelectedId(null);
-  }, []);
+    load(true);
+  }, [load]);
 
   useEffect(() => {
     cityNav?.registerReset(goCityHome);
@@ -224,6 +229,8 @@ export function CityPage() {
             onSelectJob={setJobsSelectedId}
             registerBack={registerSectionBack}
             onBack={goBackInCity}
+            workAccess={workAccess ?? undefined}
+            onGoHousing={() => setSection("housing")}
             onJobsReload={async () => {
               invalidateCityCache();
               await load(true);

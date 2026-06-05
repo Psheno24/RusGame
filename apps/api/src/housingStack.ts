@@ -165,6 +165,20 @@ export function restoreFromHousingStack(
   return next;
 }
 
+export function purgeExpiredStackEntries(player: PlayerRow, now = Date.now()): PlayerRow {
+  const stack = parseHousingStack(player.housing_stack);
+  const filtered = stack.filter((entry) => {
+    if (entry.type === "owned") return true;
+    if (entry.type === "dorm" || entry.type === "rent") {
+      return entry.expiresAt != null && entry.expiresAt > now;
+    }
+    return true;
+  });
+  if (filtered.length === stack.length) return player;
+  saveHousingStack(player.user_id, filtered);
+  return getPlayer(player.user_id) ?? player;
+}
+
 export function clearHousingStack(userId: number) {
   updatePlayer(userId, { housing_stack: null });
 }

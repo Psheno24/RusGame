@@ -1,3 +1,4 @@
+import { formatRub } from "../formatRub.js";
 import { useCallback, useEffect, useState } from "react";
 import { formatDuration } from "../formatDuration";
 import {
@@ -18,7 +19,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { VehiclePlate } from "./VehiclePlate";
 
 function rub(n: number) {
-  return `${n.toLocaleString("ru-RU")} ₽`;
+  return `${formatRub(n)}`;
 }
 
 type Props = {

@@ -91,11 +91,11 @@ export function formatJobListScheduleNote(job: {
   const city = job.workCityName?.trim() || "городе";
   if (job.schedule.mode === "night") {
     const h = job.schedule.nightStartHour ?? 22;
-    return `доступно только с ${String(h).padStart(2, "0")}:00 (по г. «${city}»)`;
+    return `доступно только с ${String(h).padStart(2, "0")}:00 (по г.\u00A0«${city}»)`;
   }
   if (job.schedule.mode === "day") {
     const h = job.schedule.dayStartHour ?? 6;
-    return `доступно только с ${String(h).padStart(2, "0")}:00 (по г. «${city}»)`;
+    return `доступно только с ${String(h).padStart(2, "0")}:00 (по г.\u00A0«${city}»)`;
   }
   return null;
 }

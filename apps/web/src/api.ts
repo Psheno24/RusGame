@@ -72,6 +72,7 @@ export type Player = {
 
 export type HomeStatus = {
   isResident: boolean;
+  hasAnyHousing: boolean;
   sleepBlockedReason: string | null;
   sleeping: boolean;
   sleepStartedAt: number | null;
@@ -132,6 +133,46 @@ export type HousingInfo = {
     tradeInRateHint: string;
     isSublet: boolean;
   }>;
+};
+
+export type HousingExtendInfo = {
+  canExtendDorm: boolean;
+  canExtendRent: boolean;
+  dormExtendRub: number;
+  rentExtendRub: number;
+  dormExtendLabel: string;
+  rentExtendLabel: string;
+  dormDisabledReason: string | null;
+  rentDisabledReason: string | null;
+};
+
+export type EmergencyLoaderTravelAdvice = {
+  cityId: string;
+  cityName: string;
+  ticketRub: number;
+  dormDayRub: number;
+  totalRub: number;
+  savingsRub: number;
+  localEarnShifts: number;
+  travelEarnShifts: number;
+  travelDurationMs: number;
+};
+
+export type EmergencyLoaderBrief = {
+  cityName: string;
+  dormDayRub: number;
+  rubles: number;
+  needRub: number;
+  loaderPayoutRub: number;
+  shiftsToDorm: number;
+  travelAdvice: EmergencyLoaderTravelAdvice | null;
+};
+
+export type WorkAccessInfo = {
+  hasAnyHousing: boolean;
+  emergencyLoader: boolean;
+  needsHousing: boolean;
+  emergencyLoaderBrief: EmergencyLoaderBrief | null;
 };
 
 export type HousingProperty = {
@@ -448,6 +489,7 @@ export async function fetchCity() {
     player: Player;
     housing: HousingInfo | { ok: false; error: string } | null;
     jobs: JobView[] | null;
+    workAccess: WorkAccessInfo;
     activeEmployment: {
       job: JobView;
       workCityId: string;
@@ -1224,7 +1266,13 @@ export async function buyProduct(productId: string) {
 export async function fetchHome() {
   return api<{
     home: HomeStatus;
-    housing: { statusLabel: string; isResident: boolean };
+    housing: {
+      statusLabel: string;
+      isResident: boolean;
+      housingType: Player["housingType"];
+      expiresAt: number | null;
+      extend: HousingExtendInfo;
+    };
     player: Player;
   }>("/api/home");
 }
@@ -1373,12 +1421,20 @@ export async function resetTestAccount(login: string) {
   });
 }
 
+export async function setTestAccountBalance(login: string, rubles: number) {
+  return api<{ ok: boolean; login: string; rubles: number }>("/api/test/set-balance", {
+    method: "POST",
+    body: JSON.stringify({ login, rubles }),
+  });
+}
+
 export function formatHousingExpiry(ts: number | null): string {
   if (ts == null) return "";
   return formatLocaleDateRu(ts, { withTime: true });
 }
 
 export { formatDuration } from "./formatDuration.js";
+export { formatRub, formatRubRange, formatRubPerHour, formatRubPerWeek, RUB_SUFFIX } from "./formatRub.js";
 
 export const SKILL_LABELS: Record<string, string> = {
   driving: "Вождение",

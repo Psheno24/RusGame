@@ -20,6 +20,9 @@ export function WorkPage() {
   const { register: registerSectionBack } = useNavBackSlot();
   const [cityTimezone, setCityTimezone] = useState("Europe/Moscow");
   const [cityJobs, setCityJobs] = useState<JobView[]>([]);
+  const [workAccess, setWorkAccess] = useState<Awaited<
+    ReturnType<typeof fetchCityCached>
+  >["workAccess"] | null>(null);
   const [activeEmployment, setActiveEmployment] = useState<Awaited<
     ReturnType<typeof fetchCityCached>
   >["activeEmployment"]>(null);
@@ -35,6 +38,7 @@ export function WorkPage() {
     setCityTimezone(data.city?.timezone ?? "Europe/Moscow");
     setPlayable(data.city?.playable ?? false);
     setCityJobs(data.jobs ?? []);
+    setWorkAccess(data.workAccess ?? null);
     setActiveEmployment(data.activeEmployment ?? null);
     setTraveling(data.traveling);
     setArrivesAt(data.travelArrivesAt);
@@ -54,7 +58,7 @@ export function WorkPage() {
   useEffect(() => {
     if (!traveling || !arrivesAt) return;
     if (Date.now() >= arrivesAt) load();
-  }, [traveling, arrivesAt, load]);
+  }, [traveling, arrivesAt, load, tick]);
 
   useEffect(() => {
     workNav?.registerReset(() => {});
@@ -69,10 +73,21 @@ export function WorkPage() {
     navigate("/city", { state: { openSection: "jobs" } satisfies CityOpenState });
   };
 
+  const goToHousing = () => {
+    navigate("/city", { state: { openSection: "housing" } satisfies CityOpenState });
+  };
+
   const hasJobData = useMemo(() => {
     if (!employedId) return false;
-    if (cityJobs.some((j) => j.id === employedId)) return true;
-    return activeEmployment?.job?.id === employedId;
+    const loaderJob =
+      employedId === "loader" || employedId.endsWith("_loader");
+    if (cityJobs.some((j) => j.id === employedId || (j.templateKey === "loader" && loaderJob))) {
+      return true;
+    }
+    return (
+      activeEmployment?.job?.id === employedId ||
+      (activeEmployment?.job?.templateKey === "loader" && loaderJob)
+    );
   }, [employedId, cityJobs, activeEmployment]);
 
   if (!user) return null;
@@ -99,6 +114,40 @@ export function WorkPage() {
   }
 
   if (!employedId) {
+    if (workAccess?.needsHousing) {
+      return (
+        <div className="card work-empty-card">
+          <h2 className="work-empty-title">Работа недоступна</h2>
+          <p>Чтобы работать, нужно жильё в этом городе.</p>
+          <button type="button" className="btn btn-primary" onClick={goToHousing}>
+            Перейти к недвижимости
+          </button>
+        </div>
+      );
+    }
+    if (workAccess?.emergencyLoader) {
+      return (
+        <JobsSection
+          jobs={cityJobs}
+          activeEmployment={activeEmployment}
+          cityTimezone={cityTimezone}
+          scheduleTick={tick}
+          user={user}
+          setUser={setUser}
+          onToast={showToast}
+          selectedId={null}
+          onSelectJob={() => {}}
+          registerBack={registerSectionBack}
+          workAccess={workAccess ?? undefined}
+          onGoHousing={goToHousing}
+          onJobsReload={async () => {
+            invalidateCityCache();
+            await load(true);
+          }}
+          listMode="vacancies"
+        />
+      );
+    }
     return (
       <div className="card work-empty-card">
         <h2 className="work-empty-title">Сейчас вы не трудоустроены</h2>
@@ -133,6 +182,8 @@ export function WorkPage() {
       selectedId={employedId}
       onSelectJob={() => {}}
       registerBack={registerSectionBack}
+      workAccess={workAccess ?? undefined}
+      onGoHousing={goToHousing}
       onJobsReload={async () => {
         invalidateCityCache();
         await load(true);

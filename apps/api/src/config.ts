@@ -26,8 +26,6 @@ export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "admin123";
 export const ENABLE_TEST_ACCOUNT = process.env.ENABLE_TEST_ACCOUNT === "true";
 export const TEST_LOGIN = process.env.TEST_LOGIN ?? "tester";
 export const TEST_PASSWORD = process.env.TEST_PASSWORD ?? "test123456";
-export const TEST_START_RUBLES = Number(process.env.TEST_START_RUBLES ?? 99_000_000);
-/** Длительность любого КД у тест-аккаунта (сек). */
 export const TEST_COOLDOWN_SEC = Number(process.env.TEST_COOLDOWN_SEC ?? 10);
 
 const dbDir = join(ROOT, "data");

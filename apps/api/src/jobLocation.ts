@@ -1,16 +1,32 @@
 import type { PlayerRow } from "./db.js";
 import { findCityJob, getCities, getCity } from "./gameData.js";
+import {
+  isEmergencyLoaderJob,
+  isEmergencyLoaderJobId,
+  shouldOfferEmergencyLoader,
+} from "./emergencyLoader.js";
 import { isCityResident } from "./housing.js";
 
 export function jobCityId(jobId: string): string | null {
+  if (isEmergencyLoaderJobId(jobId)) {
+    if (jobId.endsWith("_loader") && jobId !== "loader") {
+      return jobId.slice(0, -"_loader".length);
+    }
+    return null;
+  }
   for (const c of getCities()) {
     if (findCityJob(c.id, jobId)) return c.id;
   }
   return null;
 }
 
+export function workCityIdForPlayer(player: PlayerRow, jobId: string): string | null {
+  if (isEmergencyLoaderJobId(jobId)) return player.city_id;
+  return jobCityId(jobId);
+}
+
 export function jobAccessStatus(player: PlayerRow, jobId: string, now = Date.now()) {
-  const workCityId = jobCityId(jobId);
+  const workCityId = workCityIdForPlayer(player, jobId);
   if (!workCityId) {
     return {
       workCityId: null as string | null,
@@ -21,6 +37,25 @@ export function jobAccessStatus(player: PlayerRow, jobId: string, now = Date.now
     };
   }
   const city = getCity(workCityId);
+  const job = findCityJob(workCityId, jobId);
+  if (job && isEmergencyLoaderJob(job)) {
+    if (!shouldOfferEmergencyLoader(player, now)) {
+      return {
+        workCityId,
+        workCityName: city?.name ?? workCityId,
+        physicallyHere: true,
+        residentHere: true,
+        error: "Подработка «Грузчик» недоступна",
+      };
+    }
+    return {
+      workCityId,
+      workCityName: city?.name ?? workCityId,
+      physicallyHere: true,
+      residentHere: true,
+      error: null,
+    };
+  }
   const physicallyHere = player.city_id === workCityId;
   const residentHere = isCityResident(player, workCityId, now);
   let error: string | null = null;

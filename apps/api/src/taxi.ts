@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PlayerRow } from "./db.js";
@@ -297,7 +298,7 @@ function completeActiveTrip(
     next = { ...next, availableOrders: [], ordersRefreshAt: 0 };
   }
 
-  const msg = `Поездка ${order.tripMinutes} мин · +${payoutRub.toLocaleString("ru-RU")} ₽${payNote}`;
+  const msg = `Поездка ${order.tripMinutes} мин · +${formatRub(payoutRub)}${payNote}`;
   return { state: next, payoutRub, message: msg, moodDelta };
 }
 
@@ -598,12 +599,12 @@ export function taxiGoOffline(
   appendPlayerFeed(
     player.user_id,
     "work:taxi",
-    `Завершили линию (+${income.toLocaleString("ru-RU")} ₽ за сессию)`,
+    `Завершили линию (+${formatRub(income)} за сессию)`,
     now,
   );
   return {
     ok: true,
-    message: `Линия завершена. За сессию: ${income.toLocaleString("ru-RU")} ₽`,
+    message: `Линия завершена. За сессию: ${formatRub(income)}`,
     sessionIncomeRub: income,
   };
 }
@@ -647,7 +648,7 @@ export function taxiAcceptOrder(
 
   return {
     ok: true,
-    message: `В пути ${order.tripMinutes} мин · тариф «${order.tariffTitle}». Выплата по прибытии: ${order.payoutRub.toLocaleString("ru-RU")} ₽`,
+    message: `В пути ${order.tripMinutes} мин · тариф «${order.tariffTitle}». Выплата по прибытии: ${formatRub(order.payoutRub)}`,
   };
 }
 

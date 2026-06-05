@@ -1,3 +1,4 @@
+import { formatRubPerHour, formatRubRange } from "../formatRub.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CityGridButton } from "./ui/CityGridButton";
 import {
@@ -9,15 +10,19 @@ import {
   SKILL_LABELS,
   type JobView,
   type User,
+  type WorkAccessInfo,
 } from "../api";
 import { applyLiveJobSchedule, formatJobListScheduleNote, getCityLocalTime } from "../cityTime";
 import { buildJobRequirements, jobRequirementsMet } from "../jobRequirements";
+import { formatJobPayoutRange } from "../jobPayout";
 import { getJobCooldownLabel, getShiftDurationLabel } from "../jobShift";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { JobActionButtonLabel } from "./JobActionButtonLabel";
 import { JobRequirementsList } from "./JobRequirementsList";
 import { CitySectionHeader } from "./ui/CitySectionHeader";
+import { TimerIcon } from "./ui/TimerIcon";
 import { TaxiEmployedJobView } from "./TaxiEmployedJobView";
+import { EmergencyLoaderBriefPanel } from "./EmergencyLoaderBriefPanel";
 
 type JobCard = JobView;
 
@@ -33,6 +38,14 @@ const CAREER_MENU: { id: "secondary_edu" | "higher_edu" | "freelance"; title: st
   { id: "higher_edu", title: "Высшее образование", icon: "Ⅲ" },
   { id: "freelance", title: "Фриланс", icon: "⌁" },
 ];
+
+function isLoaderEmployment(jobId: string | null | undefined): boolean {
+  return jobId === "loader" || (jobId != null && jobId.endsWith("_loader"));
+}
+
+function matchesEmployment(job: JobCard, employedId: string): boolean {
+  return job.id === employedId || (job.templateKey === "loader" && isLoaderEmployment(employedId));
+}
 
 function careerNavTitle(nav: JobsNav): string | null {
   return CAREER_MENU.find((c) => c.id === nav)?.title ?? null;
@@ -67,32 +80,37 @@ const JOB_ICONS: Record<string, string> = {
   taxi: "🚕",
   cashier: "🛒",
   night_guard: "🌙",
+  loader: "📦",
 };
 
 function formatShiftPayoutLabel(job: JobCard): string {
   if (job.kind === "taxi_line") return "Доход неопределён";
   if (job.kind === "duration" && job.payoutPerHourMin != null) {
-    return `${job.payoutPerHourMin.toLocaleString("ru-RU")}–${(job.payoutPerHourMax ?? job.payoutPerHourMin).toLocaleString("ru-RU")} ₽/ч`;
+    return formatRubPerHour(job.payoutPerHourMin, job.payoutPerHourMax ?? job.payoutPerHourMin);
   }
-  const range = `${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽`;
+  const payout = formatJobPayoutRange(job.payoutMin, job.payoutMax);
   if (job.templateKey === "night_guard") {
-    return `${range} за смену (7:59–22:00)`;
+    return `${payout} за смену (7:59–22:00)`;
   }
-  return `${range} за смену`;
+  if (job.payoutMin === job.payoutMax) return payout;
+  return `${payout} за смену`;
 }
 
 function formatListPayoutLabel(job: JobCard): string {
   if (job.kind === "taxi_line") return "Доход неопределён";
-  return `${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽`;
+  return formatJobPayoutRange(job.payoutMin, job.payoutMax);
 }
 
-function formatListMeta(job: JobCard, local: ReturnType<typeof getCityLocalTime>): { pay: string; cooldown?: string } {
+function formatListMeta(
+  job: JobCard,
+  local: ReturnType<typeof getCityLocalTime>,
+): { pay: string; cooldown?: string; cooldownIsSchedule?: boolean } {
   const pay = formatListPayoutLabel(job);
   const availability = formatJobListScheduleNote(job);
-  if (availability) return { pay, cooldown: availability };
+  if (availability) return { pay, cooldown: availability, cooldownIsSchedule: true };
   const cd = getJobCooldownLabel(job, { local });
   if (cd === "—") return { pay };
-  return { pay, cooldown: `КД ${cd}` };
+  return { pay, cooldown: cd };
 }
 
 function JobListCard({
@@ -123,7 +141,12 @@ function JobListCard({
           <div className="job-list-info">
             <span className="job-list-name">{job.title}</span>
             <span className="job-list-pay">{meta.pay}</span>
-            {meta.cooldown ? <span className="job-list-cooldown">{meta.cooldown}</span> : null}
+            {meta.cooldown ? (
+              <span className={`job-list-cooldown${meta.cooldownIsSchedule ? " job-list-cooldown--schedule" : ""}`}>
+                {!meta.cooldownIsSchedule ? <TimerIcon /> : null}
+                <span>{meta.cooldown}</span>
+              </span>
+            ) : null}
           </div>
         </div>
       </button>
@@ -156,6 +179,8 @@ export function JobsSection({
   onJobsReload,
   onBack,
   listMode = "vacancies",
+  workAccess,
+  onGoHousing,
 }: {
   jobs: JobView[];
   activeEmployment: Awaited<ReturnType<typeof fetchCity>>["activeEmployment"];
@@ -170,11 +195,19 @@ export function JobsSection({
   onJobsReload: () => Promise<void>;
   onBack?: () => void;
   listMode?: "vacancies" | "none";
+  workAccess?: WorkAccessInfo;
+  onGoHousing?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<JobPendingAction | null>(null);
   const [shiftHours, setShiftHours] = useState(8);
   const [nav, setNav] = useState<JobsNav>("hub");
+
+  useEffect(() => {
+    if (workAccess?.emergencyLoader && listMode === "vacancies") {
+      setNav("side_jobs");
+    }
+  }, [workAccess?.emergencyLoader, listMode]);
 
   const stepBackInJobs = useCallback((): boolean => {
     if (selectedId) {
@@ -186,11 +219,15 @@ export function JobsSection({
       return true;
     }
     if (nav === "side_jobs" || nav === "career") {
+      if (workAccess?.emergencyLoader && nav === "side_jobs") {
+        onBack?.();
+        return true;
+      }
       setNav("hub");
       return true;
     }
     return false;
-  }, [selectedId, nav, onSelectJob]);
+  }, [selectedId, nav, onSelectJob, workAccess?.emergencyLoader, onBack]);
 
   const handleJobsBack = useCallback(() => {
     if (!stepBackInJobs()) onBack?.();
@@ -211,22 +248,33 @@ export function JobsSection({
   }, [jobs, cityTimezone, scheduleTick, user.isTest]);
 
   const employedJob = employedId
-    ? (allJobs.find((j) => j.id === employedId) ?? activeEmployment?.job ?? null)
+    ? (allJobs.find((j) => matchesEmployment(j, employedId)) ?? activeEmployment?.job ?? null)
     : null;
-  const vacancyJobs = employedId ? allJobs.filter((j) => j.id !== employedId) : allJobs;
+  const keepEmployedInVacancies =
+    workAccess?.emergencyLoader === true && employedJob?.templateKey === "loader";
+  const vacancyJobs =
+    employedId && !keepEmployedInVacancies
+      ? allJobs.filter((j) => !matchesEmployment(j, employedId))
+      : allJobs;
 
   const selected = useMemo((): JobCard | null => {
     if (!selectedId) return null;
-    const hit = allJobs.find((j) => j.id === selectedId);
+    const hit = allJobs.find((j) => j.id === selectedId || matchesEmployment(j, selectedId));
     if (hit) return hit;
-    if (activeEmployment?.job?.id !== selectedId) return null;
-    const job = activeEmployment.job;
-    const cooldown = resolveJobCooldown(job.cooldown, user.isTest ?? false);
-    const local = getCityLocalTime(cityTimezone);
-    return {
-      ...applyLiveJobSchedule(cityTimezone, job),
-      shiftDurationLabel: getShiftDurationLabel(job, cooldown.ready ? local : undefined),
-    };
+    if (
+      activeEmployment?.job &&
+      (activeEmployment.job.id === selectedId ||
+        (activeEmployment.job.templateKey === "loader" && isLoaderEmployment(selectedId)))
+    ) {
+      const job = activeEmployment.job;
+      const cooldown = resolveJobCooldown(job.cooldown, user.isTest ?? false);
+      const local = getCityLocalTime(cityTimezone);
+      return {
+        ...applyLiveJobSchedule(cityTimezone, job),
+        shiftDurationLabel: getShiftDurationLabel(job, cooldown.ready ? local : undefined),
+      };
+    }
+    return null;
   }, [selectedId, allJobs, activeEmployment, cityTimezone, user.isTest]);
   const employedCooldownRaw = employedJob?.cooldown ?? {
     ready: true,
@@ -375,7 +423,10 @@ export function JobsSection({
         ? ` ×${job.payoutMultiplier.toFixed(2).replace(/\.?0+$/, "")}`
         : "";
     if (job.kind === "duration" && job.payoutPerHourMin != null) {
-      const earn = `${(job.payoutPerHourMin * hours).toLocaleString("ru-RU")}–${((job.payoutPerHourMax ?? job.payoutPerHourMin) * hours).toLocaleString("ru-RU")} ₽`;
+      const earn = formatRubRange(
+        job.payoutPerHourMin * hours,
+        (job.payoutPerHourMax ?? job.payoutPerHourMin) * hours,
+      );
       return {
         title: "Выйти на смену?",
         text: `${hours} ч · ${earn}${mult}`,
@@ -385,7 +436,7 @@ export function JobsSection({
     }
     const local = getCityLocalTime(cityTimezone);
     const shiftLabel = getShiftDurationLabel(job, local);
-    const earn = `${job.payoutMin.toLocaleString("ru-RU")}–${job.payoutMax.toLocaleString("ru-RU")} ₽`;
+    const earn = formatJobPayoutRange(job.payoutMin, job.payoutMax);
     return {
       title: "Выйти на смену?",
       text: `${shiftLabel} · ${earn}${mult}`,
@@ -396,7 +447,7 @@ export function JobsSection({
 
   if (selected) {
     const selectedCooldown = resolveJobCooldown(selected.cooldown, user.isTest ?? false);
-    const employed = employedId === selected.id;
+    const employed = employedId != null && matchesEmployment(selected, employedId);
     const scheduleBlocked = employed && !selected.scheduleAllowed;
     const workCityName = selected.workCityName ?? "этом городе";
     const physicallyHere = selected.physicallyHere ?? true;
@@ -607,6 +658,23 @@ export function JobsSection({
 
   if (listMode === "none") return null;
 
+  if (workAccess?.needsHousing && listMode === "vacancies" && !selectedId) {
+    return (
+      <div className="card work-empty-card">
+        {onBack ? (
+          <CitySectionHeader title="Вакансии" onBack={handleJobsBack} backLabel="Город" />
+        ) : (
+          <h2 className="work-empty-title">Вакансии</h2>
+        )}
+        <p>Работа недоступна — нужно жильё в этом городе.</p>
+        <p className="work-empty-hint">Оформите общежитие, аренду или купите квартиру.</p>
+        <button type="button" className="btn btn-primary" onClick={onGoHousing}>
+          Перейти к недвижимости
+        </button>
+      </div>
+    );
+  }
+
   const careerTitle = careerNavTitle(nav);
 
   return (
@@ -617,7 +685,7 @@ export function JobsSection({
         </p>
       )}
 
-      {nav === "hub" && (
+      {nav === "hub" && !workAccess?.emergencyLoader && (
         <div className="card">
           {onBack ? (
             <CitySectionHeader title="Вакансии" onBack={handleJobsBack} backLabel="Город" />
@@ -637,10 +705,17 @@ export function JobsSection({
       {nav === "side_jobs" && (
         <div className="card">
           {onBack ? (
-            <CitySectionHeader title="Подработка" onBack={handleJobsBack} backLabel="Вакансии" />
+            <CitySectionHeader
+              title="Подработка"
+              onBack={handleJobsBack}
+              backLabel={workAccess?.emergencyLoader ? "Назад" : "Вакансии"}
+            />
           ) : (
             <h2>Подработка</h2>
           )}
+          {workAccess?.emergencyLoaderBrief ? (
+            <EmergencyLoaderBriefPanel brief={workAccess.emergencyLoaderBrief} />
+          ) : null}
           {vacancyJobs.length === 0 ? (
             <p className="job-block-empty">Вакансий в этом городе пока нет.</p>
           ) : (

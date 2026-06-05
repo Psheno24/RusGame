@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PlayerRow } from "./db.js";
@@ -194,7 +195,7 @@ export function repairCarNode(
   const costRub = repairNodeCostRub(player.city_id, row.car_model_id, node, currentPct, serviceId);
   if (costRub == null || costRub <= 0) return { ok: false, error: "Не удалось рассчитать стоимость" };
   if (player.rubles < costRub) {
-    return { ok: false, error: `Нужно ${costRub.toLocaleString("ru-RU")} ₽` };
+    return { ok: false, error: `Нужно ${formatRub(costRub)}` };
   }
 
   const nextCondition: PlayerCarCondition = { ...condition, [node]: 100 };
@@ -207,7 +208,7 @@ export function repairCarNode(
   appendPlayerFeed(
     userId,
     "shop:car",
-    `${serviceTitle}: ${carName}, ${nodeLabel} → 100% (−${costRub.toLocaleString("ru-RU")} ₽)`,
+    `${serviceTitle}: ${carName}, ${nodeLabel} → 100% (−${formatRub(costRub)})`,
     now,
   );
 

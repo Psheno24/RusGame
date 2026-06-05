@@ -1,3 +1,4 @@
+import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import type { SkillKey } from "./skills.js";
 
@@ -45,7 +46,7 @@ export function getPlayerVitals(player: PlayerRow) {
 export function canAffordCosts(player: PlayerRow, costs?: StatCosts): string | null {
   if (!costs) return null;
   if (costs.rubles != null && player.rubles < costs.rubles) {
-    return `Не хватает денег (нужно ${costs.rubles.toLocaleString("ru-RU")} ₽)`;
+    return `Не хватает денег (нужно ${formatRub(costs.rubles)})`;
   }
   return null;
 }
