@@ -144,7 +144,7 @@ export function TaxiLineSetup({ taxi }: SetupProps) {
           </div>
         </div>
 
-        {!onLine && !inTrip && (
+        {!onLine && !inTrip && !carSelected && (
           <p className="taxi-driver-hint">
             Выберите автомобиль и выйдите на линию, чтобы получать заказы.
           </p>

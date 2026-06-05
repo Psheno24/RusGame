@@ -25,7 +25,7 @@ export function JobActionButtonLabel({
       {disabledReason ? <span className="job-btn-reason">{disabledReason}</span> : null}
       {mins ? (
         <span className="job-btn-cooldown">
-          (<TimerIcon /> {mins})
+          <TimerIcon /> {mins}
         </span>
       ) : null}
     </span>
