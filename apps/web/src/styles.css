@@ -2671,10 +2671,150 @@ body {
   flex-shrink: 0;
   margin-top: auto;
   padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .profile-page-footer .btn {
   margin-top: 0;
+}
+
+.profile-settings-btn {
+  text-decoration: none;
+  text-align: center;
+}
+
+.settings-back-row {
+  margin-bottom: 12px;
+}
+
+.settings-back-link {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.settings-back-link:hover {
+  color: var(--accent);
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.settings-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.settings-list-item:hover {
+  border-color: rgba(224, 165, 72, 0.35);
+}
+
+.settings-list-item-label {
+  font-weight: 600;
+}
+
+.settings-list-item-chevron {
+  color: var(--text-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.settings-hint {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.settings-toggle-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-toggle-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.settings-toggle-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-toggle-title {
+  font-weight: 700;
+}
+
+.settings-toggle-desc {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.settings-toggle {
+  flex-shrink: 0;
+  position: relative;
+  width: 48px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.settings-toggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.settings-toggle--on {
+  background: rgba(70, 195, 138, 0.28);
+  border-color: rgba(70, 195, 138, 0.55);
+}
+
+.settings-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #d4dde8;
+  transition: transform 0.15s;
+}
+
+.settings-toggle--on .settings-toggle-knob {
+  transform: translateX(20px);
+  background: var(--success);
 }
 
 .confirm-backdrop {

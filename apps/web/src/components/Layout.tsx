@@ -14,6 +14,8 @@ const PAGE_TITLES: { path: string; title: string }[] = [
   { path: "/city", title: "Город" },
   { path: "/activity", title: "Активность" },
   { path: "/profile", title: "Профиль" },
+  { path: "/profile/settings", title: "Настройки" },
+  { path: "/profile/settings/notifications", title: "Уведомления" },
 ];
 
 const NAV_ITEMS = [
@@ -108,7 +110,8 @@ const NAV_ITEMS = [
 ] as const;
 
 function pageTitle(pathname: string): string | null {
-  const match = PAGE_TITLES.find(({ path }) => pathname === path || pathname.startsWith(`${path}/`));
+  const sorted = [...PAGE_TITLES].sort((a, b) => b.path.length - a.path.length);
+  const match = sorted.find(({ path }) => pathname === path || pathname.startsWith(`${path}/`));
   return match?.title ?? null;
 }
 

@@ -28,6 +28,14 @@ export const TEST_LOGIN = process.env.TEST_LOGIN ?? "tester";
 export const TEST_PASSWORD = process.env.TEST_PASSWORD ?? "test123456";
 export const TEST_COOLDOWN_SEC = Number(process.env.TEST_COOLDOWN_SEC ?? 10);
 
+/** Web Push VAPID (локально — встроенные ключи; на VPS задайте в .env). */
+export const VAPID_PUBLIC_KEY =
+  process.env.VAPID_PUBLIC_KEY ??
+  "BJ6hqyAqeWV9LPwG8wqlDKA-e2ndEb8zM3m5yGlAffI22KNsLxw4W7SQ7Fw5b79g9NWb02c32g0aVKHCAXyLDk4";
+export const VAPID_PRIVATE_KEY =
+  process.env.VAPID_PRIVATE_KEY ?? "IPAYfb6lDsHB-DTcOITD6PfwqN0YYUxfbnMs8oxuFiU";
+export const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? "mailto:pshench24@gmail.com";
+
 const dbDir = join(ROOT, "data");
 if (!existsSync(dbDir)) mkdirSync(dbDir, { recursive: true });
 export const DB_PATH = process.env.DB_PATH ?? join(dbDir, "game.db");

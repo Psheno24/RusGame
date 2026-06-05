@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { registerAuthRoutes } from "./routes/authRoutes.js";
+import { registerNotificationRoutes } from "./routes/notificationRoutes.js";
 import { resolveUserId } from "./routes/shared.js";
 import { registerWorkRoutes } from "./routes/workRoutes.js";
 import {
@@ -134,6 +135,7 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get("/api/health", async () => ({ ok: true }));
 
   registerAuthRoutes(app);
+  registerNotificationRoutes(app);
 
   app.get("/api/map/cities", async (req, reply) => {
     const userId = await resolveUserId(req);

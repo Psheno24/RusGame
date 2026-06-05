@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { SKILL_LABELS, SKILL_ORDER } from "../api";
 import { cityDisplayName } from "../cityNames";
 import { TestAdminPanel } from "../components/TestAdminPanel";
@@ -72,6 +73,9 @@ export function ProfilePage() {
       </div>
 
       <div className="profile-page-footer">
+        <Link className="btn btn-secondary profile-settings-btn" to="/profile/settings">
+          Настройки
+        </Link>
         <button className="btn btn-logout" type="button" onClick={() => setConfirmLogout(true)}>
           Выйти
         </button>

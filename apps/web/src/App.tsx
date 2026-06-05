@@ -10,6 +10,8 @@ import { CityPage } from "./pages/CityPage";
 import { HomePage } from "./pages/HomePage";
 import { MapPage } from "./pages/MapPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { ProfileSettingsPage } from "./pages/ProfileSettingsPage";
+import { ProfileNotificationsPage } from "./pages/ProfileNotificationsPage";
 import { WorkPage } from "./pages/WorkPage";
 
 export function App() {
@@ -38,6 +40,8 @@ export function App() {
             <Route path="/city" element={<CityPage />} />
             <Route path="/activity" element={<ActivityPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile/settings" element={<ProfileSettingsPage />} />
+            <Route path="/profile/settings/notifications" element={<ProfileNotificationsPage />} />
             <Route path="*" element={<Navigate to="/city" replace />} />
           </Route>
         </Routes>

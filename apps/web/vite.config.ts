@@ -6,8 +6,16 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
       registerType: "autoUpdate",
+      injectRegister: "auto",
       includeAssets: ["icon.svg"],
+      devOptions: {
+        enabled: true,
+        type: "module",
+      },
       manifest: {
         name: "Россия — жизнь",
         short_name: "Россия",
@@ -21,14 +29,8 @@ export default defineConfig({
           { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" },
         ],
       },
-      workbox: {
-        navigateFallback: "/index.html",
-        runtimeCaching: [
-          {
-            urlPattern: /^https?:\/\/.*\/api\/.*/i,
-            handler: "NetworkOnly",
-          },
-        ],
+      injectManifest: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
       },
     }),
   ],

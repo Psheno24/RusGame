@@ -1428,6 +1428,42 @@ export async function setTestAccountBalance(login: string, rubles: number) {
   });
 }
 
+export type NotificationPrefs = {
+  shiftReady: boolean;
+};
+
+export async function fetchVapidPublicKey() {
+  return api<{ publicKey: string }>("/api/notifications/vapid-public-key");
+}
+
+export async function fetchNotificationPrefs() {
+  return api<{ prefs: NotificationPrefs }>("/api/notifications/prefs");
+}
+
+export async function updateNotificationPrefs(patch: Partial<NotificationPrefs>) {
+  return api<{ prefs: NotificationPrefs }>("/api/notifications/prefs", {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
+export async function savePushSubscription(sub: {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}) {
+  return api<{ ok: boolean }>("/api/notifications/subscription", {
+    method: "PUT",
+    body: JSON.stringify(sub),
+  });
+}
+
+export async function deletePushSubscription(endpoint: string) {
+  return api<{ ok: boolean }>("/api/notifications/subscription", {
+    method: "DELETE",
+    body: JSON.stringify({ endpoint }),
+  });
+}
+
 export function formatHousingExpiry(ts: number | null): string {
   if (ts == null) return "";
   return formatLocaleDateRu(ts, { withTime: true });

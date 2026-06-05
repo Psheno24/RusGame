@@ -9,6 +9,7 @@ import Fastify from "fastify";
 import { LOCAL_DEV, PORT, ROOT, TEST_LOGIN, TRUST_PROXY, ENABLE_TEST_ACCOUNT } from "./config.js";
 import { getDb } from "./db.js";
 import { registerRoutes } from "./routes.js";
+import { processDuePushNotifications } from "./pushNotifications.js";
 import { ensureTestAccount } from "./testAccount.js";
 
 const webDist = join(ROOT, "apps/web/dist");
@@ -46,6 +47,9 @@ async function main() {
   }
 
   await app.listen({ port: PORT, host: "0.0.0.0" });
+  setInterval(() => {
+    void processDuePushNotifications().catch((err) => console.error("push scheduler", err));
+  }, 15_000);
   console.log(`API http://localhost:${PORT}`);
   if (LOCAL_DEV) console.log("Режим: LOCAL_DEV (длинная сессия, cookie без secure)");
   else console.log("Режим: production (HTTPS cookies, trustProxy)");

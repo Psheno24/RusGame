@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { appendPlayerFeed } from "./playerFeed.js";
+import { scheduleShiftReadyPush } from "./pushNotifications.js";
 import { DATA_DIR } from "./config.js";
 import { randInt } from "./random.js";
 import { findCityJob, getCar, getVehicleRental, type JobDef } from "./gameData.js";
@@ -645,6 +646,8 @@ export function taxiAcceptOrder(
     lastActivityAt: now,
   };
   saveTaxiState(player.user_id, state);
+
+  scheduleShiftReadyPush(player.user_id, job.id, job.title, activeTrip.endsAt);
 
   return {
     ok: true,

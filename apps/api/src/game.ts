@@ -61,7 +61,8 @@ import {
   serializeLastWorkByJob,
   withLastWork,
 } from "./workCooldown.js";
-import { scaleTravelMs } from "./testAccount.js";
+import { scaleTravelMs, scaleCooldownMs } from "./testAccount.js";
+import { scheduleShiftReadyPush } from "./pushNotifications.js";
 import { finalShiftPayout, skillPayoutMultiplier } from "./jobSalaries.js";
 import { playerMeetsCarRequirement, taxiBlocksShift } from "./taxi.js";
 import { saveTaxiState } from "./playerTaxi.js";
@@ -505,6 +506,8 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
       ? `Смена «${job.title}» (${shiftHours} ч): +${formatRub(payout)}`
       : `Работа «${job.title}»: +${formatRub(payout)}`;
   appendPlayerFeed(userId, feedType, feedText, now);
+
+  scheduleShiftReadyPush(userId, job.id, job.title, now + scaleCooldownMs(cooldownMs, userId));
 
   return { ok: true, payout, message, skillGain };
 }

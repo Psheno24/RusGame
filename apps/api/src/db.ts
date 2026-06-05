@@ -577,6 +577,39 @@ function migrate(database: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_player_feed_user_ts ON player_feed(user_id, ts DESC);
   `);
 
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      endpoint TEXT NOT NULL,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      UNIQUE(user_id, endpoint)
+    );
+
+    CREATE TABLE IF NOT EXISTS notification_prefs (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      shift_ready INTEGER NOT NULL DEFAULT 0,
+      taxi_trip_end INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS push_schedule (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,
+      fire_at INTEGER NOT NULL,
+      payload_json TEXT NOT NULL,
+      sent_at INTEGER,
+      canceled_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_push_schedule_due
+      ON push_schedule(fire_at)
+      WHERE sent_at IS NULL AND canceled_at IS NULL;
+  `);
+
   const reputationStartMigration = database
     .prepare("SELECT key FROM app_migrations WHERE key = ?")
     .get("reputation_start_zero");
