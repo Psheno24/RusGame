@@ -17,8 +17,6 @@ function player(partial: Partial<PlayerRow> & Pick<PlayerRow, "city_id" | "ruble
   return {
     user_id: 1,
     display_name: "Test",
-    rubles: partial.rubles,
-    city_id: partial.city_id,
     status: partial.status ?? "idle",
     travel_to_city_id: null,
     travel_arrives_at: null,
