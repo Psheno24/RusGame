@@ -13,6 +13,7 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { ProfileSettingsPage } from "./pages/ProfileSettingsPage";
 import { ProfileNotificationsPage } from "./pages/ProfileNotificationsPage";
 import { WorkPage } from "./pages/WorkPage";
+import { CarViewerPage } from "./pages/dev/CarViewerPage";
 
 export function App() {
   const { user, loading } = useApp();
@@ -42,6 +43,7 @@ export function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/profile/settings" element={<ProfileSettingsPage />} />
             <Route path="/profile/settings/notifications" element={<ProfileNotificationsPage />} />
+            <Route path="/dev/car-viewer" element={<CarViewerPage />} />
             <Route path="*" element={<Navigate to="/city" replace />} />
           </Route>
         </Routes>

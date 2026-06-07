@@ -17,6 +17,7 @@
   overflow-wrap: normal;
 }
 
+.gost-plate > svg,
 .gost-plate__svg {
   display: block;
   width: 100%;
