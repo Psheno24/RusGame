@@ -54,6 +54,7 @@ export type PropertyDetail = {
   title: string;
   subtitle: string | null;
   accent: string;
+  modelId?: string | null;
   specs: PropertySpecRow[];
   features: PropertySpecRow[];
   status: PropertyStatusRow[];
@@ -186,6 +187,7 @@ export function getPropertyDetail(
         ? `${car.year} · ${car.body}${isUsed ? " · б/у" : ""}`
         : null,
       accent: car?.accent ?? "#4a5568",
+      modelId: row.car_model_id,
       specs: car
         ? [
             { label: "Класс", value: getCarClassLabel(car.carClass ?? "economy") },

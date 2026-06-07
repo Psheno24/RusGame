@@ -1915,6 +1915,20 @@ body {
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12);
 }
 
+.car-list-thumb {
+  display: block;
+  width: 72px;
+  height: 44px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+}
+
+.car-list-thumb--wide {
+  width: 100%;
+  height: 56px;
+}
+
 .phone-list-info {
   flex: 1;
   min-width: 0;
@@ -4921,6 +4935,24 @@ body {
   gap: 10px;
   align-items: stretch;
   padding: 14px;
+}
+
+.property-car-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.property-car-row .property-card-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.property-detail-viewer {
+  height: 220px !important;
+  margin-bottom: 0.75rem;
 }
 
 .property-card--car .property-card-main,

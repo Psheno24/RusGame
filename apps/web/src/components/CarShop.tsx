@@ -39,6 +39,7 @@ import { CityGridButton } from "./ui/CityGridButton";
 import { TimerIcon } from "./ui/TimerIcon";
 import { PlateShopPanel } from "./PlateShopPanel";
 import { VehiclePlate } from "./VehiclePlate";
+import { CarModelPreview, hasCar3dModel } from "./cars";
 
 type CarNav =
   | "hub"
@@ -129,6 +130,20 @@ function CarVisual({ accent, large }: { accent: string; large?: boolean }) {
       aria-hidden
     />
   );
+}
+
+function ShopCarThumb({ modelId, accent }: { modelId: string; accent: string }) {
+  if (hasCar3dModel(modelId)) {
+    return <CarModelPreview modelId={modelId} bodyColor={accent} variant="thumb" />;
+  }
+  return <span className="car-list-thumb" style={{ background: accent }} aria-hidden />;
+}
+
+function ShopCarBanner({ modelId, accent, large }: { modelId: string; accent: string; large?: boolean }) {
+  if (hasCar3dModel(modelId)) {
+    return <CarModelPreview modelId={modelId} bodyColor={accent} variant="banner" large={large} />;
+  }
+  return <CarVisual accent={accent} large={large} />;
 }
 
 export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: Props) {
@@ -532,7 +547,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
                       go("usedDetail");
                     }}
                   >
-                    <span className="phone-list-thumb" style={{ background: l.accent }} aria-hidden />
+                    <ShopCarThumb modelId={l.carModelId} accent={l.accent} />
                     <span className="phone-list-info">
                       <span className="phone-list-name">
                         {l.brand} {l.model}
@@ -559,7 +574,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
 
       {nav === "usedDetail" && usedSelected && (
         <div className="phone-detail">
-          <CarVisual accent={usedSelected.accent} large />
+          <ShopCarBanner modelId={usedSelected.carModelId} accent={usedSelected.accent} large />
           <h3 className="phone-detail-title">
             {usedSelected.brand} {usedSelected.model}
           </h3>
@@ -689,7 +704,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
                       className="phone-list-item"
                       onClick={() => go("buyDetail", { car: c.id })}
                     >
-                      <span className="phone-list-thumb" style={{ background: c.accent }} aria-hidden />
+                      <ShopCarThumb modelId={c.id} accent={c.accent} />
                       <span className="phone-list-info">
                         <span className="phone-list-name">
                           {c.brand} {c.model}
@@ -714,7 +729,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
 
       {nav === "buyDetail" && selected && (
         <div className="phone-detail">
-          <CarVisual accent={selected.accent} large />
+          <ShopCarBanner modelId={selected.id} accent={selected.accent} large />
           <h3 className="phone-detail-title">
             {selected.brand} {selected.model}
           </h3>
@@ -861,7 +876,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
 
       {nav === "tradeIn" && selected && (
         <div className="phone-detail">
-          <CarVisual accent={selected.accent} large />
+          <ShopCarBanner modelId={selected.id} accent={selected.accent} large />
           <h3 className="phone-detail-title">
             {selected.brand} {selected.model}
           </h3>
@@ -890,7 +905,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
                         );
                       }}
                     />
-                    <span className="phone-list-thumb" style={{ background: oc.accent }} aria-hidden />
+                    <ShopCarThumb modelId={oc.modelId} accent={oc.accent} />
                     <span className="phone-list-info">
                       <span className="phone-list-name">
                         {oc.brand} {oc.model}
@@ -990,7 +1005,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
                     className="phone-list-item"
                     onClick={() => openPlateCar(c.playerCarId)}
                   >
-                    <span className="phone-list-thumb" style={{ background: c.accent }} aria-hidden />
+                    <ShopCarThumb modelId={c.modelId} accent={c.accent} />
                     <span className="phone-list-info">
                       <span className="phone-list-name">
                         {c.brand} {c.model}
@@ -1016,7 +1031,11 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
 
       {nav === "plateDetail" && plateInfo && (
         <div className="phone-detail">
-          <CarVisual accent={plateInfo.accent} large />
+          <ShopCarBanner
+            modelId={plateCar?.modelId ?? ""}
+            accent={plateInfo.accent}
+            large
+          />
           <h3 className="phone-detail-title">
             {plateInfo.brand} {plateInfo.model}
           </h3>

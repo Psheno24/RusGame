@@ -20,6 +20,7 @@ export type PropertyCard = {
   rightSubtext: string | null;
   plate: VehiclePlateParts | null;
   accent: string;
+  modelId?: string | null;
   housingOwnedId?: number;
   cityId?: string;
   cityName?: string;
@@ -59,6 +60,7 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
       rightSubtext: null,
       plate: parts,
       accent: car?.accent ?? "#4a5568",
+      modelId: row.car_model_id,
     });
   }
 

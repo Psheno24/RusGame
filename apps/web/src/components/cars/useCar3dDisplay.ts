@@ -38,7 +38,9 @@ export function useCar3dDisplay(modelId: string | undefined) {
       })
       .catch(() => {
         if (!alive) return;
-        setEntry(null);
+        const fallback: Car3dDisplayEntry = {};
+        cache.set(modelId, fallback);
+        setEntry(fallback);
       })
       .finally(() => {
         if (alive) setLoading(false);

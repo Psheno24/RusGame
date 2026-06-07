@@ -10,6 +10,11 @@ function slugFromModelId(modelId: string): string {
   return parts[parts.length - 1] ?? modelId;
 }
 
+/** Есть ли зарегистрированная 3D-модель для id из каталога. */
+export function hasCar3dModel(modelId: string | null | undefined): boolean {
+  return Boolean(modelId && modelId in MODEL_FILE_BY_ID);
+}
+
 /** Путь к GLB-файлу для id модели автомобиля. */
 export function getCarModelPath(modelId: string): string {
   const file = MODEL_FILE_BY_ID[modelId] ?? `${slugFromModelId(modelId)}.glb`;

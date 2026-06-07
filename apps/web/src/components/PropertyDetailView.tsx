@@ -17,6 +17,7 @@ import { useToastRef } from "../hooks/useToastRef";
 import { CitySectionHeader } from "./ui/CitySectionHeader";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { VehiclePlate } from "./VehiclePlate";
+import { CarModelPreview, hasCar3dModel } from "./cars";
 
 function rub(n: number) {
   return `${formatRub(n)}`;
@@ -240,6 +241,19 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
               </p>
             )}
           </header>
+
+          {detail.kind === "car" && detail.modelId && hasCar3dModel(detail.modelId) && (
+            <CarModelPreview
+              modelId={detail.modelId}
+              bodyColor={detail.accent}
+              plate={detail.plate}
+              plateText={detail.plateText}
+              variant="banner"
+              large
+              interactive
+              className="property-detail-viewer"
+            />
+          )}
 
           {plateParts && (
             <div className="property-detail-plate">

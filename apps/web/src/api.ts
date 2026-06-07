@@ -310,6 +310,7 @@ export type PropertyCard = {
   rightSubtext: string | null;
   plate: VehiclePlateParts | null;
   accent: string;
+  modelId?: string | null;
   housingOwnedId?: number;
   cityId?: string;
   cityName?: string;
@@ -1092,6 +1093,7 @@ export type PropertyDetail = {
   title: string;
   subtitle: string | null;
   accent: string;
+  modelId?: string | null;
   specs: PropertySpecRow[];
   features: PropertySpecRow[];
   status: PropertyStatusRow[];

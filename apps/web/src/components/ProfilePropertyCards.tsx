@@ -5,20 +5,23 @@ import { useNotice } from "../noticeContext";
 import type { ToastFn } from "../hooks/useToastRef";
 import { PropertyDetailView } from "./PropertyDetailView";
 import { VehiclePlate } from "./VehiclePlate";
+import { CarModelPreview } from "./cars";
 
 function PropertyCardButton({
   c,
   onOpen,
   children,
+  className,
 }: {
   c: PropertyCard;
   onOpen: (id: string) => void;
   children: ReactNode;
+  className?: string;
 }) {
   return (
     <button
       type="button"
-      className={`property-card property-card--clickable property-card--${c.kind}`}
+      className={`property-card property-card--clickable property-card--${c.kind}${className ? ` ${className}` : ""}`}
       style={{ borderLeftColor: c.accent }}
       onClick={() => onOpen(c.id)}
       aria-label={`${c.title}, открыть подробности`}
@@ -29,8 +32,28 @@ function PropertyCardButton({
 }
 
 function PropertyListCard({ c, onOpen }: { c: PropertyCard; onOpen: (id: string) => void }) {
-  const hasPhoneRight =
-    (c.kind === "phone" && (c.rightText || c.rightSubtext)) || (c.kind === "car" && c.plate);
+  if (c.kind === "car") {
+    return (
+      <PropertyCardButton c={c} onOpen={onOpen}>
+        <div className="property-car-row">
+          <CarModelPreview
+            modelId={c.modelId ?? ""}
+            bodyColor={c.accent}
+            plate={c.plate}
+            variant="thumb"
+          />
+          <span className="property-card-title">{c.title}</span>
+        </div>
+        {c.plate ? (
+          <div className="property-card-right property-card-right--plate">
+            <VehiclePlate parts={c.plate} size="md" />
+          </div>
+        ) : null}
+      </PropertyCardButton>
+    );
+  }
+
+  const hasPhoneRight = c.kind === "phone" && (c.rightText || c.rightSubtext);
   const showMainMeta = c.rightText && !c.isActiveResidence && !hasPhoneRight;
 
   return (

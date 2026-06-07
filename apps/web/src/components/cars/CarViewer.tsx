@@ -15,6 +15,7 @@ import {
 } from "./carModelFit";
 import { applyOrbitZoomLimits, DEFAULT_MAX_ZOOM_RATIO, DEFAULT_MIN_ZOOM_RATIO } from "./carViewerZoom";
 import type { CarViewerProps } from "./types";
+import "./CarViewer.css";
 
 const _target = new Vector3();
 
