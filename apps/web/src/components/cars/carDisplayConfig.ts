@@ -60,6 +60,26 @@ export const DEFAULT_ORBIT_DISPLAY: CarCardDisplayConfig = {
   targetZ: 0,
 };
 
+/** Ближняя граница зума в режиме настройки номеров (ещё ближе, чем раньше). */
+export const PLATE_TUNE_MIN_ZOOM_RATIO = 0.25;
+
+/** Дальняя граница зума = прежнее «максимальное» приближение. */
+export const PLATE_TUNE_MAX_ZOOM_RATIO = 0.5;
+
+/** Ракурс для настройки номеров — низко, близко, только влево/вправо. */
+export const PLATE_TUNE_DISPLAY: CarCardDisplayConfig = {
+  fixed: false,
+  azimuth: 0.85,
+  elevation: 0.07,
+  distanceRatio: PLATE_TUNE_MAX_ZOOM_RATIO,
+  modelOffsetX: 0,
+  modelOffsetY: 0,
+  modelOffsetZ: 0,
+  targetX: 0,
+  targetY: -0.14,
+  targetZ: 0,
+};
+
 /** Ползунок −1…1 → доля ширины/высоты плашки. */
 export const PLATE_OFFSET_SLIDER_UNIT = 0.85;
 

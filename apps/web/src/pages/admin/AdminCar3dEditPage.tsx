@@ -10,6 +10,7 @@ import {
 import { CarViewer } from "../../components/cars/CarViewer";
 import {
   DEFAULT_PLATE_DISPLAY_TUNING,
+  PLATE_TUNE_DISPLAY,
   mergeCardDisplayConfig,
   mergePlateDisplayTuning,
   type CarCardDisplayConfig,
@@ -364,8 +365,17 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
           plate={DEMO_PLATE}
           plateText="А183ВС 98"
           plateTuning={activePlate}
+          cardDisplay={PLATE_TUNE_DISPLAY}
+          cameraMode="plateTune"
+          modelOffset={{ x: 0, y: 0, z: 0 }}
+          lockCamera={false}
+          enableZoom
           height={300}
         />
+        <p className="admin-car3d-page__muted">
+          Крутите влево/вправо, чтобы переключиться между передним и задним номером. Приближайте колёсиком или
+          жестом.
+        </p>
       </section>
 
       <section className="admin-car3d-section">

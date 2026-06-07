@@ -13,14 +13,14 @@ export {
   type CarBodyColorConfig,
   type CarModelInspection,
 } from "./carBodyColor";
-export type { CarCardProps, CarDisplayInfo, CarViewerProps, CarZoomLimitsInfo, CarRearPlateTuning } from "./types";
+export type { CarCardProps, CarDisplayInfo, CarViewerProps, CarViewerCameraMode, CarZoomLimitsInfo, CarRearPlateTuning } from "./types";
 export type {
   Car3dDisplayEntry,
   CarCardDisplayConfig,
   CarPlateDisplayTuning,
   CarViewStateSnapshot,
 } from "./carDisplayConfig";
-export { DEFAULT_ORBIT_DISPLAY } from "./carDisplayConfig";
+export { DEFAULT_ORBIT_DISPLAY, PLATE_TUNE_DISPLAY } from "./carDisplayConfig";
 export { Car3dInspectModal } from "./Car3dInspectModal";
 export { useCar3dDisplay, primeCar3dDisplayCache, clearCar3dDisplayCache } from "./useCar3dDisplay";
 

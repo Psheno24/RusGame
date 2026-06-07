@@ -13,6 +13,7 @@ type Props = {
   wide?: boolean;
   large?: boolean;
   interactive?: boolean;
+  transparentBackground?: boolean;
   className?: string;
 };
 
@@ -63,6 +64,7 @@ export function CarModelPreview({
   wide,
   large,
   interactive = false,
+  transparentBackground = false,
   className = "",
 }: Props) {
   const accent = bodyColor ?? "#4a5568";
@@ -89,6 +91,7 @@ export function CarModelPreview({
       wide={wide}
       large={large}
       interactive={interactive}
+      transparentBackground={transparentBackground}
       className={className}
     />
   );
@@ -103,9 +106,21 @@ function CarModelPreviewInner({
   wide,
   large,
   interactive,
+  transparentBackground,
   className,
 }: Required<Pick<Props, "modelId">> &
-  Pick<Props, "bodyColor" | "plate" | "plateText" | "variant" | "wide" | "large" | "interactive" | "className">) {
+  Pick<
+    Props,
+    | "bodyColor"
+    | "plate"
+    | "plateText"
+    | "variant"
+    | "wide"
+    | "large"
+    | "interactive"
+    | "transparentBackground"
+    | "className"
+  >) {
   const { plateTuning, cardDisplay } = useCar3dDisplay(modelId);
   const height = variant === "thumb" ? (wide ? 56 : 44) : large ? 120 : 72;
   const viewerDisplay = interactive ? { ...cardDisplay, fixed: false } : cardDisplay;
@@ -129,6 +144,7 @@ function CarModelPreviewInner({
       plateTuning={plateTuning}
       cardDisplay={viewerDisplay}
       lockCamera={!interactive}
+      transparentBackground={transparentBackground}
       height={height}
       enableZoom={interactive}
     />

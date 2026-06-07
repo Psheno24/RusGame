@@ -3,8 +3,8 @@
     "plate": {
       "sizeScale": 1,
       "front": {
-        "offsetX": 0,
-        "offsetY": 0
+        "offsetX": -0.04,
+        "offsetY": 0.34
       },
       "rear": {
         "offsetX": 0,
@@ -15,7 +15,7 @@
       "fixed": true,
       "azimuth": 0.6256003566531485,
       "elevation": 0.19152991635726332,
-      "distanceRatio": 0.5209440956247278,
+      "distanceRatio": 0.5000000000000002,
       "modelOffsetX": 0.34,
       "modelOffsetY": 0.17,
       "modelOffsetZ": 0.06,

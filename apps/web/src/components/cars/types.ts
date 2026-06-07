@@ -29,6 +29,8 @@ export type CarZoomLimitsInfo = {
   maxDistance: number;
 };
 
+export type CarViewerCameraMode = "default" | "plateTune";
+
 export type CarViewerProps = {
   modelId: string;
   modelPath?: string;
@@ -47,6 +49,8 @@ export type CarViewerProps = {
   modelOffset?: { x: number; y: number; z: number };
   cardDisplay?: CarCardDisplayConfig;
   lockCamera?: boolean;
+  cameraMode?: CarViewerCameraMode;
+  transparentBackground?: boolean;
   viewStateRef?: MutableRefObject<CarViewStateSnapshot | null>;
   onViewStateChange?: (state: CarViewStateSnapshot) => void;
 };

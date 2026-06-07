@@ -14,7 +14,11 @@ import {
   type ModelFitBox,
 } from "./carModelFit";
 import { applyOrbitZoomLimits, DEFAULT_MAX_ZOOM_RATIO, DEFAULT_MIN_ZOOM_RATIO } from "./carViewerZoom";
-import type { CarViewerProps } from "./types";
+import {
+  PLATE_TUNE_MAX_ZOOM_RATIO,
+  PLATE_TUNE_MIN_ZOOM_RATIO,
+} from "./carDisplayConfig";
+import type { CarViewerCameraMode, CarViewerProps } from "./types";
 import "./CarViewer.css";
 
 const _target = new Vector3();
@@ -33,6 +37,7 @@ function CarScene({
   enableZoom,
   minZoomRatio,
   maxZoomRatio,
+  cameraMode = "default",
   onZoomLimitsChange,
   viewStateRef,
   onViewStateChange,
@@ -50,6 +55,7 @@ function CarScene({
   enableZoom: boolean;
   minZoomRatio: number;
   maxZoomRatio: number;
+  cameraMode?: CarViewerCameraMode;
   onZoomLimitsChange?: CarViewerProps["onZoomLimitsChange"];
   viewStateRef?: CarViewerProps["viewStateRef"];
   onViewStateChange?: CarViewerProps["onViewStateChange"];
@@ -146,6 +152,9 @@ function CarScene({
     z: viewConfig.modelOffsetZ,
   };
 
+  const lockedPolarAngle =
+    cameraMode === "plateTune" ? Math.PI / 2 - viewConfig.elevation : null;
+
   return (
     <>
       <ambientLight intensity={0.55} />
@@ -174,8 +183,8 @@ function CarScene({
         enablePan={false}
         enableRotate={!lockCamera}
         enableZoom={enableZoom && !lockCamera}
-        minPolarAngle={0.15}
-        maxPolarAngle={Math.PI / 2 - 0.05}
+        minPolarAngle={lockedPolarAngle ?? 0.15}
+        maxPolarAngle={lockedPolarAngle ?? Math.PI / 2 - 0.05}
         rotateSpeed={0.65}
         zoomSpeed={0.8}
         onChange={publishViewState}
@@ -199,13 +208,15 @@ export function CarViewer({
   modelOffset,
   cardDisplay,
   lockCamera = false,
+  cameraMode = "default",
+  transparentBackground = false,
   viewStateRef,
   onViewStateChange,
   className = "",
   height = 220,
   enableZoom = true,
-  minZoomRatio = DEFAULT_MIN_ZOOM_RATIO,
-  maxZoomRatio = DEFAULT_MAX_ZOOM_RATIO,
+  minZoomRatio = cameraMode === "plateTune" ? PLATE_TUNE_MIN_ZOOM_RATIO : DEFAULT_MIN_ZOOM_RATIO,
+  maxZoomRatio = cameraMode === "plateTune" ? PLATE_TUNE_MAX_ZOOM_RATIO : DEFAULT_MAX_ZOOM_RATIO,
   onZoomLimitsChange,
 }: CarViewerProps) {
   const modelPath = modelPathProp ?? getCarModelPath(modelId);
@@ -215,7 +226,9 @@ export function CarViewer({
     preloadCarModel(modelPath);
   }, [modelPath]);
 
-  const rootClass = ["car-viewer", className].filter(Boolean).join(" ");
+  const rootClass = ["car-viewer", transparentBackground ? "car-viewer--transparent" : "", className]
+    .filter(Boolean)
+    .join(" ");
   const style = { height: typeof height === "number" ? `${height}px` : height };
 
   return (
@@ -241,6 +254,7 @@ export function CarViewer({
             enableZoom={enableZoom}
             minZoomRatio={minZoomRatio}
             maxZoomRatio={maxZoomRatio}
+            cameraMode={cameraMode}
             onZoomLimitsChange={onZoomLimitsChange}
             viewStateRef={viewStateRef}
             onViewStateChange={onViewStateChange}

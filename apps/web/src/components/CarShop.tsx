@@ -134,14 +134,29 @@ function CarVisual({ accent, large }: { accent: string; large?: boolean }) {
 
 function ShopCarThumb({ modelId, accent }: { modelId: string; accent: string }) {
   if (hasCar3dModel(modelId)) {
-    return <CarModelPreview modelId={modelId} bodyColor={accent} variant="thumb" />;
+    return (
+      <CarModelPreview
+        modelId={modelId}
+        bodyColor={accent}
+        variant="thumb"
+        transparentBackground
+      />
+    );
   }
   return <span className="car-list-thumb" style={{ background: accent }} aria-hidden />;
 }
 
 function ShopCarBanner({ modelId, accent, large }: { modelId: string; accent: string; large?: boolean }) {
   if (hasCar3dModel(modelId)) {
-    return <CarModelPreview modelId={modelId} bodyColor={accent} variant="banner" large={large} />;
+    return (
+      <CarModelPreview
+        modelId={modelId}
+        bodyColor={accent}
+        variant="banner"
+        large={large}
+        transparentBackground
+      />
+    );
   }
   return <CarVisual accent={accent} large={large} />;
 }

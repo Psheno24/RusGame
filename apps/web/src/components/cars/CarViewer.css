@@ -7,6 +7,10 @@
   touch-action: none;
 }
 
+.car-viewer--transparent {
+  background: transparent;
+}
+
 .car-viewer__canvas {
   width: 100% !important;
   height: 100% !important;
