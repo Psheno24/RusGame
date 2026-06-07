@@ -17,7 +17,8 @@ import { useToastRef } from "../hooks/useToastRef";
 import { CitySectionHeader } from "./ui/CitySectionHeader";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { VehiclePlate } from "./VehiclePlate";
-import { CarModelPreview, hasCar3dModel } from "./cars";
+import { Car3dInspectModal, CarModelPreview, hasCar3dModel } from "./cars";
+import { ZoomInIcon } from "./ui/ZoomInIcon";
 
 function rub(n: number) {
   return `${formatRub(n)}`;
@@ -40,6 +41,7 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
   const [liveQuote, setLiveQuote] = useState<LiveHereQuote | null>(null);
   const [cancelRentalConfirm, setCancelRentalConfirm] = useState(false);
   const [liveRemainingMs, setLiveRemainingMs] = useState<number | null>(null);
+  const [carInspectOpen, setCarInspectOpen] = useState(false);
 
   const load = useCallback(async () => {
     const d = await fetchPropertyDetail(propertyId);
@@ -221,6 +223,17 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
         />
       )}
 
+      {carInspectOpen && detail.kind === "car" && detail.modelId && hasCar3dModel(detail.modelId) && (
+        <Car3dInspectModal
+          modelId={detail.modelId}
+          title={detail.title}
+          bodyColor={detail.accent}
+          plate={detail.plate}
+          plateText={detail.plateText}
+          onClose={() => setCarInspectOpen(false)}
+        />
+      )}
+
       <div className="property-detail-wrap">
         <article
           className="property-detail card"
@@ -243,16 +256,25 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
           </header>
 
           {detail.kind === "car" && detail.modelId && hasCar3dModel(detail.modelId) && (
-            <CarModelPreview
-              modelId={detail.modelId}
-              bodyColor={detail.accent}
-              plate={detail.plate}
-              plateText={detail.plateText}
-              variant="banner"
-              large
-              interactive
-              className="property-detail-viewer"
-            />
+            <div className="property-detail-car-preview">
+              <CarModelPreview
+                modelId={detail.modelId}
+                bodyColor={detail.accent}
+                plate={detail.plate}
+                plateText={detail.plateText}
+                variant="banner"
+                large
+                className="property-detail-viewer"
+              />
+              <button
+                type="button"
+                className="property-detail-car-inspect-btn"
+                onClick={() => setCarInspectOpen(true)}
+                aria-label="Осмотреть в 3D"
+              >
+                <ZoomInIcon />
+              </button>
+            </div>
           )}
 
           {plateParts && (

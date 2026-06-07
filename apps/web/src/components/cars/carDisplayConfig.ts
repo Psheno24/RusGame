@@ -46,6 +46,20 @@ export const DEFAULT_CARD_DISPLAY: CarCardDisplayConfig = {
   targetZ: 0,
 };
 
+/** Исходный ракурс при добавлении модели — без смещений карточки. */
+export const DEFAULT_ORBIT_DISPLAY: CarCardDisplayConfig = {
+  fixed: false,
+  azimuth: 0.85,
+  elevation: 0.35,
+  distanceRatio: 1,
+  modelOffsetX: 0,
+  modelOffsetY: 0,
+  modelOffsetZ: 0,
+  targetX: 0,
+  targetY: 0,
+  targetZ: 0,
+};
+
 /** Ползунок −1…1 → доля ширины/высоты плашки. */
 export const PLATE_OFFSET_SLIDER_UNIT = 0.85;
 

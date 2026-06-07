@@ -20,5 +20,7 @@ export type {
   CarPlateDisplayTuning,
   CarViewStateSnapshot,
 } from "./carDisplayConfig";
+export { DEFAULT_ORBIT_DISPLAY } from "./carDisplayConfig";
+export { Car3dInspectModal } from "./Car3dInspectModal";
 export { useCar3dDisplay, primeCar3dDisplayCache, clearCar3dDisplayCache } from "./useCar3dDisplay";
 
