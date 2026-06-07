@@ -125,6 +125,13 @@ import {
 } from "./propertyDetail.js";
 import { activeJobShiftBlock, jobCooldownState, lastWorkRecordForJob } from "./workCooldown.js";
 import { ensureTestAccount, isTestUser, scaleCooldownMs, scaleTravelMs } from "./testAccount.js";
+import {
+  getAllCar3dDisplay,
+  getCar3dDisplay,
+  listCar3dModels,
+  saveCar3dDisplay,
+  type Car3dDisplayEntry,
+} from "./car3dDisplay.js";
 import { listAccountsForTestAdmin, resetPlayerAccount, setPlayerRublesForTestAdmin } from "./playerReset.js";
 import { listCityFeed } from "./cityFeed.js";
 import { listPlayerFeed } from "./playerFeed.js";
@@ -1201,6 +1208,59 @@ export async function registerRoutes(app: FastifyInstance) {
         if (req.body.banned) revokeAllSessions(target.id);
       }
       return { ok: true };
+    },
+  );
+
+  async function requireCar3dAdmin(userId: number): Promise<boolean> {
+    if (isTestUser(userId)) return true;
+    const u = getUserById(userId);
+    return Boolean(u?.is_admin);
+  }
+
+  // ——— 3D car display (public read, admin write) ———
+  app.get("/api/car-3d/display/:modelId", async (req, reply) => {
+    const modelId = (req.params as { modelId: string }).modelId;
+    const entry = getCar3dDisplay(modelId);
+    if (!entry) return reply.code(404).send({ error: "Нет настроек 3D" });
+    return { modelId, ...entry };
+  });
+
+  app.get("/api/car-3d/display", async () => {
+    return { display: getAllCar3dDisplay() };
+  });
+
+  app.get("/api/admin/car-3d/models", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    if (!(await requireCar3dAdmin(userId))) return reply.code(403).send({ error: "Нет доступа" });
+    return { models: listCar3dModels() };
+  });
+
+  app.get("/api/admin/car-3d/display/:modelId", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    if (!(await requireCar3dAdmin(userId))) return reply.code(403).send({ error: "Нет доступа" });
+    const modelId = (req.params as { modelId: string }).modelId;
+    const entry = getCar3dDisplay(modelId);
+    return { modelId, display: entry ?? null };
+  });
+
+  app.put<{ Params: { modelId: string }; Body: Car3dDisplayEntry }>(
+    "/api/admin/car-3d/display/:modelId",
+    async (req, reply) => {
+      const userId = await resolveUserId(req);
+      if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+      if (!(await requireCar3dAdmin(userId))) return reply.code(403).send({ error: "Нет доступа" });
+
+      const modelId = req.params.modelId?.trim();
+      if (!modelId) return reply.code(400).send({ error: "Укажите modelId" });
+
+      try {
+        const display = saveCar3dDisplay(modelId, req.body ?? {});
+        return { ok: true, modelId, display };
+      } catch (e) {
+        return reply.code(400).send({ error: e instanceof Error ? e.message : "Ошибка сохранения" });
+      }
     },
   );
 }

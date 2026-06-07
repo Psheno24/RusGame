@@ -9,7 +9,7 @@ import {
   type PlateGarageCar,
   type PlateShopCarInfo,
 } from "../../api";
-import { CarCard, CarViewer, type CarDisplayInfo } from "../../components/cars";
+import { CarCard, CarViewer, DEFAULT_REAR_PLATE_TUNING, formatRearPlateConfigSnippet, type CarDisplayInfo, type CarRearPlateTuning } from "../../components/cars";
 import { PlateShopPanel } from "../../components/PlateShopPanel";
 import { formatRub } from "../../formatRub";
 import {
@@ -49,6 +49,9 @@ export function CarViewerPage() {
   const [plateBusy, setPlateBusy] = useState(false);
   const [garageLoading, setGarageLoading] = useState(true);
   const [garageError, setGarageError] = useState<string | null>(null);
+  const [rearPlateTuning, setRearPlateTuning] = useState<CarRearPlateTuning>({
+    ...DEFAULT_REAR_PLATE_TUNING,
+  });
 
   useEffect(() => {
     let alive = true;
@@ -169,13 +172,17 @@ export function CarViewerPage() {
     };
   }, [selectedGarageCar, plateInfo, bodyColor]);
 
+  const rearPlateSnippet = useMemo(
+    () => formatRearPlateConfigSnippet(VIEWER_MODEL_ID, rearPlateTuning),
+    [rearPlateTuning],
+  );
+
   return (
     <div className="dev-car-viewer">
       <header className="dev-car-viewer__header">
         <h1 className="dev-car-viewer__title">3D просмотр автомобиля</h1>
         <p className="dev-car-viewer__hint">
-          Вращайте модель мышью или пальцем. Прокрутка номера — как в магазине; изменения сразу видны на
-          3D-модели.
+          Вращайте модель мышью или пальцем. Прокрутка номера — как в магазине; номер накладывается спереди и сзади.
         </p>
       </header>
 
@@ -273,11 +280,73 @@ export function CarViewerPage() {
           </label>
         </div>
 
+        <div className="dev-car-viewer__rear-tuning">
+          <p className="dev-car-viewer__rear-tuning-title">Задний номер (подстройка)</p>
+
+          <label className="dev-car-viewer__slider">
+            <span>
+              Размер: <strong>{rearPlateTuning.sizeScale.toFixed(2)}×</strong>
+            </span>
+            <input
+              type="range"
+              min={0.5}
+              max={2}
+              step={0.01}
+              value={rearPlateTuning.sizeScale}
+              onChange={(e) =>
+                setRearPlateTuning((prev) => ({
+                  ...prev,
+                  sizeScale: Number(e.target.value),
+                }))
+              }
+            />
+          </label>
+
+          <label className="dev-car-viewer__slider">
+            <span>
+              Выше / ниже: <strong>{rearPlateTuning.offsetY >= 0 ? "+" : ""}{rearPlateTuning.offsetY.toFixed(3)}</strong>
+            </span>
+            <input
+              type="range"
+              min={-0.2}
+              max={0.2}
+              step={0.002}
+              value={rearPlateTuning.offsetY}
+              onChange={(e) =>
+                setRearPlateTuning((prev) => ({
+                  ...prev,
+                  offsetY: Number(e.target.value),
+                }))
+              }
+            />
+          </label>
+
+          <div className="dev-car-viewer__rear-tuning-actions">
+            <button
+              type="button"
+              className="btn btn-secondary dev-car-viewer__reset-btn"
+              onClick={() => setRearPlateTuning({ ...DEFAULT_REAR_PLATE_TUNING })}
+            >
+              Сброс
+            </button>
+          </div>
+
+          {rearPlateSnippet && (
+            <div className="dev-car-viewer__snippet">
+              <p className="dev-car-viewer__muted">
+                Скопируйте в <code>carPlateConfig.ts</code> для модели <code>{VIEWER_MODEL_ID}</code>:
+              </p>
+              <pre>{rearPlateSnippet}</pre>
+            </div>
+          )}
+        </div>
+
         <CarViewer
           modelId={car.modelId}
           bodyColor={bodyColor}
           plate={car.plate}
           plateText={car.plateText}
+          rearPlateTuning={rearPlateTuning}
           height={320}
         />
       </section>
@@ -355,7 +424,8 @@ export function CarViewerPage() {
           color: var(--text-muted);
         }
         .dev-car-viewer__plate-block,
-        .dev-car-viewer__colors {
+        .dev-car-viewer__colors,
+        .dev-car-viewer__rear-tuning {
           display: flex;
           flex-direction: column;
           gap: 12px;
@@ -363,6 +433,39 @@ export function CarViewerPage() {
           border-radius: 10px;
           border: 1px solid var(--border);
           background: var(--bg-elevated);
+        }
+        .dev-car-viewer__rear-tuning-title {
+          margin: 0;
+          font-size: 0.88rem;
+          font-weight: 600;
+        }
+        .dev-car-viewer__slider {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          font-size: 0.88rem;
+        }
+        .dev-car-viewer__slider input[type="range"] {
+          width: 100%;
+        }
+        .dev-car-viewer__rear-tuning-actions {
+          display: flex;
+          gap: 8px;
+        }
+        .dev-car-viewer__reset-btn {
+          font-size: 0.85rem;
+          padding: 6px 12px;
+        }
+        .dev-car-viewer__snippet pre {
+          margin: 0;
+          padding: 10px 12px;
+          border-radius: 8px;
+          border: 1px solid var(--border);
+          background: var(--bg-card);
+          font-size: 0.78rem;
+          line-height: 1.45;
+          overflow-x: auto;
+          white-space: pre;
         }
         .dev-car-viewer__muted {
           margin: 0;

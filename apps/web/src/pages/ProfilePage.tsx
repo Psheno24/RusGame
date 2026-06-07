@@ -64,10 +64,14 @@ export function ProfilePage() {
         {user?.isAdmin && (
           <div className="card">
             <h2>Админ</h2>
-            <p>
-              Один раз откройте{" "}
-              <code style={{ fontSize: "0.8rem" }}>POST /api/admin/seed</code> чтобы создать admin (см. README).
+            <p className="test-admin-hint">
+              Настройка 3D-моделей, номеров и карточек машин в магазине.
             </p>
+            <div className="test-admin-actions">
+              <Link className="btn btn-secondary" to="/admin/car-3d">
+                Номера авто
+              </Link>
+            </div>
           </div>
         )}
       </div>

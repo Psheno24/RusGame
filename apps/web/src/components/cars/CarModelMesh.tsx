@@ -8,12 +8,17 @@ import { applyCarPlateToModel } from "./carPlateTexture";
 import { getCarPlateConfig } from "./carPlateConfig";
 import { scaleModelToTargetSize } from "./carModelFit";
 
+import type { CarPlateDisplayTuning, CarRearPlateTuning } from "./types";
+
 type Props = {
   modelPath: string;
   modelId?: string;
   bodyColor?: string | null;
   plate?: VehiclePlateParts | null;
   plateText?: string | null;
+  layoutKey?: number;
+  plateTuning?: CarPlateDisplayTuning;
+  rearPlateTuning?: CarRearPlateTuning;
 };
 
 export function CarModelMesh({
@@ -22,6 +27,9 @@ export function CarModelMesh({
   bodyColor,
   plate,
   plateText,
+  layoutKey = 0,
+  plateTuning,
+  rearPlateTuning,
 }: Props) {
   const { scene } = useGLTF(modelPath);
   const model = useMemo(() => {
@@ -50,16 +58,22 @@ export function CarModelMesh({
     if (!config) return;
 
     let alive = true;
-    void applyCarPlateToModel(model, parts, config).then((ok) => {
-      if (!alive && ok) {
-        // texture applied after unmount — nothing to clean here (model is discarded)
-      }
+
+    const apply = () => {
+      if (!alive) return;
+      void applyCarPlateToModel(model, parts, config, plateTuning, rearPlateTuning);
+    };
+
+    apply();
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(apply);
     });
 
     return () => {
       alive = false;
+      cancelAnimationFrame(id);
     };
-  }, [model, modelId, parts]);
+  }, [model, modelId, parts, layoutKey, plateTuning, rearPlateTuning]);
 
   return <primitive object={model} />;
 }

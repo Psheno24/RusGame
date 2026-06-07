@@ -1402,6 +1402,66 @@ export async function payLiveHere(ownedId: number) {
   });
 }
 
+export type Car3dPlateAxisOffsets = { offsetX: number; offsetY: number };
+
+export type Car3dPlateDisplayTuning = {
+  sizeScale: number;
+  front: Car3dPlateAxisOffsets;
+  rear: Car3dPlateAxisOffsets;
+};
+
+export type Car3dCardDisplayConfig = {
+  fixed: boolean;
+  azimuth: number;
+  elevation: number;
+  distanceRatio: number;
+  modelOffsetX: number;
+  modelOffsetY: number;
+  modelOffsetZ: number;
+  targetX: number;
+  targetY: number;
+  targetZ: number;
+};
+
+export type Car3dDisplayEntry = {
+  plate?: Car3dPlateDisplayTuning;
+  card?: Car3dCardDisplayConfig;
+};
+
+export type Car3dModelListItem = {
+  modelId: string;
+  brand: string;
+  model: string;
+  accent: string;
+  glbFile: string;
+};
+
+export async function fetchCar3dDisplay(modelId: string) {
+  return api<Car3dDisplayEntry & { modelId: string }>(
+    `/api/car-3d/display/${encodeURIComponent(modelId)}`,
+  );
+}
+
+export async function fetchAdminCar3dModels() {
+  return api<{ models: Car3dModelListItem[] }>("/api/admin/car-3d/models");
+}
+
+export async function fetchAdminCar3dDisplay(modelId: string) {
+  return api<{ modelId: string; display: Car3dDisplayEntry | null }>(
+    `/api/admin/car-3d/display/${encodeURIComponent(modelId)}`,
+  );
+}
+
+export async function saveAdminCar3dDisplay(modelId: string, patch: Car3dDisplayEntry) {
+  return api<{ ok: boolean; modelId: string; display: Car3dDisplayEntry }>(
+    `/api/admin/car-3d/display/${encodeURIComponent(modelId)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(patch),
+    },
+  );
+}
+
 export type TestAdminAccount = {
   userId: number;
   login: string;

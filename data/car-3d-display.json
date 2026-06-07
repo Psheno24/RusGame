@@ -1,0 +1,27 @@
+{
+  "toyota-camry": {
+    "plate": {
+      "sizeScale": 1,
+      "front": {
+        "offsetX": 0,
+        "offsetY": 0
+      },
+      "rear": {
+        "offsetX": 0,
+        "offsetY": 0
+      }
+    },
+    "card": {
+      "fixed": true,
+      "azimuth": 0.6256003566531485,
+      "elevation": 0.19152991635726332,
+      "distanceRatio": 0.5209440956247278,
+      "modelOffsetX": 0.34,
+      "modelOffsetY": 0.17,
+      "modelOffsetZ": 0.06,
+      "targetX": 0,
+      "targetY": 0,
+      "targetZ": 0
+    }
+  }
+}

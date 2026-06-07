@@ -17,6 +17,7 @@ const PAGE_TITLES: { path: string; title: string }[] = [
   { path: "/profile/settings", title: "Настройки" },
   { path: "/profile/settings/notifications", title: "Уведомления" },
   { path: "/dev/car-viewer", title: "3D авто" },
+  { path: "/admin/car-3d", title: "3D авто" },
 ];
 
 const NAV_ITEMS = [

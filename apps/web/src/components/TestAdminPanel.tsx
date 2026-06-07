@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { formatRub } from "../formatRub.js";
 import { useCallback, useEffect, useState } from "react";
 import { useNotice } from "../noticeContext";
@@ -111,6 +112,9 @@ export function TestAdminPanel() {
           Доступно только тестовому аккаунту: сброс прогресса или изменение баланса любого игрока.
         </p>
         <div className="test-admin-actions">
+          <Link className="btn btn-secondary" to="/admin/car-3d">
+            Номера авто
+          </Link>
           <button className="btn btn-danger" type="button" onClick={() => openPick("reset")}>
             Обнулить аккаунт
           </button>
