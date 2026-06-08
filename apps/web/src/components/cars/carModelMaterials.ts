@@ -174,11 +174,8 @@ function isK5MisclassifiedBodyPanel(mesh: Mesh, materialName: string): boolean {
   return materialName === "insta_ua1k.006";
 }
 
-/** Полоски insta_ua1k поверх задних фонарей — дают «мутную плёнку». */
-const K5_REAR_LIGHT_BLOCKER_MESHES = new Set(["mesh_26", "mesh_27", "mesh_28"]);
-
 function shouldPaintK5Mesh(child: Mesh, mat: MeshStandardMaterial): boolean {
-  if (K5_REAR_LIGHT_BLOCKER_MESHES.has(child.name)) return false;
+  if (K5_REAR_TAIL_LIGHT_MESHES.has(child.name)) return false;
   if (K5_BODY_PANEL_MESH_NAMES.has(child.name)) return true;
   if (mat.name === "insta_ua1k" || mat.name === "insta_ua1k.005" || mat.name === "insta_ua1k.009" || mat.name === "insta_ua1k.010") {
     return true;
@@ -403,6 +400,9 @@ const K5_REAR_TAIL_LIGHT_MESHES = new Set([
   "mesh_23",
   "mesh_24",
   "mesh_25",
+  "mesh_26",
+  "mesh_27",
+  "mesh_28",
   "mesh_49",
   "mesh_51",
   "mesh_52",
@@ -557,9 +557,6 @@ const K5_HIDDEN_MESH_NAMES = new Set([
   "mesh_3",
   "mesh_4",
   "mesh_5",
-  "mesh_26",
-  "mesh_27",
-  "mesh_28",
   "mesh_76",
   "mesh_75",
   "mesh_77",
