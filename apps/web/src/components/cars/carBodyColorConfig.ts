@@ -19,6 +19,7 @@ const BODY_COLOR_CONFIG_BY_MODEL: Record<string, CarBodyColorConfig> = {
       "mesh_15",
       "mesh_16",
       "mesh_17",
+      "mesh_19",
       "mesh_33",
       "mesh_34",
       "mesh_35",

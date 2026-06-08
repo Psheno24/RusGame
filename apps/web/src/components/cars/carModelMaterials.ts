@@ -148,6 +148,7 @@ const K5_BODY_PANEL_MESH_NAMES = new Set([
   "mesh_15",
   "mesh_16",
   "mesh_17",
+  "mesh_19",
   "mesh_33",
   "mesh_34",
   "mesh_35",
@@ -168,12 +169,9 @@ const K5_BODY_PANEL_MESH_NAMES = new Set([
 /** Белые «безымянные» дворники в GLB. */
 const K5_WIPER_MESH_NAMES = new Set(["mesh_75"]);
 
-/** Единственная «ламповая» .006 — задний габарит; остальные .006 это кузов. */
-const K5_LIGHT_CORE_MESH_NAMES = new Set(["mesh_19"]);
-
 function isK5MisclassifiedBodyPanel(mesh: Mesh, materialName: string): boolean {
   if (K5_BODY_PANEL_MESH_NAMES.has(mesh.name)) return true;
-  return materialName === "insta_ua1k.006" && !K5_LIGHT_CORE_MESH_NAMES.has(mesh.name);
+  return materialName === "insta_ua1k.006";
 }
 
 /** Полоски insta_ua1k поверх задних фонарей — дают «мутную плёнку». */
@@ -185,7 +183,7 @@ function shouldPaintK5Mesh(child: Mesh, mat: MeshStandardMaterial): boolean {
   if (mat.name === "insta_ua1k" || mat.name === "insta_ua1k.005" || mat.name === "insta_ua1k.009" || mat.name === "insta_ua1k.010") {
     return true;
   }
-  if (mat.name === "insta_ua1k.006" && !K5_LIGHT_CORE_MESH_NAMES.has(child.name)) return true;
+  if (mat.name === "insta_ua1k.006") return true;
   return isK5MisclassifiedBodyPanel(child, mat.name);
 }
 
@@ -401,7 +399,6 @@ function cloneMeshMaterials(mesh: Mesh): MeshStandardMaterial[] {
 
 /** Только реальные лампы/хром — не бампер (mesh_50/55 обрабатываются как trim). */
 const K5_REAR_TAIL_LIGHT_MESHES = new Set([
-  "mesh_19",
   "mesh_22",
   "mesh_23",
   "mesh_24",
