@@ -9,17 +9,25 @@ const MODELS_DIR = join(ROOT, "apps/web/public/models/cars");
 /** Должен совпадать с apps/web carModelRegistry.ts */
 const MODEL_FILE_BY_ID: Record<string, string> = {
   "toyota-camry": "camry.glb",
+  "lada-vesta": "lada_vesta.glb",
+  "vw-polo": "volkswagen_polo.glb",
+  "kia-k5": "kia_optima_k5.glb",
 };
 
-export type CarPlateAxisOffsets = {
+export type CarPlateFaceTuning = {
   offsetX: number;
   offsetY: number;
+  flipX?: boolean;
+  flipY?: boolean;
 };
+
+/** @deprecated Используйте CarPlateFaceTuning */
+export type CarPlateAxisOffsets = CarPlateFaceTuning;
 
 export type CarPlateDisplayTuning = {
   sizeScale: number;
-  front: CarPlateAxisOffsets;
-  rear: CarPlateAxisOffsets;
+  front: CarPlateFaceTuning;
+  rear: CarPlateFaceTuning;
 };
 
 export type CarCardDisplayConfig = {

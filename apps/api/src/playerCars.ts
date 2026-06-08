@@ -1,5 +1,6 @@
 import type { PlayerRow } from "./db.js";
 import { getDb, getPlayer, updatePlayer } from "./db.js";
+import { normalizeCarBodyColor, DEFAULT_CAR_BODY_COLOR } from "./carBodyColors.js";
 import { getCar, getCars } from "./gameData.js";
 import { computeResaleValue } from "./assetTrade.js";
 import { getCarShopPriceRub } from "./shopCatalog.js";
@@ -36,14 +37,19 @@ export type PlayerCarRow = {
   cond_body?: number | null;
   cond_electronics?: number | null;
   cond_interior?: number | null;
+  body_color?: string | null;
 };
+
+export function carBodyColorFromRow(row: PlayerCarRow): string {
+  return normalizeCarBodyColor(row.body_color);
+}
 
 export function listPlayerCars(userId: number): PlayerCarRow[] {
   return getDb()
     .prepare(
       `SELECT id, user_id, car_model_id, acquired_at, purchase_price_rub, plate_text, plate_l1, plate_digits, plate_l2, plate_region,
               mileage_km, is_used, cond_engine, cond_transmission, cond_suspension, cond_tires, cond_alignment,
-              cond_body, cond_electronics, cond_interior
+              cond_body, cond_electronics, cond_interior, body_color
        FROM player_cars WHERE user_id = ? ORDER BY acquired_at ASC`,
     )
     .all(userId) as PlayerCarRow[];
@@ -54,7 +60,7 @@ export function getPlayerCarById(userId: number, playerCarId: number): PlayerCar
     .prepare(
       `SELECT id, user_id, car_model_id, acquired_at, purchase_price_rub, plate_text, plate_l1, plate_digits, plate_l2, plate_region,
               mileage_km, is_used, cond_engine, cond_transmission, cond_suspension, cond_tires, cond_alignment,
-              cond_body, cond_electronics, cond_interior
+              cond_body, cond_electronics, cond_interior, body_color
        FROM player_cars WHERE user_id = ? AND id = ?`,
     )
     .get(userId, playerCarId) as PlayerCarRow | undefined;
@@ -68,11 +74,13 @@ export function insertPlayerCar(
   plate?: Partial<
     Pick<PlayerCarRow, "plate_text" | "plate_l1" | "plate_digits" | "plate_l2" | "plate_region">
   >,
+  bodyColor: string = DEFAULT_CAR_BODY_COLOR,
 ): number {
+  const color = normalizeCarBodyColor(bodyColor);
   const r = getDb()
     .prepare(
-      `INSERT INTO player_cars (user_id, car_model_id, acquired_at, purchase_price_rub, plate_text, plate_l1, plate_digits, plate_l2, plate_region, mileage_km, is_used)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)`,
+      `INSERT INTO player_cars (user_id, car_model_id, acquired_at, purchase_price_rub, plate_text, plate_l1, plate_digits, plate_l2, plate_region, mileage_km, is_used, body_color)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
     )
     .run(
       userId,
@@ -84,6 +92,7 @@ export function insertPlayerCar(
       plate?.plate_digits ?? null,
       plate?.plate_l2 ?? null,
       plate?.plate_region ?? null,
+      color,
     );
   syncPlayerCarSummary(userId);
   return Number(r.lastInsertRowid);
@@ -146,15 +155,17 @@ export function insertUsedPlayerCar(
   purchasePriceRub: number,
   mileageKm: number,
   condition: PlayerCarCondition,
+  bodyColor: string = DEFAULT_CAR_BODY_COLOR,
 ): number {
+  const color = normalizeCarBodyColor(bodyColor);
   const r = getDb()
     .prepare(
       `INSERT INTO player_cars (
          user_id, car_model_id, acquired_at, purchase_price_rub,
          plate_text, plate_l1, plate_digits, plate_l2, plate_region,
-         mileage_km, is_used,
+         mileage_km, is_used, body_color,
          cond_engine, cond_transmission, cond_tires, cond_alignment, cond_body, cond_electronics, cond_interior
-       ) VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       userId,
@@ -162,6 +173,7 @@ export function insertUsedPlayerCar(
       acquiredAt,
       purchasePriceRub,
       mileageKm,
+      color,
       condition.engine,
       condition.transmission,
       condition.tires,

@@ -3,6 +3,9 @@ const MODELS_BASE = "/models/cars";
 /** Явное сопоставление id модели из игры → файл GLB. */
 const MODEL_FILE_BY_ID: Record<string, string> = {
   "toyota-camry": "camry.glb",
+  "lada-vesta": "lada_vesta.glb",
+  "vw-polo": "volkswagen_polo.glb",
+  "kia-k5": "kia_optima_k5.glb",
 };
 
 function slugFromModelId(modelId: string): string {

@@ -1,12 +1,19 @@
-export type CarPlateAxisOffsets = {
+export type CarPlateFaceTuning = {
   offsetX: number;
   offsetY: number;
+  /** Отразить номер по горизонтали. */
+  flipX?: boolean;
+  /** Отразить номер по вертикали (переворот вверх ногами). */
+  flipY?: boolean;
 };
+
+/** @deprecated Используйте CarPlateFaceTuning */
+export type CarPlateAxisOffsets = CarPlateFaceTuning;
 
 export type CarPlateDisplayTuning = {
   sizeScale: number;
-  front: CarPlateAxisOffsets;
-  rear: CarPlateAxisOffsets;
+  front: CarPlateFaceTuning;
+  rear: CarPlateFaceTuning;
 };
 
 export type CarCardDisplayConfig = {
@@ -83,6 +90,16 @@ export const PLATE_TUNE_DISPLAY: CarCardDisplayConfig = {
 /** Ползунок −1…1 → доля ширины/высоты плашки. */
 export const PLATE_OFFSET_SLIDER_UNIT = 0.85;
 
+/** Диапазоны ползунков в админке (госномера). */
+export const PLATE_TUNING_SIZE_MIN = 0.05;
+export const PLATE_TUNING_SIZE_MAX = 10;
+export const PLATE_TUNING_OFFSET_MIN = -20;
+export const PLATE_TUNING_OFFSET_MAX = 20;
+
+/** Смещение модели на карточке магазина (локальные единицы сцены). */
+export const CARD_TUNING_OFFSET_MIN = -5;
+export const CARD_TUNING_OFFSET_MAX = 5;
+
 export type CarViewStateSnapshot = {
   fitDistance: number;
   azimuth: number;
@@ -104,10 +121,14 @@ export function mergePlateDisplayTuning(
     front: {
       offsetX: base?.front?.offsetX ?? 0,
       offsetY: base?.front?.offsetY ?? 0,
+      flipX: base?.front?.flipX ?? false,
+      flipY: base?.front?.flipY ?? false,
     },
     rear: {
       offsetX: base?.rear?.offsetX ?? 0,
       offsetY: base?.rear?.offsetY ?? 0,
+      flipX: base?.rear?.flipX ?? false,
+      flipY: base?.rear?.flipY ?? false,
     },
   };
 }

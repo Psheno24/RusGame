@@ -1,0 +1,41 @@
+.car-color-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.car-color-picker__label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.car-color-picker__swatches {
+  display: flex;
+  gap: 10px;
+}
+
+.car-color-picker__btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.car-color-picker__btn--active {
+  border-color: var(--gold);
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.35),
+    0 0 0 3px var(--gold);
+}
+
+.car-color-picker__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -31,7 +31,7 @@ import {
   type VehiclePlateParts,
 } from "./licensePlate.js";
 import { quotePhoneSell, sellPhoneDevice } from "./game.js";
-import { getPlayerCarById, getPlayerCarCondition } from "./playerCars.js";
+import { getPlayerCarById, getPlayerCarCondition, carBodyColorFromRow } from "./playerCars.js";
 import { formatMileageKm } from "./usedCarMarket.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 import { findNextResidence } from "./housingStack.js";
@@ -55,6 +55,7 @@ export type PropertyDetail = {
   subtitle: string | null;
   accent: string;
   modelId?: string | null;
+  bodyColor?: string | null;
   specs: PropertySpecRow[];
   features: PropertySpecRow[];
   status: PropertyStatusRow[];
@@ -188,6 +189,7 @@ export function getPropertyDetail(
         : null,
       accent: car?.accent ?? "#4a5568",
       modelId: row.car_model_id,
+      bodyColor: carBodyColorFromRow(row),
       specs: car
         ? [
             { label: "Класс", value: getCarClassLabel(car.carClass ?? "economy") },

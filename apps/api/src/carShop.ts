@@ -1,3 +1,4 @@
+import { normalizeCarBodyColor, parseCarBodyColor } from "./carBodyColors.js";
 import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
@@ -24,6 +25,7 @@ import {
   deletePlayerCars,
   getPlayerCarById,
   hasDriverLicense,
+  carBodyColorFromRow,
   insertPlayerCar,
   listPlayerCars,
   tradeInValueForPlayerCar,
@@ -56,6 +58,7 @@ export type OwnedCarView = {
   brand: string;
   model: string;
   accent: string;
+  bodyColor: string;
   year: number;
   body: string;
   plate: VehiclePlateParts | null;
@@ -190,6 +193,7 @@ export function listOwnedCars(player: PlayerRow, now = Date.now()): OwnedCarView
         brand: car.brand,
         model: car.model,
         accent: car.accent,
+        bodyColor: carBodyColorFromRow(row),
         year: car.year,
         body: car.body,
         plate: parsePlatePartsFromRow(row),
@@ -259,6 +263,7 @@ function requireLicense(player: PlayerRow, carId: string): string | null {
 export function buyCar(
   userId: number,
   carId: string,
+  bodyColor?: string,
 ): { ok: true; carName: string } | { ok: false; error: string } {
   const player = getPlayer(userId);
   if (!player) return { ok: false, error: "Игрок не найден" };
@@ -279,9 +284,10 @@ export function buyCar(
   if (player.rubles < listPriceRub) {
     return { ok: false, error: `Нужно ${formatRub(listPriceRub)}` };
   }
+  const color = normalizeCarBodyColor(parseCarBodyColor(bodyColor) ?? undefined);
   const now = Date.now();
   updatePlayer(userId, { rubles: player.rubles - listPriceRub });
-  insertPlayerCar(userId, carId, now, listPriceRub);
+  insertPlayerCar(userId, carId, now, listPriceRub, undefined, color);
   const carName = `${car.brand} ${car.model}`;
   appendPlayerFeed(userId, "shop:car", `Купили ${carName}`, now);
   return { ok: true, carName };
@@ -291,6 +297,7 @@ export function tradeInForCar(
   userId: number,
   carId: string,
   tradeInCarIds: number[],
+  bodyColor?: string,
 ): { ok: true; carName: string; excessRub: number } | { ok: false; error: string } {
   const player = getPlayer(userId);
   if (!player) return { ok: false, error: "Игрок не найден" };
@@ -316,12 +323,13 @@ export function tradeInForCar(
   if (listPriceRub == null) {
     return { ok: false, error: "Эта модель не продаётся в вашем городе" };
   }
+  const color = normalizeCarBodyColor(parseCarBodyColor(bodyColor) ?? undefined);
   const now = Date.now();
   deletePlayerCars(userId, tradeInCarIds);
   updatePlayer(userId, {
     rubles: player.rubles - quote.netPriceRub + quote.excessRub,
   });
-  insertPlayerCar(userId, carId, now, listPriceRub);
+  insertPlayerCar(userId, carId, now, listPriceRub, undefined, color);
   const carName = `${car.brand} ${car.model}`;
   appendPlayerFeed(userId, "shop:car", `Обменяли авто на ${carName}`, now);
   return { ok: true, carName, excessRub: quote.excessRub };

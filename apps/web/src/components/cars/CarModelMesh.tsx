@@ -3,7 +3,9 @@ import { useGLTF } from "@react-three/drei";
 import { useLayoutEffect, useMemo } from "react";
 import { applyBodyColor, inspectCarModel } from "./carBodyColor";
 import { getCarBodyColorConfig } from "./carBodyColorConfig";
+import { enhanceCarMaterials } from "./carModelMaterials";
 import { resolveVehiclePlateParts } from "./carPlate";
+import { primeModelBodyBox } from "./carModelBodyBox";
 import { applyCarPlateToModel } from "./carPlateTexture";
 import { getCarPlateConfig } from "./carPlateConfig";
 import { scaleModelToTargetSize } from "./carModelFit";
@@ -35,6 +37,7 @@ export function CarModelMesh({
   const model = useMemo(() => {
     const cloned = scene.clone(true);
     scaleModelToTargetSize(cloned);
+    primeModelBodyBox(cloned);
     return cloned;
   }, [scene]);
 
@@ -45,12 +48,18 @@ export function CarModelMesh({
 
   useLayoutEffect(() => {
     inspectCarModel(model, modelPath, modelId);
-  }, [model, modelPath, modelId]);
+    enhanceCarMaterials(model, modelId, bodyColor);
+  }, [model, modelPath, modelId, bodyColor]);
 
   useLayoutEffect(() => {
-    if (!bodyColor || !modelId) return;
+    if (!bodyColor || !modelId || modelId === "kia-k5") return;
     applyBodyColor(model, bodyColor, getCarBodyColorConfig(modelId));
   }, [model, bodyColor, modelId]);
+
+  const plateTuningKey = useMemo(
+    () => (plateTuning ? JSON.stringify(plateTuning) : ""),
+    [plateTuning],
+  );
 
   useLayoutEffect(() => {
     if (!modelId || !parts) return;
@@ -73,7 +82,7 @@ export function CarModelMesh({
       alive = false;
       cancelAnimationFrame(id);
     };
-  }, [model, modelId, parts, layoutKey, plateTuning, rearPlateTuning]);
+  }, [model, modelId, parts, layoutKey, plateTuningKey, plateTuning, rearPlateTuning]);
 
   return <primitive object={model} />;
 }

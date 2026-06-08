@@ -5,6 +5,16 @@ const BODY_COLOR_CONFIG_BY_MODEL: Record<string, CarBodyColorConfig> = {
     bodyMaterialNames: ["Paint_Color"],
     bodyMeshNames: ["Paint_Color_BD"],
   },
+  "lada-vesta": {
+    bodyMaterialNames: ["kuzov"],
+  },
+  "vw-polo": {
+    bodyMaterialNames: ["KUZOV", "paint_Black"],
+  },
+  "kia-k5": {
+    bodyMaterialNames: ["insta_ua1k"],
+    bodyMeshNames: ["mesh_17", "mesh_36", "mesh_37", "mesh_45", "mesh_59"],
+  },
 };
 
 export function getCarBodyColorConfig(modelId: string): CarBodyColorConfig {

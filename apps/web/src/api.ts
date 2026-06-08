@@ -250,6 +250,7 @@ export type OwnedCar = {
   brand: string;
   model: string;
   accent: string;
+  bodyColor?: string;
   year: number;
   body: string;
   plate: VehiclePlateParts | null;
@@ -311,6 +312,7 @@ export type PropertyCard = {
   plate: VehiclePlateParts | null;
   accent: string;
   modelId?: string | null;
+  bodyColor?: string | null;
   housingOwnedId?: number;
   cityId?: string;
   cityName?: string;
@@ -993,19 +995,19 @@ export async function fetchCarQuote(
   );
 }
 
-export async function buyCar(carId: string) {
+export async function buyCar(carId: string, bodyColor?: string) {
   return api<{ carName: string; user: User }>("/api/shop/car", {
     method: "POST",
-    body: JSON.stringify({ carId }),
+    body: JSON.stringify({ carId, bodyColor }),
   });
 }
 
-export async function tradeInCar(carId: string, tradeInCarIds: number[]) {
+export async function tradeInCar(carId: string, tradeInCarIds: number[], bodyColor?: string) {
   return api<{ carName: string; excessRub: number; user: User }>(
     "/api/shop/car/trade-in",
     {
       method: "POST",
-      body: JSON.stringify({ carId, tradeInCarIds }),
+      body: JSON.stringify({ carId, tradeInCarIds, bodyColor }),
     },
   );
 }
@@ -1094,6 +1096,7 @@ export type PropertyDetail = {
   subtitle: string | null;
   accent: string;
   modelId?: string | null;
+  bodyColor?: string | null;
   specs: PropertySpecRow[];
   features: PropertySpecRow[];
   status: PropertyStatusRow[];

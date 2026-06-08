@@ -551,6 +551,18 @@ function migrate(database: Database.Database) {
     );
   }
 
+  const colsPcBodyColor = database
+    .prepare("PRAGMA table_info(player_cars)")
+    .all() as { name: string }[];
+  if (
+    colsPcBodyColor.length > 0 &&
+    !colsPcBodyColor.some((c) => c.name === "body_color")
+  ) {
+    database.exec(
+      "ALTER TABLE player_cars ADD COLUMN body_color TEXT NOT NULL DEFAULT '#f2f2f2'",
+    );
+  }
+
   database.exec(`
     CREATE TABLE IF NOT EXISTS city_used_car_markets (
       city_id TEXT PRIMARY KEY,

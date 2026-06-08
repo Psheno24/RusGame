@@ -23,5 +23,33 @@
       "targetY": 0,
       "targetZ": 0
     }
+  },
+  "vw-polo": {
+    "card": {
+      "fixed": true,
+      "azimuth": 0.6460019698046663,
+      "elevation": 0.19153040455819031,
+      "distanceRatio": 0.5000000000000012,
+      "modelOffsetX": 0.34,
+      "modelOffsetY": 0.17,
+      "modelOffsetZ": 0.06,
+      "targetX": 0,
+      "targetY": 0,
+      "targetZ": 0
+    }
+  },
+  "lada-vesta": {
+    "card": {
+      "fixed": true,
+      "azimuth": -2.536392280360615,
+      "elevation": 0.21050318612279711,
+      "distanceRatio": 0.5209440956247336,
+      "modelOffsetX": -0.39,
+      "modelOffsetY": 0.17,
+      "modelOffsetZ": -0.12,
+      "targetX": 0,
+      "targetY": 0,
+      "targetZ": 0
+    }
   }
 }

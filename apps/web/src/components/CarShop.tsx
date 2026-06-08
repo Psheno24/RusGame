@@ -39,7 +39,7 @@ import { CityGridButton } from "./ui/CityGridButton";
 import { TimerIcon } from "./ui/TimerIcon";
 import { PlateShopPanel } from "./PlateShopPanel";
 import { VehiclePlate } from "./VehiclePlate";
-import { CarModelPreview, hasCar3dModel } from "./cars";
+import { CarColorPicker, CarModelPreview, DEFAULT_CAR_BODY_COLOR, hasCar3dModel } from "./cars";
 
 type CarNav =
   | "hub"
@@ -56,9 +56,16 @@ type CarNav =
   | "tuning";
 
 type Pending =
-  | { kind: "buy"; carId: string; name: string; priceRub: number }
+  | { kind: "buy"; carId: string; name: string; priceRub: number; bodyColor: string }
   | { kind: "buyUsed"; listingId: string; name: string; priceRub: number }
-  | { kind: "tradeIn"; carId: string; name: string; quote: CarPurchaseQuote; tradeInCarIds: number[] }
+  | {
+      kind: "tradeIn";
+      carId: string;
+      name: string;
+      quote: CarPurchaseQuote;
+      tradeInCarIds: number[];
+      bodyColor: string;
+    }
   | {
       kind: "sell";
       playerCarId: number;
@@ -132,12 +139,20 @@ function CarVisual({ accent, large }: { accent: string; large?: boolean }) {
   );
 }
 
-function ShopCarThumb({ modelId, accent }: { modelId: string; accent: string }) {
+function ShopCarThumb({
+  modelId,
+  accent,
+  bodyColor = DEFAULT_CAR_BODY_COLOR,
+}: {
+  modelId: string;
+  accent: string;
+  bodyColor?: string;
+}) {
   if (hasCar3dModel(modelId)) {
     return (
       <CarModelPreview
         modelId={modelId}
-        bodyColor={accent}
+        bodyColor={bodyColor}
         variant="thumb"
         transparentBackground
       />
@@ -146,12 +161,22 @@ function ShopCarThumb({ modelId, accent }: { modelId: string; accent: string }) 
   return <span className="car-list-thumb" style={{ background: accent }} aria-hidden />;
 }
 
-function ShopCarBanner({ modelId, accent, large }: { modelId: string; accent: string; large?: boolean }) {
+function ShopCarBanner({
+  modelId,
+  accent,
+  bodyColor = DEFAULT_CAR_BODY_COLOR,
+  large,
+}: {
+  modelId: string;
+  accent: string;
+  bodyColor?: string;
+  large?: boolean;
+}) {
   if (hasCar3dModel(modelId)) {
     return (
       <CarModelPreview
         modelId={modelId}
-        bodyColor={accent}
+        bodyColor={bodyColor}
         variant="banner"
         large={large}
         transparentBackground
@@ -179,6 +204,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
   const [usedListingId, setUsedListingId] = useState<string | null>(null);
   const [usedDetail, setUsedDetail] = useState<UsedCarListing | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
+  const [selectedBodyColor, setSelectedBodyColor] = useState(DEFAULT_CAR_BODY_COLOR);
   const [busy, setBusy] = useState(false);
   const p = user.player;
   const licenses = new Set(p.driverLicenseCategories ?? []);
@@ -209,6 +235,10 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
     setCars(r.cars);
     setOwnedCars(r.ownedCars);
   }, [categoryId]);
+
+  useEffect(() => {
+    setSelectedBodyColor(DEFAULT_CAR_BODY_COLOR);
+  }, [carId]);
 
   useEffect(() => {
     let title = "Авто";
@@ -391,7 +421,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
     setBusy(true);
     try {
       if (pending.kind === "buy") {
-        const r = await buyCar(pending.carId);
+        const r = await buyCar(pending.carId, pending.bodyColor);
         setUser(r.user);
         onToast(`Куплено: ${r.carName}`);
         go("buyList");
@@ -404,7 +434,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
         setUsedListingId(null);
         go("usedList");
       } else if (pending.kind === "tradeIn") {
-        const r = await tradeInCar(pending.carId, pending.tradeInCarIds);
+        const r = await tradeInCar(pending.carId, pending.tradeInCarIds, pending.bodyColor);
         setUser(r.user);
         const extra =
           r.excessRub > 0 ? ` На баланс зачислено ${rub(r.excessRub)}.` : "";
@@ -744,7 +774,12 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
 
       {nav === "buyDetail" && selected && (
         <div className="phone-detail">
-          <ShopCarBanner modelId={selected.id} accent={selected.accent} large />
+          <ShopCarBanner
+            modelId={selected.id}
+            accent={selected.accent}
+            bodyColor={ownedInstance?.bodyColor ?? selectedBodyColor}
+            large
+          />
           <h3 className="phone-detail-title">
             {selected.brand} {selected.model}
           </h3>
@@ -858,6 +893,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
               <p className="shop-owned">Сначала получите права категории {selected.licenseCategory} в полиции.</p>
             ) : (
               <>
+                <CarColorPicker value={selectedBodyColor} onChange={setSelectedBodyColor} disabled={busy} />
                 <button
                   type="button"
                   className="btn btn-primary"
@@ -868,6 +904,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
                       carId: selected.id,
                       name: `${selected.brand} ${selected.model}`,
                       priceRub: selected.priceRub,
+                      bodyColor: selectedBodyColor,
                     })
                   }
                 >
@@ -891,7 +928,12 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
 
       {nav === "tradeIn" && selected && (
         <div className="phone-detail">
-          <ShopCarBanner modelId={selected.id} accent={selected.accent} large />
+          <ShopCarBanner
+            modelId={selected.id}
+            accent={selected.accent}
+            bodyColor={ownedInstance?.bodyColor ?? selectedBodyColor}
+            large
+          />
           <h3 className="phone-detail-title">
             {selected.brand} {selected.model}
           </h3>
@@ -920,7 +962,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
                         );
                       }}
                     />
-                    <ShopCarThumb modelId={oc.modelId} accent={oc.accent} />
+                    <ShopCarThumb modelId={oc.modelId} accent={oc.accent} bodyColor={oc.bodyColor} />
                     <span className="phone-list-info">
                       <span className="phone-list-name">
                         {oc.brand} {oc.model}
@@ -948,6 +990,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
             </div>
           )}
           <div className="phone-detail-buy car-detail-actions">
+            <CarColorPicker value={selectedBodyColor} onChange={setSelectedBodyColor} disabled={busy} />
             <button
               type="button"
               className="btn btn-primary"
@@ -965,6 +1008,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
                   name: `${selected.brand} ${selected.model}`,
                   quote: tradeQuote,
                   tradeInCarIds: tradeInIds,
+                  bodyColor: selectedBodyColor,
                 });
               }}
             >

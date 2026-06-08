@@ -947,18 +947,18 @@ export async function registerRoutes(app: FastifyInstance) {
     return { simBalanceRub: result.simBalance, user };
   });
 
-  app.post<{ Body: { carId?: string } }>("/api/shop/car", async (req, reply) => {
+  app.post<{ Body: { carId?: string; bodyColor?: string } }>("/api/shop/car", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
     const carId = req.body?.carId ?? "";
     if (!carId) return reply.code(400).send({ error: "Укажите carId" });
-    const result = buyCar(userId, carId);
+    const result = buyCar(userId, carId, req.body?.bodyColor);
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
     return { carName: result.carName, user };
   });
 
-  app.post<{ Body: { carId?: string; tradeInCarIds?: number[] } }>(
+  app.post<{ Body: { carId?: string; tradeInCarIds?: number[]; bodyColor?: string } }>(
     "/api/shop/car/trade-in",
     async (req, reply) => {
       const userId = await resolveUserId(req);
@@ -966,7 +966,7 @@ export async function registerRoutes(app: FastifyInstance) {
       const carId = req.body?.carId ?? "";
       const tradeInCarIds = req.body?.tradeInCarIds ?? [];
       if (!carId) return reply.code(400).send({ error: "Укажите carId" });
-      const result = tradeInForCar(userId, carId, tradeInCarIds);
+      const result = tradeInForCar(userId, carId, tradeInCarIds, req.body?.bodyColor);
       if (!result.ok) return reply.code(400).send({ error: result.error });
       const user = await getPublicUser(userId);
       return { carName: result.carName, excessRub: result.excessRub, user };

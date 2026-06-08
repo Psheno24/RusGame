@@ -8,9 +8,16 @@ import {
   type Car3dModelListItem,
 } from "../../api";
 import { CarViewer } from "../../components/cars/CarViewer";
+import { DEFAULT_CAR_BODY_COLOR } from "../../components/cars/carBodyColors";
 import {
   DEFAULT_PLATE_DISPLAY_TUNING,
   PLATE_TUNE_DISPLAY,
+  CARD_TUNING_OFFSET_MAX,
+  CARD_TUNING_OFFSET_MIN,
+  PLATE_TUNING_OFFSET_MAX,
+  PLATE_TUNING_OFFSET_MIN,
+  PLATE_TUNING_SIZE_MAX,
+  PLATE_TUNING_SIZE_MIN,
   mergeCardDisplayConfig,
   mergePlateDisplayTuning,
   type CarCardDisplayConfig,
@@ -63,6 +70,27 @@ function TuningSlider({
         disabled={disabled}
         onChange={(e) => onChange(Number(e.target.value))}
       />
+    </label>
+  );
+}
+
+type CheckboxProps = {
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (checked: boolean) => void;
+};
+
+function TuningCheckbox({ label, checked, disabled, onChange }: CheckboxProps) {
+  return (
+    <label className="admin-car3d-checkbox">
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span>{label}</span>
     </label>
   );
 }
@@ -177,7 +205,7 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
             speed: 0,
             reliability: 0,
             priceRub: 0,
-            bodyColor: carInfo.accent,
+            bodyColor: DEFAULT_CAR_BODY_COLOR,
             plate: DEMO_PLATE,
             plateText: "А183ВС 98",
           }
@@ -302,8 +330,8 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
           <TuningSlider
             label="Размер (оба номера)"
             value={activePlate.sizeScale}
-            min={0.5}
-            max={2}
+            min={PLATE_TUNING_SIZE_MIN}
+            max={PLATE_TUNING_SIZE_MAX}
             step={0.01}
             format={(v) => `${v.toFixed(2)}×`}
             disabled={!plateEditing}
@@ -312,8 +340,8 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
           <TuningSlider
             label="Передний — влево / вправо"
             value={activePlate.front.offsetX}
-            min={-1}
-            max={1}
+            min={PLATE_TUNING_OFFSET_MIN}
+            max={PLATE_TUNING_OFFSET_MAX}
             step={0.01}
             format={(v) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2))}
             disabled={!plateEditing}
@@ -324,8 +352,8 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
           <TuningSlider
             label="Передний — выше / ниже"
             value={activePlate.front.offsetY}
-            min={-1}
-            max={1}
+            min={PLATE_TUNING_OFFSET_MIN}
+            max={PLATE_TUNING_OFFSET_MAX}
             step={0.01}
             format={(v) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2))}
             disabled={!plateEditing}
@@ -333,11 +361,27 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
               setDraftPlate((p) => ({ ...p, front: { ...p.front, offsetY } }))
             }
           />
+          <TuningCheckbox
+            label="Передний — отразить по горизонтали"
+            checked={activePlate.front.flipX ?? false}
+            disabled={!plateEditing}
+            onChange={(flipX) =>
+              setDraftPlate((p) => ({ ...p, front: { ...p.front, flipX } }))
+            }
+          />
+          <TuningCheckbox
+            label="Передний — отразить по вертикали"
+            checked={activePlate.front.flipY ?? false}
+            disabled={!plateEditing}
+            onChange={(flipY) =>
+              setDraftPlate((p) => ({ ...p, front: { ...p.front, flipY } }))
+            }
+          />
           <TuningSlider
             label="Задний — влево / вправо"
             value={activePlate.rear.offsetX}
-            min={-1}
-            max={1}
+            min={PLATE_TUNING_OFFSET_MIN}
+            max={PLATE_TUNING_OFFSET_MAX}
             step={0.01}
             format={(v) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2))}
             disabled={!plateEditing}
@@ -348,8 +392,8 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
           <TuningSlider
             label="Задний — выше / ниже"
             value={activePlate.rear.offsetY}
-            min={-1}
-            max={1}
+            min={PLATE_TUNING_OFFSET_MIN}
+            max={PLATE_TUNING_OFFSET_MAX}
             step={0.01}
             format={(v) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2))}
             disabled={!plateEditing}
@@ -357,11 +401,27 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
               setDraftPlate((p) => ({ ...p, rear: { ...p.rear, offsetY } }))
             }
           />
+          <TuningCheckbox
+            label="Задний — отразить по горизонтали"
+            checked={activePlate.rear.flipX ?? false}
+            disabled={!plateEditing}
+            onChange={(flipX) =>
+              setDraftPlate((p) => ({ ...p, rear: { ...p.rear, flipX } }))
+            }
+          />
+          <TuningCheckbox
+            label="Задний — отразить по вертикали"
+            checked={activePlate.rear.flipY ?? false}
+            disabled={!plateEditing}
+            onChange={(flipY) =>
+              setDraftPlate((p) => ({ ...p, rear: { ...p.rear, flipY } }))
+            }
+          />
         </div>
 
         <CarViewer
           modelId={modelId}
-          bodyColor={carInfo.accent}
+          bodyColor={DEFAULT_CAR_BODY_COLOR}
           plate={DEMO_PLATE}
           plateText="А183ВС 98"
           plateTuning={activePlate}
@@ -408,8 +468,8 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
           <TuningSlider
             label="Смещение — влево / вправо"
             value={cardEditing ? draftCard.modelOffsetX : activeCard.modelOffsetX}
-            min={-1.5}
-            max={1.5}
+            min={CARD_TUNING_OFFSET_MIN}
+            max={CARD_TUNING_OFFSET_MAX}
             step={0.01}
             format={(v) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2))}
             disabled={!cardEditing}
@@ -418,8 +478,8 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
           <TuningSlider
             label="Смещение — выше / ниже"
             value={cardEditing ? draftCard.modelOffsetY : activeCard.modelOffsetY}
-            min={-1.5}
-            max={1.5}
+            min={CARD_TUNING_OFFSET_MIN}
+            max={CARD_TUNING_OFFSET_MAX}
             step={0.01}
             format={(v) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2))}
             disabled={!cardEditing}
@@ -428,8 +488,8 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
           <TuningSlider
             label="Смещение — ближе / дальше"
             value={cardEditing ? draftCard.modelOffsetZ : activeCard.modelOffsetZ}
-            min={-1.5}
-            max={1.5}
+            min={CARD_TUNING_OFFSET_MIN}
+            max={CARD_TUNING_OFFSET_MAX}
             step={0.01}
             format={(v) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2))}
             disabled={!cardEditing}
@@ -448,7 +508,7 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
         <div className="admin-car3d-card-preview">
           <CarViewer
             modelId={modelId}
-            bodyColor={carInfo.accent}
+            bodyColor={DEFAULT_CAR_BODY_COLOR}
             plate={DEMO_PLATE}
             plateText="А183ВС 98"
             plateTuning={savedPlate}

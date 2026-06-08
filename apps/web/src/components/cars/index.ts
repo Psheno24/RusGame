@@ -1,5 +1,7 @@
 export { CarCard } from "./CarCard";
+export { CarColorPicker } from "./CarColorPicker";
 export { CarModelPreview } from "./CarModelPreview";
+export { DEFAULT_CAR_BODY_COLOR, CAR_BODY_COLOR_OPTIONS } from "./carBodyColors";
 export { CarViewer } from "./CarViewer";
 export { DEFAULT_MAX_ZOOM_RATIO, DEFAULT_MIN_ZOOM_RATIO } from "./carViewerZoom";
 export { getCarModelPath, hasCar3dModel, registerCarModelFile } from "./carModelRegistry";

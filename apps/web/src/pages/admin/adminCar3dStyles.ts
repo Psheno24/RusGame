@@ -55,6 +55,16 @@ export const ADMIN_CAR3D_EDIT_STYLES = `
 }
 .admin-car3d-slider input[type="range"] { width: 100%; }
 .admin-car3d-slider input:disabled { opacity: 0.45; }
+.admin-car3d-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  color: var(--text);
+  cursor: pointer;
+}
+.admin-car3d-checkbox input:disabled { opacity: 0.45; cursor: not-allowed; }
 .admin-car3d-card-preview {
   border-radius: 10px;
   overflow: hidden;

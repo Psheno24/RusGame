@@ -1,4 +1,4 @@
-import { Center, OrbitControls } from "@react-three/drei";
+import { Center, Environment, OrbitControls } from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PerspectiveCamera } from "three";
@@ -157,9 +157,10 @@ function CarScene({
 
   return (
     <>
-      <ambientLight intensity={0.55} />
-      <directionalLight position={[4, 6, 3]} intensity={1.1} castShadow={false} />
-      <directionalLight position={[-3, 2, -2]} intensity={0.35} />
+      <Environment preset="city" environmentIntensity={0.9} />
+      <ambientLight intensity={0.45} />
+      <directionalLight position={[4, 6, 3]} intensity={1.25} castShadow={false} />
+      <directionalLight position={[-3, 2, -2]} intensity={0.4} />
 
       <group position={[offset.x, offset.y, offset.z]}>
         <Center cacheKey={modelPath} onCentered={handleCentered}>

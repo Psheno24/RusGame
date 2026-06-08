@@ -5,7 +5,7 @@ import { useNotice } from "../noticeContext";
 import type { ToastFn } from "../hooks/useToastRef";
 import { PropertyDetailView } from "./PropertyDetailView";
 import { VehiclePlate } from "./VehiclePlate";
-import { CarModelPreview } from "./cars";
+import { CarModelPreview, DEFAULT_CAR_BODY_COLOR } from "./cars";
 
 function PropertyCardButton({
   c,
@@ -38,7 +38,7 @@ function PropertyListCard({ c, onOpen }: { c: PropertyCard; onOpen: (id: string)
         <div className="property-car-row">
           <CarModelPreview
             modelId={c.modelId ?? ""}
-            bodyColor={c.accent}
+            bodyColor={c.bodyColor ?? DEFAULT_CAR_BODY_COLOR}
             plate={c.plate}
             variant="thumb"
           />

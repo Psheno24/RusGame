@@ -13,15 +13,33 @@ export type RearPlatePlacementConfig = {
   offsetY?: number;
 };
 
+/** Фиксированная плоскость номера по bbox модели (0…1 от min). */
+export type FixedPlanePlacementConfig = {
+  xRatio: number;
+  yRatio: number;
+  widthRatio: number;
+  zOffset?: number;
+};
+
 export type CarPlateConfig = {
   /** Mesh плашки спереди (текстура на UV). */
   frontPlateMeshNames: string[];
+  /** Плоскость спереди, если mesh в GLB нет. */
+  frontPlatePlane?: boolean;
+  /** Положение передней плоскости. */
+  frontPlanePlacement?: FixedPlanePlacementConfig;
+  /** Mesh плашки сзади (текстура на UV). */
+  rearPlateMeshNames?: string[];
   /** Подогнать ширину передней плашки под заднюю (в model space). */
   matchFrontPlateToRear?: boolean;
   /** Ручной множитель передней плашки, если matchFrontPlateToRear выключен. */
   frontPlateScale?: number;
   /** Плоскость с номером сзади (отдельного mesh в GLB нет). */
   rearPlatePlane?: boolean;
+  /** Положение задней плоскости по bbox (если нет ниши). */
+  rearPlanePlacement?: FixedPlanePlacementConfig;
+  /** Mesh для поиска ниши заднего номера (Camry: Paint_Color_BD). */
+  rearPocketSourceMesh?: string;
   /** Положение задней плашки — трапециевидная ниша на крышке багажника. */
   rearPlacement?: RearPlatePlacementConfig;
 };
@@ -31,6 +49,7 @@ const PLATE_CONFIG_BY_MODEL: Record<string, CarPlateConfig> = {
     frontPlateMeshNames: ["Index_0_1_BD_2"],
     matchFrontPlateToRear: true,
     rearPlatePlane: true,
+    rearPocketSourceMesh: "Paint_Color_BD",
     rearPlacement: {
       yMinRatio: 0.52,
       yMaxRatio: 0.62,
@@ -39,6 +58,29 @@ const PLATE_CONFIG_BY_MODEL: Record<string, CarPlateConfig> = {
       zOffset: 0.003,
       offsetY: -0.002,
     },
+  },
+  "lada-vesta": {
+    frontPlateMeshNames: [],
+    frontPlatePlane: true,
+    frontPlanePlacement: { xRatio: 0.5, yRatio: 0.2, widthRatio: 0.19, zOffset: 0.004 },
+    matchFrontPlateToRear: true,
+    rearPlatePlane: true,
+    rearPlanePlacement: { xRatio: 0.5, yRatio: 0.36, widthRatio: 0.19, zOffset: 0.004 },
+  },
+  "vw-polo": {
+    frontPlateMeshNames: [],
+    frontPlatePlane: true,
+    frontPlanePlacement: { xRatio: 0.5, yRatio: 0.14, widthRatio: 0.22, zOffset: 0.004 },
+    matchFrontPlateToRear: true,
+    rearPlateMeshNames: ["obj01_reg_plate_rear_Text_0"],
+  },
+  "kia-k5": {
+    frontPlateMeshNames: [],
+    frontPlatePlane: true,
+    frontPlanePlacement: { xRatio: 0.5, yRatio: 0.16, widthRatio: 0.16, zOffset: 0.004 },
+    matchFrontPlateToRear: true,
+    rearPlatePlane: true,
+    rearPlanePlacement: { xRatio: 0.5, yRatio: 0.3, widthRatio: 0.16, zOffset: 0.004 },
   },
 };
 

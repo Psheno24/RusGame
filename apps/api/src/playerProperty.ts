@@ -5,7 +5,7 @@ import { getCar, getPhone, getVehicleRental } from "./gameData.js";
 import { getCity } from "./gameData.js";
 import { getHousingProperty } from "./housingCatalog.js";
 import { housingStatusForPlayer, syncPlayerHousing } from "./housing.js";
-import { listPlayerCars } from "./playerCars.js";
+import { listPlayerCars, carBodyColorFromRow } from "./playerCars.js";
 import { formatLocaleDateRu } from "./formatLocaleDate.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 import { isSubletActive, listOwnedHousing } from "./playerOwnedHousing.js";
@@ -21,6 +21,7 @@ export type PropertyCard = {
   plate: VehiclePlateParts | null;
   accent: string;
   modelId?: string | null;
+  bodyColor?: string | null;
   housingOwnedId?: number;
   cityId?: string;
   cityName?: string;
@@ -61,6 +62,7 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
       plate: parts,
       accent: car?.accent ?? "#4a5568",
       modelId: row.car_model_id,
+      bodyColor: carBodyColorFromRow(row),
     });
   }
 

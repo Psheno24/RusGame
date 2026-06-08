@@ -17,7 +17,7 @@ import { useToastRef } from "../hooks/useToastRef";
 import { CitySectionHeader } from "./ui/CitySectionHeader";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { VehiclePlate } from "./VehiclePlate";
-import { Car3dInspectModal, CarModelPreview, hasCar3dModel } from "./cars";
+import { Car3dInspectModal, CarModelPreview, DEFAULT_CAR_BODY_COLOR, hasCar3dModel } from "./cars";
 import { ZoomInIcon } from "./ui/ZoomInIcon";
 
 function rub(n: number) {
@@ -227,7 +227,7 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
         <Car3dInspectModal
           modelId={detail.modelId}
           title={detail.title}
-          bodyColor={detail.accent}
+          bodyColor={detail.bodyColor ?? DEFAULT_CAR_BODY_COLOR}
           plate={detail.plate}
           plateText={detail.plateText}
           onClose={() => setCarInspectOpen(false)}
@@ -259,7 +259,7 @@ export function PropertyDetailView({ propertyId, onBack, setUser, onToast, onCha
             <div className="property-detail-car-preview">
               <CarModelPreview
                 modelId={detail.modelId}
-                bodyColor={detail.accent}
+                bodyColor={detail.bodyColor ?? DEFAULT_CAR_BODY_COLOR}
                 plate={detail.plate}
                 plateText={detail.plateText}
                 variant="banner"

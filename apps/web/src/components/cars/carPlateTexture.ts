@@ -14,15 +14,23 @@ import {
 } from "three";
 import type { VehiclePlateParts } from "../../api";
 import { drawPlateToCanvas, PLATE_SVG_HEIGHT, PLATE_SVG_WIDTH } from "../../plateSvgMarkup";
-import type { CarPlateConfig, RearPlatePlacementConfig } from "./carPlateConfig";
-import type { CarPlateDisplayTuning } from "./carDisplayConfig";
+import type { CarPlateConfig, FixedPlanePlacementConfig, RearPlatePlacementConfig } from "./carPlateConfig";
+import type { CarPlateDisplayTuning, CarPlateFaceTuning } from "./carDisplayConfig";
 import { PLATE_OFFSET_SLIDER_UNIT } from "./carDisplayConfig";
 import type { CarRearPlateTuning } from "./types";
+import {
+  getModelBodyBoxWorld,
+  getModelUniformScale,
+  primeModelBodyBox,
+} from "./carModelBodyBox";
+
+export { primeModelBodyBox };
 
 const PLATE_FONT_URL = "/fonts/gost-plate.ttf";
 const TEXTURE_SCALE = 2;
 const REAR_PLATE_OBJECT_NAME = "__car_rear_plate__";
-const REAR_POCKET_SOURCE_MESH = "Paint_Color_BD";
+const FRONT_PLATE_OBJECT_NAME = "__car_front_plate__";
+const DEFAULT_REAR_POCKET_SOURCE_MESH = "Paint_Color_BD";
 const FRONT_PLATE_ORIGINAL_POSITIONS_KEY = "__car_front_plate_orig_pos__";
 const _plateCenter = new Vector3();
 const _plateSize = { width: 0.1, height: 0.05 };
@@ -151,19 +159,43 @@ function createPlateMaterial(texture: CanvasTexture, emissiveIntensity = 0.35): 
   });
 }
 
-/** Текстура для задней плоскости: flipY=true совместно с scale.x=-1 даёт читаемый номер сзади. */
-function createRearPlaneTexture(source: CanvasTexture): CanvasTexture {
-  const rear = source.clone();
-  rear.flipY = true;
-  rear.needsUpdate = true;
-  return rear;
+/** Текстура для плоскости: фиксированный flipY по стороне (не зависит от настроек). */
+function createFacePlaneTexture(source: CanvasTexture, face: "front" | "rear"): CanvasTexture {
+  const tex = source.clone();
+  tex.flipY = face === "rear";
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function getPlaneScale(face: "front" | "rear", tuning?: CarPlateFaceTuning): { x: number; y: number } {
+  let x = face === "rear" ? -1 : 1;
+  let y = 1;
+  if (tuning?.flipX) x *= -1;
+  if (tuning?.flipY) y *= -1;
+  return { x, y };
+}
+
+function flipPlateUVs(geometry: BufferGeometry, flipX: boolean, flipY: boolean): void {
+  if (!flipX && !flipY) return;
+  const uv = geometry.attributes.uv;
+  if (!uv) return;
+
+  for (let i = 0; i < uv.count; i++) {
+    let u = uv.getX(i);
+    let v = uv.getY(i);
+    if (flipX) u = 1 - u;
+    if (flipY) v = 1 - v;
+    uv.setXY(i, u, v);
+  }
+
+  uv.needsUpdate = true;
 }
 
 /** Масштаб и смещение геометрии вокруг центра — без смещения pivot (в отличие от mesh.scale). */
 function applyFrontPlateGeometry(
   mesh: Mesh,
   scale: number,
-  offsets: { offsetX: number; offsetY: number } | undefined,
+  tuning?: CarPlateFaceTuning,
 ): void {
   const pos = mesh.geometry.attributes.position;
   if (!pos) return;
@@ -175,8 +207,8 @@ function applyFrontPlateGeometry(
   const original = mesh.userData[FRONT_PLATE_ORIGINAL_POSITIONS_KEY] as Float32Array;
   const count = pos.count;
   const plateSize = measureOriginalPlateSize(original, count);
-  const dx = (offsets?.offsetX ?? 0) * plateSize.width * PLATE_OFFSET_SLIDER_UNIT;
-  const dy = (offsets?.offsetY ?? 0) * plateSize.height * PLATE_OFFSET_SLIDER_UNIT;
+  const dx = (tuning?.offsetX ?? 0) * plateSize.width * PLATE_OFFSET_SLIDER_UNIT;
+  const dy = (tuning?.offsetY ?? 0) * plateSize.height * PLATE_OFFSET_SLIDER_UNIT;
 
   _plateCenter.set(0, 0, 0);
   for (let i = 0; i < count; i++) {
@@ -232,9 +264,37 @@ function resolvePlateDisplay(
   if (!legacy) return undefined;
   return {
     sizeScale: legacy.sizeScale,
-    front: { offsetX: 0, offsetY: 0 },
-    rear: { offsetX: 0, offsetY: legacy.offsetY },
+    front: { offsetX: 0, offsetY: 0, flipX: false, flipY: false },
+    rear: { offsetX: 0, offsetY: legacy.offsetY, flipX: false, flipY: false },
   };
+}
+
+function resolveRearReferenceWidth(
+  root: Object3D,
+  config: CarPlateConfig,
+  plateDisplay?: CarPlateDisplayTuning,
+): number | null {
+  if (config.rearPlateMeshNames?.length) {
+    const rearMesh = findMesh(root, config.rearPlateMeshNames[0]);
+    if (rearMesh) {
+      return getPlateWidthInModelSpace(rearMesh, root);
+    }
+  }
+
+  if (config.rearPlatePlane) {
+    if (config.rearPlanePlacement) {
+      return computeFixedPlanePlacement(root, config.rearPlanePlacement, "rear", plateDisplay).width;
+    }
+    const rearPlacement = computeRearPlatePlacement(
+      root,
+      config.rearPlacement,
+      plateDisplay,
+      config.rearPocketSourceMesh,
+    );
+    if (rearPlacement) return rearPlacement.width;
+  }
+
+  return null;
 }
 
 function resolveFrontPlateScale(
@@ -242,18 +302,31 @@ function resolveFrontPlateScale(
   config: CarPlateConfig,
   plateDisplay?: CarPlateDisplayTuning,
 ): number {
-  if (
-    config.matchFrontPlateToRear &&
-    config.rearPlatePlane &&
-    config.frontPlateMeshNames.length > 0
-  ) {
-    const rearPlacement = computeRearPlatePlacement(root, config.rearPlacement, plateDisplay);
+  if (!config.matchFrontPlateToRear) {
+    return config.frontPlateScale ?? 1;
+  }
+
+  const rearWidth = resolveRearReferenceWidth(root, config, plateDisplay);
+  if (rearWidth == null || rearWidth <= 0) {
+    return config.frontPlateScale ?? 1;
+  }
+
+  if (config.frontPlatePlane) {
+    const baseWidth = computeFixedPlanePlacement(
+      root,
+      config.frontPlanePlacement ?? { xRatio: 0.5, yRatio: 0.2, widthRatio: 0.18 },
+      "front",
+      plateDisplay,
+    ).width;
+    if (baseWidth > 0) return rearWidth / baseWidth;
+    return config.frontPlateScale ?? 1;
+  }
+
+  if (config.frontPlateMeshNames.length > 0) {
     const frontMesh = findMesh(root, config.frontPlateMeshNames[0]);
-    if (rearPlacement && frontMesh) {
+    if (frontMesh) {
       const frontWidth = getPlateWidthInModelSpace(frontMesh, root);
-      if (frontWidth > 0) {
-        return rearPlacement.width / frontWidth;
-      }
+      if (frontWidth > 0) return rearWidth / frontWidth;
     }
   }
 
@@ -264,10 +337,11 @@ function applyTextureToMesh(
   mesh: Mesh,
   texture: CanvasTexture,
   scale: number,
-  offsets: { offsetX: number; offsetY: number } | undefined,
+  tuning?: CarPlateFaceTuning,
 ): void {
-  applyFrontPlateGeometry(mesh, scale, offsets);
+  applyFrontPlateGeometry(mesh, scale, tuning);
   normalizePlateMeshUVs(mesh.geometry);
+  flipPlateUVs(mesh.geometry, tuning?.flipX ?? false, tuning?.flipY ?? false);
 
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
   for (const mat of materials) {
@@ -311,6 +385,7 @@ function computeRearPlatePlacement(
   model: Object3D,
   placementConfig?: RearPlatePlacementConfig,
   plateDisplay?: CarPlateDisplayTuning,
+  pocketSourceMesh = DEFAULT_REAR_POCKET_SOURCE_MESH,
 ): RearPlatePlacement | null {
   const cfg = placementConfig ?? {
     yMinRatio: 0.52,
@@ -320,13 +395,13 @@ function computeRearPlatePlacement(
     zOffset: 0.003,
   };
 
-  const bodyMesh = findMesh(model, REAR_POCKET_SOURCE_MESH);
+  const bodyMesh = findMesh(model, pocketSourceMesh);
   if (!bodyMesh) return null;
 
   model.updateMatrixWorld(true);
   bodyMesh.updateMatrixWorld(true);
 
-  const modelBox = new Box3().setFromObject(model);
+  const modelBox = getModelBodyBoxWorld(model);
   const modelSize = modelBox.getSize(new Vector3());
   const modelMin = modelBox.min;
   const modelCenterX = (modelBox.min.x + modelBox.max.x) * 0.5;
@@ -370,8 +445,39 @@ function computeRearPlatePlacement(
   return { position, width, height };
 }
 
-function disposeRearPlate(model: Object3D): void {
-  const existing = model.getObjectByName(REAR_PLATE_OBJECT_NAME);
+function computeFixedPlanePlacement(
+  model: Object3D,
+  cfg: FixedPlanePlacementConfig,
+  face: "front" | "rear",
+  plateDisplay?: CarPlateDisplayTuning,
+): RearPlatePlacement {
+  const modelBox = getModelBodyBoxWorld(model);
+  const modelSize = modelBox.getSize(new Vector3());
+  const uniformScale = getModelUniformScale(model);
+  const sizeScale = plateDisplay?.sizeScale ?? 1;
+  const widthWorld = modelSize.x * cfg.widthRatio * sizeScale;
+  const heightWorld = widthWorld * (PLATE_SVG_HEIGHT / PLATE_SVG_WIDTH);
+  const width = widthWorld / uniformScale;
+  const height = heightWorld / uniformScale;
+  const position = new Vector3(
+    modelBox.min.x + modelSize.x * cfg.xRatio,
+    modelBox.min.y + modelSize.y * cfg.yRatio,
+    face === "front"
+      ? modelBox.max.z + (cfg.zOffset ?? 0.003)
+      : modelBox.min.z - (cfg.zOffset ?? 0.003),
+  );
+
+  const offsets = plateDisplay?.[face];
+  position.y += (offsets?.offsetY ?? 0) * heightWorld * PLATE_OFFSET_SLIDER_UNIT;
+  position.x += (offsets?.offsetX ?? 0) * widthWorld * PLATE_OFFSET_SLIDER_UNIT;
+
+  model.worldToLocal(position);
+
+  return { position, width, height };
+}
+
+function disposeNamedPlate(model: Object3D, name: string): void {
+  const existing = model.getObjectByName(name);
   if (!existing) return;
 
   existing.traverse((child) => {
@@ -386,27 +492,75 @@ function disposeRearPlate(model: Object3D): void {
   model.remove(existing);
 }
 
+function disposeRearPlate(model: Object3D): void {
+  disposeNamedPlate(model, REAR_PLATE_OBJECT_NAME);
+}
+
+function disposeFrontPlate(model: Object3D): void {
+  disposeNamedPlate(model, FRONT_PLATE_OBJECT_NAME);
+}
+
 function applyRearPlatePlane(
   model: Object3D,
   texture: CanvasTexture,
-  placementConfig?: RearPlatePlacementConfig,
+  config: CarPlateConfig,
   plateDisplay?: CarPlateDisplayTuning,
 ): boolean {
-  const placement = computeRearPlatePlacement(model, placementConfig, plateDisplay);
+  let placement: RearPlatePlacement | null = null;
+
+  if (config.rearPlanePlacement) {
+    placement = computeFixedPlanePlacement(model, config.rearPlanePlacement, "rear", plateDisplay);
+  } else {
+    placement = computeRearPlatePlacement(
+      model,
+      config.rearPlacement,
+      plateDisplay,
+      config.rearPocketSourceMesh,
+    );
+  }
+
   if (!placement) {
-    console.warn("[CarPlate] rear plate pocket not found");
+    console.warn("[CarPlate] rear plate placement not found");
     return false;
   }
 
   disposeRearPlate(model);
 
-  const rearTexture = createRearPlaneTexture(texture);
+  const rearTuning = plateDisplay?.rear;
+  const rearTexture = createFacePlaneTexture(texture, "rear");
   const material = createPlateMaterial(rearTexture, 0.18);
   const plane = new Mesh(new PlaneGeometry(placement.width, placement.height), material);
   plane.name = REAR_PLATE_OBJECT_NAME;
   plane.position.copy(placement.position);
-  // scale.x = -1: смотрит назад (−Z) без зеркала текста от rotation.y = π
-  plane.scale.set(-1, 1, 1);
+  const scale = getPlaneScale("rear", rearTuning);
+  plane.scale.set(scale.x, scale.y, 1);
+  plane.renderOrder = 10;
+  model.add(plane);
+  return true;
+}
+
+function applyFrontPlatePlane(
+  model: Object3D,
+  texture: CanvasTexture,
+  config: CarPlateConfig,
+  plateDisplay?: CarPlateDisplayTuning,
+  widthScale = 1,
+): boolean {
+  const baseCfg = config.frontPlanePlacement ?? { xRatio: 0.5, yRatio: 0.2, widthRatio: 0.18 };
+  const placement = computeFixedPlanePlacement(model, baseCfg, "front", plateDisplay);
+  placement.width *= widthScale;
+  placement.height *= widthScale;
+
+  disposeFrontPlate(model);
+
+  const frontTuning = plateDisplay?.front;
+  const frontTexture = createFacePlaneTexture(texture, "front");
+  const material = createPlateMaterial(frontTexture);
+  const plane = new Mesh(new PlaneGeometry(placement.width, placement.height), material);
+  plane.name = FRONT_PLATE_OBJECT_NAME;
+  plane.position.copy(placement.position);
+  const scale = getPlaneScale("front", frontTuning);
+  plane.scale.set(scale.x, scale.y, 1);
   plane.renderOrder = 10;
   model.add(plane);
   return true;
@@ -435,8 +589,23 @@ export async function applyCarPlateToModel(
     applied = true;
   }
 
+  if (config.frontPlatePlane) {
+    applied =
+      applyFrontPlatePlane(root, texture, config, display, frontScale) || applied;
+  }
+
+  for (const meshName of config.rearPlateMeshNames ?? []) {
+    const mesh = findMesh(root, meshName);
+    if (!mesh) {
+      console.warn(`[CarPlate] mesh not found: ${meshName}`);
+      continue;
+    }
+    applyTextureToMesh(mesh, texture, 1, display?.rear);
+    applied = true;
+  }
+
   if (config.rearPlatePlane) {
-    applied = applyRearPlatePlane(root, texture, config.rearPlacement, display) || applied;
+    applied = applyRearPlatePlane(root, texture, config, display) || applied;
   }
 
   return applied;
