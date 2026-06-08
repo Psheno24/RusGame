@@ -42,6 +42,8 @@ export type CarPlateConfig = {
   rearPocketSourceMesh?: string;
   /** Положение задней плашки — трапециевидная ниша на крышке багажника. */
   rearPlacement?: RearPlatePlacementConfig;
+  /** Встроенные плашки GLB — скрыть (заменяются plane или новой текстурой). */
+  hiddenPlateMeshNames?: string[];
 };
 
 const PLATE_CONFIG_BY_MODEL: Record<string, CarPlateConfig> = {
@@ -72,7 +74,14 @@ const PLATE_CONFIG_BY_MODEL: Record<string, CarPlateConfig> = {
     frontPlatePlane: true,
     frontPlanePlacement: { xRatio: 0.5, yRatio: 0.14, widthRatio: 0.22, zOffset: 0.004 },
     matchFrontPlateToRear: true,
-    rearPlateMeshNames: ["obj01_reg_plate_rear_Text_0"],
+    rearPlatePlane: true,
+    rearPlanePlacement: { xRatio: 0.5, yRatio: 0.25, widthRatio: 0.26, zOffset: 0.006 },
+    hiddenPlateMeshNames: [
+      "obj01_reg_plate_rear_Text_0",
+      "obj01_reg_plate_rear_PLAST_0",
+      "obj01_reg_plate_rear.001_Text_0",
+      "obj01_reg_plate_rear.001_PLAST_0",
+    ],
   },
   "kia-k5": {
     frontPlateMeshNames: [],

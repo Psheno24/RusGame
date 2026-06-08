@@ -143,6 +143,14 @@ function findMesh(root: Object3D, name: string): Mesh | null {
   return found;
 }
 
+function hidePlateMeshes(root: Object3D, meshNames?: string[]): void {
+  if (!meshNames?.length) return;
+  for (const name of meshNames) {
+    const mesh = findMesh(root, name);
+    if (mesh) mesh.visible = false;
+  }
+}
+
 function createPlateMaterial(texture: CanvasTexture, emissiveIntensity = 0.35): MeshStandardMaterial {
   return new MeshStandardMaterial({
     map: texture,
@@ -570,6 +578,7 @@ export async function applyCarPlateToModel(
   legacyRearTuning?: CarRearPlateTuning,
 ): Promise<boolean> {
   const display = resolvePlateDisplay(plateDisplay, legacyRearTuning);
+  hidePlateMeshes(root, config.hiddenPlateMeshNames);
   const texture = await createPlateCanvasTexture(parts);
   let applied = false;
   const frontScale = resolveFrontPlateScale(root, config, display);

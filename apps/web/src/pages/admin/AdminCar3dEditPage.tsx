@@ -25,6 +25,7 @@ import {
   type CarViewStateSnapshot,
 } from "../../components/cars/carDisplayConfig";
 import { clearCar3dDisplayCache, primeCar3dDisplayCache } from "../../components/cars/useCar3dDisplay";
+import { SliderWithNumberInput } from "../../components/ui/SliderWithNumberInput";
 import { useNotice } from "../../noticeContext";
 import { ADMIN_CAR3D_EDIT_STYLES } from "./adminCar3dStyles";
 
@@ -41,36 +42,22 @@ type SliderProps = {
   min: number;
   max: number;
   step: number;
-  format?: (v: number) => string;
   disabled?: boolean;
   onChange: (v: number) => void;
 };
 
-function TuningSlider({
-  label,
-  value,
-  min,
-  max,
-  step,
-  format = (v) => String(v),
-  disabled,
-  onChange,
-}: SliderProps) {
+function TuningSlider({ label, value, min, max, step, disabled, onChange }: SliderProps) {
   return (
-    <label className="admin-car3d-slider">
-      <span>
-        {label}: <strong>{format(value)}</strong>
-      </span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-    </label>
+    <SliderWithNumberInput
+      className="admin-car3d-slider slider-with-number"
+      label={label}
+      value={value}
+      min={min}
+      max={max}
+      step={step}
+      disabled={disabled}
+      onChange={onChange}
+    />
   );
 }
 
@@ -333,7 +320,6 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
             min={PLATE_TUNING_SIZE_MIN}
             max={PLATE_TUNING_SIZE_MAX}
             step={0.01}
-            format={(v) => `${v.toFixed(2)}×`}
             disabled={!plateEditing}
             onChange={(sizeScale) => setDraftPlate((p) => ({ ...p, sizeScale }))}
           />
@@ -343,7 +329,6 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
             min={PLATE_TUNING_OFFSET_MIN}
             max={PLATE_TUNING_OFFSET_MAX}
             step={0.01}
-            format={(v) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2))}
             disabled={!plateEditing}
             onChange={(offsetX) =>
               setDraftPlate((p) => ({ ...p, front: { ...p.front, offsetX } }))
@@ -355,7 +340,6 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
             min={PLATE_TUNING_OFFSET_MIN}
             max={PLATE_TUNING_OFFSET_MAX}
             step={0.01}
-            format={(v) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2))}
             disabled={!plateEditing}
             onChange={(offsetY) =>
               setDraftPlate((p) => ({ ...p, front: { ...p.front, offsetY } }))
@@ -383,7 +367,6 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
             min={PLATE_TUNING_OFFSET_MIN}
             max={PLATE_TUNING_OFFSET_MAX}
             step={0.01}
-            format={(v) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2))}
             disabled={!plateEditing}
             onChange={(offsetX) =>
               setDraftPlate((p) => ({ ...p, rear: { ...p.rear, offsetX } }))
@@ -395,7 +378,6 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
             min={PLATE_TUNING_OFFSET_MIN}
             max={PLATE_TUNING_OFFSET_MAX}
             step={0.01}
-            format={(v) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2))}
             disabled={!plateEditing}
             onChange={(offsetY) =>
               setDraftPlate((p) => ({ ...p, rear: { ...p.rear, offsetY } }))
@@ -471,7 +453,6 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
             min={CARD_TUNING_OFFSET_MIN}
             max={CARD_TUNING_OFFSET_MAX}
             step={0.01}
-            format={(v) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2))}
             disabled={!cardEditing}
             onChange={(modelOffsetX) => setDraftCard((c) => ({ ...c, modelOffsetX }))}
           />
@@ -481,7 +462,6 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
             min={CARD_TUNING_OFFSET_MIN}
             max={CARD_TUNING_OFFSET_MAX}
             step={0.01}
-            format={(v) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2))}
             disabled={!cardEditing}
             onChange={(modelOffsetY) => setDraftCard((c) => ({ ...c, modelOffsetY }))}
           />
@@ -491,7 +471,6 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
             min={CARD_TUNING_OFFSET_MIN}
             max={CARD_TUNING_OFFSET_MAX}
             step={0.01}
-            format={(v) => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2))}
             disabled={!cardEditing}
             onChange={(modelOffsetZ) => setDraftCard((c) => ({ ...c, modelOffsetZ }))}
           />

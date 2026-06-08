@@ -25,6 +25,17 @@
     }
   },
   "vw-polo": {
+    "plate": {
+      "sizeScale": 1,
+      "front": {
+        "offsetX": 0,
+        "offsetY": 0
+      },
+      "rear": {
+        "offsetX": 0,
+        "offsetY": 0
+      }
+    },
     "card": {
       "fixed": true,
       "azimuth": 0.6460019698046663,
@@ -39,6 +50,21 @@
     }
   },
   "lada-vesta": {
+    "plate": {
+      "sizeScale": 1.34,
+      "front": {
+        "offsetX": 0,
+        "offsetY": 1.69,
+        "flipX": false,
+        "flipY": true
+      },
+      "rear": {
+        "offsetX": 0,
+        "offsetY": -0.68,
+        "flipX": false,
+        "flipY": false
+      }
+    },
     "card": {
       "fixed": true,
       "azimuth": -2.536392280360615,

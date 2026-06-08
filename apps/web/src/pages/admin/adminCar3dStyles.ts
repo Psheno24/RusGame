@@ -50,10 +50,9 @@ export const ADMIN_CAR3D_EDIT_STYLES = `
   font-size: 0.88rem;
   line-height: 1.35;
 }
-.admin-car3d-slider span {
+.admin-car3d-slider .slider-with-number__label {
   color: var(--text);
 }
-.admin-car3d-slider input[type="range"] { width: 100%; }
 .admin-car3d-slider input:disabled { opacity: 0.45; }
 .admin-car3d-checkbox {
   display: flex;

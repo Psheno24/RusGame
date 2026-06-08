@@ -11,6 +11,7 @@ import {
 } from "../../api";
 import { CarCard, CarViewer, DEFAULT_REAR_PLATE_TUNING, formatRearPlateConfigSnippet, type CarDisplayInfo, type CarRearPlateTuning } from "../../components/cars";
 import { PlateShopPanel } from "../../components/PlateShopPanel";
+import { SliderWithNumberInput } from "../../components/ui/SliderWithNumberInput";
 import { formatRub } from "../../formatRub";
 import {
   createDevPlateShopInfo,
@@ -283,43 +284,35 @@ export function CarViewerPage() {
         <div className="dev-car-viewer__rear-tuning">
           <p className="dev-car-viewer__rear-tuning-title">Задний номер (подстройка)</p>
 
-          <label className="dev-car-viewer__slider">
-            <span>
-              Размер: <strong>{rearPlateTuning.sizeScale.toFixed(2)}×</strong>
-            </span>
-            <input
-              type="range"
-              min={0.5}
-              max={2}
-              step={0.01}
-              value={rearPlateTuning.sizeScale}
-              onChange={(e) =>
-                setRearPlateTuning((prev) => ({
-                  ...prev,
-                  sizeScale: Number(e.target.value),
-                }))
-              }
-            />
-          </label>
+          <SliderWithNumberInput
+            className="dev-car-viewer__slider slider-with-number"
+            label="Размер"
+            min={0.5}
+            max={2}
+            step={0.01}
+            value={rearPlateTuning.sizeScale}
+            onChange={(sizeScale) =>
+              setRearPlateTuning((prev) => ({
+                ...prev,
+                sizeScale,
+              }))
+            }
+          />
 
-          <label className="dev-car-viewer__slider">
-            <span>
-              Выше / ниже: <strong>{rearPlateTuning.offsetY >= 0 ? "+" : ""}{rearPlateTuning.offsetY.toFixed(3)}</strong>
-            </span>
-            <input
-              type="range"
-              min={-0.2}
-              max={0.2}
-              step={0.002}
-              value={rearPlateTuning.offsetY}
-              onChange={(e) =>
-                setRearPlateTuning((prev) => ({
-                  ...prev,
-                  offsetY: Number(e.target.value),
-                }))
-              }
-            />
-          </label>
+          <SliderWithNumberInput
+            className="dev-car-viewer__slider slider-with-number"
+            label="Выше / ниже"
+            min={-0.2}
+            max={0.2}
+            step={0.002}
+            value={rearPlateTuning.offsetY}
+            onChange={(offsetY) =>
+              setRearPlateTuning((prev) => ({
+                ...prev,
+                offsetY,
+              }))
+            }
+          />
 
           <div className="dev-car-viewer__rear-tuning-actions">
             <button
@@ -444,9 +437,6 @@ export function CarViewerPage() {
           flex-direction: column;
           gap: 6px;
           font-size: 0.88rem;
-        }
-        .dev-car-viewer__slider input[type="range"] {
-          width: 100%;
         }
         .dev-car-viewer__rear-tuning-actions {
           display: flex;
