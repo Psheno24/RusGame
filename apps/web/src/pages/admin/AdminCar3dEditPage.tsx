@@ -511,7 +511,7 @@ export function AdminCar3dEditPage({ modelId }: { modelId: string }) {
             bodyColor={DEFAULT_CAR_BODY_COLOR}
             plate={DEMO_PLATE}
             plateText="А183ВС 98"
-            plateTuning={savedPlate}
+            plateTuning={activePlate}
             height={220}
             enableZoom={cardEditing}
             lockCamera={!cardEditing && savedCard.fixed}

@@ -51,5 +51,34 @@
       "targetY": 0,
       "targetZ": 0
     }
+  },
+  "kia-k5": {
+    "plate": {
+      "sizeScale": 1.13,
+      "front": {
+        "offsetX": -0.06,
+        "offsetY": 1.81,
+        "flipX": false,
+        "flipY": true
+      },
+      "rear": {
+        "offsetX": 0.07,
+        "offsetY": 1.44,
+        "flipX": false,
+        "flipY": false
+      }
+    },
+    "card": {
+      "fixed": true,
+      "azimuth": 0.6663994101039082,
+      "elevation": 0.23359134216512573,
+      "distanceRatio": 0.5000000000000003,
+      "modelOffsetX": 0.11,
+      "modelOffsetY": 0.23,
+      "modelOffsetZ": 0.2,
+      "targetX": 0,
+      "targetY": 0,
+      "targetZ": 0
+    }
   }
 }

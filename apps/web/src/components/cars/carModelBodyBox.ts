@@ -39,7 +39,7 @@ export function computeModelBodyBoxWorld(model: Object3D): Box3 {
   const rough = new Box3();
   model.traverse((child) => {
     if (isPlateMesh(child)) return;
-    if (!(child instanceof Mesh)) return;
+    if (!(child instanceof Mesh) || !child.visible) return;
     _childBox.setFromObject(child);
     if (!_childBox.isEmpty()) rough.union(_childBox);
   });
@@ -47,7 +47,7 @@ export function computeModelBodyBoxWorld(model: Object3D): Box3 {
   const worldBox = new Box3();
   model.traverse((child) => {
     if (isPlateMesh(child)) return;
-    if (!(child instanceof Mesh)) return;
+    if (!(child instanceof Mesh) || !child.visible) return;
     _childBox.setFromObject(child);
     if (_childBox.isEmpty()) return;
     if (isBodyBoxEdgeOutlier(_childBox, rough)) return;
@@ -75,6 +75,11 @@ function worldBoxToModelLocal(worldBox: Box3, model: Object3D): Box3 {
   return local;
 }
 
+export function clearModelBodyBoxCache(model: Object3D): void {
+  delete model.userData[BODY_BOX_WORLD_KEY];
+  delete model.userData[BODY_BOX_LOCAL_KEY];
+}
+
 export function getModelBodyBoxWorld(model: Object3D): Box3 {
   const cached = model.userData[BODY_BOX_WORLD_KEY] as Box3 | undefined;
   if (cached) return cached;
@@ -94,8 +99,9 @@ export function getModelBodyBoxLocal(model: Object3D): Box3 {
   return model.userData[BODY_BOX_LOCAL_KEY] as Box3;
 }
 
-/** Зафиксировать bbox до добавления номеров (вызывать сразу после масштабирования модели). */
+/** Зафиксировать bbox до добавления номеров (после enhanceCarMaterials и перед applyCarPlate). */
 export function primeModelBodyBox(model: Object3D): void {
+  clearModelBodyBoxCache(model);
   getModelBodyBoxWorld(model);
   getModelBodyBoxLocal(model);
 }

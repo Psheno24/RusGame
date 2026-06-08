@@ -37,7 +37,6 @@ export function CarModelMesh({
   const model = useMemo(() => {
     const cloned = scene.clone(true);
     scaleModelToTargetSize(cloned);
-    primeModelBodyBox(cloned);
     return cloned;
   }, [scene]);
 
@@ -49,6 +48,7 @@ export function CarModelMesh({
   useLayoutEffect(() => {
     inspectCarModel(model, modelPath, modelId);
     enhanceCarMaterials(model, modelId, bodyColor);
+    primeModelBodyBox(model);
   }, [model, modelPath, modelId, bodyColor]);
 
   useLayoutEffect(() => {
@@ -70,6 +70,7 @@ export function CarModelMesh({
 
     const apply = () => {
       if (!alive) return;
+      primeModelBodyBox(model);
       void applyCarPlateToModel(model, parts, config, plateTuning, rearPlateTuning);
     };
 

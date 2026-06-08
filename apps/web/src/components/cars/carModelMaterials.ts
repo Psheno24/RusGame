@@ -141,22 +141,51 @@ function applyK5BodyPaint(mat: MeshStandardMaterial, bodyColor: string): void {
   mat.needsUpdate = true;
 }
 
-const _k5MeshSize = new Vector3();
+/** Явный список кузовных панелей (капот, багажник, крыша…) — любой mat. */
+const K5_BODY_PANEL_MESH_NAMES = new Set([
+  "mesh_11",
+  "mesh_12",
+  "mesh_15",
+  "mesh_16",
+  "mesh_17",
+  "mesh_33",
+  "mesh_34",
+  "mesh_35",
+  "mesh_36",
+  "mesh_37",
+  "mesh_38",
+  "mesh_39",
+  "mesh_41",
+  "mesh_43",
+  "mesh_45",
+  "mesh_54",
+  "mesh_57",
+  "mesh_58",
+  "mesh_59",
+  "mesh_63",
+]);
 
-/** Крупные mesh с mat .006 — кузовные панели, ошибочно размеченные как «лампа». */
-const K5_LIGHT_CORE_MAX_SIZE = 0.72;
+/** Белые «безымянные» дворники в GLB. */
+const K5_WIPER_MESH_NAMES = new Set(["mesh_75"]);
 
-function getMeshMaxDimension(mesh: Mesh): number {
-  _k5Box.setFromObject(mesh);
-  return Math.max(..._k5Box.getSize(_k5MeshSize).toArray());
-}
+/** Единственная «ламповая» .006 — задний габарит; остальные .006 это кузов. */
+const K5_LIGHT_CORE_MESH_NAMES = new Set(["mesh_19"]);
 
 function isK5MisclassifiedBodyPanel(mesh: Mesh, materialName: string): boolean {
-  return materialName === "insta_ua1k.006" && getMeshMaxDimension(mesh) >= K5_LIGHT_CORE_MAX_SIZE;
+  if (K5_BODY_PANEL_MESH_NAMES.has(mesh.name)) return true;
+  return materialName === "insta_ua1k.006" && !K5_LIGHT_CORE_MESH_NAMES.has(mesh.name);
 }
 
+/** Полоски insta_ua1k поверх задних фонарей — дают «мутную плёнку». */
+const K5_REAR_LIGHT_BLOCKER_MESHES = new Set(["mesh_26", "mesh_27", "mesh_28"]);
+
 function shouldPaintK5Mesh(child: Mesh, mat: MeshStandardMaterial): boolean {
-  if (mat.name === "insta_ua1k" || mat.name === "insta_ua1k.005") return true;
+  if (K5_REAR_LIGHT_BLOCKER_MESHES.has(child.name)) return false;
+  if (K5_BODY_PANEL_MESH_NAMES.has(child.name)) return true;
+  if (mat.name === "insta_ua1k" || mat.name === "insta_ua1k.005" || mat.name === "insta_ua1k.009" || mat.name === "insta_ua1k.010") {
+    return true;
+  }
+  if (mat.name === "insta_ua1k.006" && !K5_LIGHT_CORE_MESH_NAMES.has(child.name)) return true;
   return isK5MisclassifiedBodyPanel(child, mat.name);
 }
 
@@ -168,10 +197,18 @@ function applyK5BodyPaintColor(root: Object3D, bodyColor: string): void {
     if (K5_TRIM_MESH_NAMES.has(child.name)) return;
 
     const materials = Array.isArray(child.material) ? child.material : [child.material];
-    for (const mat of materials) {
+    for (let i = 0; i < materials.length; i++) {
+      const mat = materials[i];
       if (!(mat instanceof MeshStandardMaterial)) continue;
       if (!shouldPaintK5Mesh(child, mat)) continue;
-      applyK5BodyPaint(mat, bodyColor);
+      const painted = mat.clone();
+      painted.name = mat.name;
+      applyK5BodyPaint(painted, bodyColor);
+      if (Array.isArray(child.material)) {
+        child.material[i] = painted;
+      } else {
+        child.material = painted;
+      }
     }
   });
 }
@@ -200,17 +237,6 @@ function isK5FrontLightZone(center: Vector3, body: Box3): boolean {
   const rx =
     Math.abs(center.x - (body.min.x + body.max.x) * 0.5) / ((size.x * 0.5) || 1);
   return rz > 0.68 && ry > 0.1 && ry < 0.72 && rx < 0.85;
-}
-
-function isK5RearTailCluster(center: Vector3, body: Box3): boolean {
-  const size = body.getSize(_k5Size);
-  const ry = (center.y - body.min.y) / (size.y || 1);
-  const rz = (center.z - body.min.z) / (size.z || 1);
-  return rz < 0.1 && ry > 0.28;
-}
-
-function isK5RearLightZone(center: Vector3, body: Box3): boolean {
-  return isK5RearTailCluster(center, body);
 }
 
 function isK5RearReverseZone(center: Vector3, body: Box3): boolean {
@@ -311,18 +337,6 @@ function applyK5FrontLight(mat: MeshStandardMaterial, isLens: boolean): void {
   mat.needsUpdate = true;
 }
 
-function applyK5RearLightOverlay(mat: MeshStandardMaterial): void {
-  mat.transparent = false;
-  mat.opacity = 1;
-  mat.depthWrite = true;
-  mat.color.setRGB(0.82, 0.1, 0.08);
-  mat.metalness = 0.04;
-  mat.roughness = 0.12;
-  mat.emissive.setRGB(0.95, 0.14, 0.1);
-  mat.emissiveIntensity = 4;
-  mat.needsUpdate = true;
-}
-
 function applyK5RearReflector(mat: MeshStandardMaterial): void {
   mat.transparent = false;
   mat.opacity = 1;
@@ -337,10 +351,10 @@ function applyK5RearReflector(mat: MeshStandardMaterial): void {
 function applyK5RearTailLight(mat: MeshStandardMaterial, isLens: boolean): void {
   if (isLens) {
     mat.transparent = true;
-    mat.opacity = 0.2;
-    mat.color.setRGB(0.78, 0.08, 0.06);
+    mat.opacity = 0.14;
+    mat.color.setRGB(0.94, 0.96, 0.98);
     mat.metalness = 0.02;
-    mat.roughness = 0.05;
+    mat.roughness = 0.04;
     mat.emissive.setRGB(0, 0, 0);
     mat.emissiveIntensity = 0;
     mat.depthWrite = false;
@@ -348,11 +362,11 @@ function applyK5RearTailLight(mat: MeshStandardMaterial, isLens: boolean): void 
   } else {
     mat.transparent = false;
     mat.opacity = 1;
-    mat.color.setRGB(0.92, 0.1, 0.08);
-    mat.metalness = 0.03;
-    mat.roughness = 0.1;
-    mat.emissive.setRGB(1, 0.16, 0.11);
-    mat.emissiveIntensity = 5;
+    mat.color.setRGB(0.95, 0.14, 0.1);
+    mat.metalness = 0.02;
+    mat.roughness = 0.12;
+    mat.emissive.setRGB(1, 0.18, 0.12);
+    mat.emissiveIntensity = 5.5;
   }
   mat.needsUpdate = true;
 }
@@ -385,13 +399,51 @@ function cloneMeshMaterials(mesh: Mesh): MeshStandardMaterial[] {
   return cloned.filter((mat): mat is MeshStandardMaterial => mat instanceof MeshStandardMaterial);
 }
 
+/** Только реальные лампы/хром — не бампер (mesh_50/55 обрабатываются как trim). */
+const K5_REAR_TAIL_LIGHT_MESHES = new Set([
+  "mesh_19",
+  "mesh_22",
+  "mesh_23",
+  "mesh_24",
+  "mesh_25",
+  "mesh_49",
+  "mesh_51",
+  "mesh_52",
+  "mesh_53",
+]);
+
+/** Ободок вокруг задней лампы — непрозрачный, как спереди. */
+const K5_REAR_LIGHT_BEZEL_MESHES = new Set(["mesh_50"]);
+
 function enhanceK5MeshLights(mesh: Mesh, bodyWorld: Box3): void {
   const center = getMeshWorldCenter(mesh);
   const materials = cloneMeshMaterials(mesh);
   const isTire = K5_TIRE_MESH_NAMES.has(mesh.name);
   const isRim = K5_RIM_MESH_NAMES.has(mesh.name);
   const inFront = isK5FrontLightZone(center, bodyWorld);
-  const inRear = isK5RearLightZone(center, bodyWorld);
+  const isRearLight = K5_REAR_TAIL_LIGHT_MESHES.has(mesh.name);
+
+  if (K5_TRIM_MESH_NAMES.has(mesh.name)) {
+    for (const mat of materials) {
+      if (!(mat instanceof MeshStandardMaterial)) continue;
+      if (K5_REAR_LIGHT_BEZEL_MESHES.has(mesh.name)) {
+        applyK5FrontLightBezel(mat);
+      } else {
+        applyK5BumperPlastic(mat);
+      }
+    }
+    return;
+  }
+
+  if (K5_WIPER_MESH_NAMES.has(mesh.name)) {
+    for (const mat of materials) {
+      if (!(mat instanceof MeshStandardMaterial)) continue;
+      applyK5BumperPlastic(mat);
+    }
+    return;
+  }
+
+  if (K5_BODY_PANEL_MESH_NAMES.has(mesh.name)) return;
 
   for (const mat of materials) {
     let handled = false;
@@ -416,7 +468,7 @@ function enhanceK5MeshLights(mesh: Mesh, bodyWorld: Box3): void {
         mat.emissiveIntensity = Math.max(mat.emissiveIntensity ?? 0, 3.5);
         mat.metalness = Math.min(mat.metalness, 0.1);
         mat.needsUpdate = true;
-      } else if (inRear) {
+      } else if (isRearLight) {
         mat.emissive.setRGB(0.95, 0.12, 0.09);
         mat.emissiveIntensity = Math.max(mat.emissiveIntensity ?? 0, 3);
         mat.metalness = Math.min(mat.metalness, 0.1);
@@ -450,7 +502,7 @@ function enhanceK5MeshLights(mesh: Mesh, bodyWorld: Box3): void {
       }
     }
 
-    if (!handled && inRear && !isBodyPanel) {
+    if (!handled && isRearLight && !isBodyPanel) {
       if (isLens) {
         applyK5RearTailLight(mat, true);
         mesh.renderOrder = 4;
@@ -458,10 +510,6 @@ function enhanceK5MeshLights(mesh: Mesh, bodyWorld: Box3): void {
       } else if (isLightCore) {
         applyK5RearTailLight(mat, false);
         mesh.renderOrder = 2;
-        handled = true;
-      } else if (mat.name === "insta_ua1k.005") {
-        applyK5RearLightOverlay(mat);
-        mesh.renderOrder = 3;
         handled = true;
       } else if (mat.name === "insta_ua1k.002") {
         applyK5RearReflector(mat);
@@ -484,11 +532,7 @@ function enhanceK5MeshLights(mesh: Mesh, bodyWorld: Box3): void {
       handled = true;
     }
 
-    if (!handled && mat.name === "insta_ua1k.005") {
-      if (K5_TRIM_MESH_NAMES.has(mesh.name)) {
-        applyK5BumperPlastic(mat);
-      }
-    } else if (!handled && mat.name === "insta_ua1k.006") {
+    if (!handled && mat.name === "insta_ua1k.006") {
       applyK5NeutralPlastic(mat);
     } else if (!handled && mat.name === "insta_ua1k.002") {
       applyK5NeutralPlastic(mat);
@@ -516,6 +560,9 @@ const K5_HIDDEN_MESH_NAMES = new Set([
   "mesh_3",
   "mesh_4",
   "mesh_5",
+  "mesh_26",
+  "mesh_27",
+  "mesh_28",
   "mesh_76",
   "mesh_75",
   "mesh_77",

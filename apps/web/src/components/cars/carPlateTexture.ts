@@ -19,8 +19,8 @@ import type { CarPlateDisplayTuning, CarPlateFaceTuning } from "./carDisplayConf
 import { PLATE_OFFSET_SLIDER_UNIT } from "./carDisplayConfig";
 import type { CarRearPlateTuning } from "./types";
 import {
+  getModelBodyBoxLocal,
   getModelBodyBoxWorld,
-  getModelUniformScale,
   primeModelBodyBox,
 } from "./carModelBodyBox";
 
@@ -451,14 +451,11 @@ function computeFixedPlanePlacement(
   face: "front" | "rear",
   plateDisplay?: CarPlateDisplayTuning,
 ): RearPlatePlacement {
-  const modelBox = getModelBodyBoxWorld(model);
+  const modelBox = getModelBodyBoxLocal(model);
   const modelSize = modelBox.getSize(new Vector3());
-  const uniformScale = getModelUniformScale(model);
   const sizeScale = plateDisplay?.sizeScale ?? 1;
-  const widthWorld = modelSize.x * cfg.widthRatio * sizeScale;
-  const heightWorld = widthWorld * (PLATE_SVG_HEIGHT / PLATE_SVG_WIDTH);
-  const width = widthWorld / uniformScale;
-  const height = heightWorld / uniformScale;
+  const width = modelSize.x * cfg.widthRatio * sizeScale;
+  const height = width * (PLATE_SVG_HEIGHT / PLATE_SVG_WIDTH);
   const position = new Vector3(
     modelBox.min.x + modelSize.x * cfg.xRatio,
     modelBox.min.y + modelSize.y * cfg.yRatio,
@@ -468,10 +465,8 @@ function computeFixedPlanePlacement(
   );
 
   const offsets = plateDisplay?.[face];
-  position.y += (offsets?.offsetY ?? 0) * heightWorld * PLATE_OFFSET_SLIDER_UNIT;
-  position.x += (offsets?.offsetX ?? 0) * widthWorld * PLATE_OFFSET_SLIDER_UNIT;
-
-  model.worldToLocal(position);
+  position.y += (offsets?.offsetY ?? 0) * height * PLATE_OFFSET_SLIDER_UNIT;
+  position.x += (offsets?.offsetX ?? 0) * width * PLATE_OFFSET_SLIDER_UNIT;
 
   return { position, width, height };
 }
