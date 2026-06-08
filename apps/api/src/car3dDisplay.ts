@@ -4,7 +4,16 @@ import { getCar } from "./gameData.js";
 import { DATA_DIR, ROOT } from "./config.js";
 
 const DISPLAY_FILE = join(DATA_DIR, "car-3d-display.json");
-const MODELS_DIR = join(ROOT, "apps/web/public/models/cars");
+
+/** Локально — public; в Docker/production после `vite build` — dist. */
+function getCarModelsDirs(): string[] {
+  const candidates = [
+    process.env.CAR_MODELS_DIR,
+    join(ROOT, "apps/web/dist/models/cars"),
+    join(ROOT, "apps/web/public/models/cars"),
+  ].filter((dir): dir is string => Boolean(dir));
+  return [...new Set(candidates)].filter((dir) => existsSync(dir));
+}
 
 /** Должен совпадать с apps/web carModelRegistry.ts */
 const MODEL_FILE_BY_ID: Record<string, string> = {
@@ -67,8 +76,18 @@ function resolveGlbFile(modelId: string): string {
   return MODEL_FILE_BY_ID[modelId] ?? `${slugFromModelId(modelId)}.glb`;
 }
 
+function listAvailableGlbs(): Set<string> {
+  const names = new Set<string>();
+  for (const dir of getCarModelsDirs()) {
+    for (const name of readdirSync(dir)) {
+      if (name.endsWith(".glb")) names.add(name);
+    }
+  }
+  return names;
+}
+
 function glbExists(fileName: string): boolean {
-  return existsSync(join(MODELS_DIR, fileName));
+  return getCarModelsDirs().some((dir) => existsSync(join(dir, fileName)));
 }
 
 function readStore(): Car3dDisplayStore {
@@ -85,11 +104,7 @@ function writeStore(store: Car3dDisplayStore): void {
 }
 
 export function listCar3dModels(): Car3dModelListItem[] {
-  const availableGlbs = new Set(
-    existsSync(MODELS_DIR)
-      ? readdirSync(MODELS_DIR).filter((name) => name.endsWith(".glb"))
-      : [],
-  );
+  const availableGlbs = listAvailableGlbs();
 
   const seen = new Set<string>();
   const items: Car3dModelListItem[] = [];
