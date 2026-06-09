@@ -27,8 +27,10 @@ export function ProfilePage() {
           <h2>{p.displayName}</h2>
           <div className="profile-stats">
             <div className="profile-stat">
-              <span className="profile-stat-label">Город</span>
-              <span className="profile-stat-value">{cityDisplayName(p.cityId)}</span>
+              <span className="profile-stat-label">Город проживания</span>
+              <span className="profile-stat-value">
+                {p.housingCityId ? cityDisplayName(p.housingCityId) : "—"}
+              </span>
             </div>
             <div className="profile-stat">
               <span className="profile-stat-label">Образование</span>
