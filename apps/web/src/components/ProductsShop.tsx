@@ -54,7 +54,7 @@ export function ProductsShop({ user, setUser, onToast }: Props) {
 
   return (
     <div className="products-shop">
-      <p className="products-shop-lead">Еда и напитки восстанавливают энергию и настроение.</p>
+      <p className="products-shop-lead">Энергетик восстанавливает энергию.</p>
       <ul className="products-list">
         {items.map((p) => (
           <li key={p.id} className="card product-card">

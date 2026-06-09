@@ -1,32 +1,8 @@
 {
-  "sandwich": {
-    "title": "Сэндвич",
-    "description": "Быстрый обед на ходу.",
-    "priceRub": 180,
-    "gains": { "mood": 4, "energy": 8 }
-  },
-  "hot_meal": {
-    "title": "Горячее блюдо",
-    "description": "Сытный обед в столовой.",
-    "priceRub": 320,
-    "gains": { "mood": 8, "energy": 18, "health": 2 }
-  },
-  "coffee": {
-    "title": "Кофе",
-    "description": "Бодрит и поднимает настроение.",
+  "energy_drink": {
+    "title": "Энергетик",
+    "description": "Быстро восстанавливает силы.",
     "priceRub": 120,
-    "gains": { "energy": 14, "mood": 3 }
-  },
-  "water": {
-    "title": "Вода и снеки",
-    "description": "Немного восстановить силы.",
-    "priceRub": 90,
-    "gains": { "energy": 8, "mood": 2 }
-  },
-  "groceries": {
-    "title": "Продукты на неделю",
-    "description": "Запас домой — хорошее настроение.",
-    "priceRub": 850,
-    "gains": { "mood": 12, "energy": 10, "health": 3 }
+    "gains": { "energy": 10 }
   }
 }
