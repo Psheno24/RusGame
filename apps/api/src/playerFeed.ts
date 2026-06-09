@@ -18,7 +18,12 @@ export type PlayerFeedType =
   | "housing:dorm"
   | "housing:rent"
   | "job:apply"
-  | "job:quit";
+  | "job:quit"
+  | "work:delivery"
+  | "education:start"
+  | "education:complete"
+  | "career:promote"
+  | "career:shift";
 
 export type PlayerFeedEvent = {
   id: number;

@@ -11,6 +11,7 @@ import {
   type User,
 } from "../api";
 import { CitySectionHeader } from "./ui/CitySectionHeader";
+import { TestOnlyNotice } from "./TestOnlyNotice";
 
 type Props = {
   mode: "secondary_edu" | "higher_edu" | "freelance";
@@ -18,9 +19,19 @@ type Props = {
   setUser: (u: User) => void;
   onToast: (msg: string, isErr?: boolean) => void;
   onBack: () => void;
+  backLabel?: string;
+  testOnly?: boolean;
 };
 
-export function CareerEducationPanel({ mode, user, setUser, onToast, onBack }: Props) {
+export function CareerEducationPanel({
+  mode,
+  user,
+  setUser,
+  onToast,
+  onBack,
+  backLabel = "Карьера",
+  testOnly = false,
+}: Props) {
   const [edu, setEdu] = useState<EducationStatus | null>(null);
   const [career, setCareer] = useState<CareerStatus | null>(null);
   const [busy, setBusy] = useState(false);
@@ -65,7 +76,8 @@ export function CareerEducationPanel({ mode, user, setUser, onToast, onBack }: P
 
   return (
     <div className="card">
-      <CitySectionHeader title={title} onBack={onBack} backLabel="Карьера" />
+      <CitySectionHeader title={title} onBack={onBack} backLabel={backLabel} />
+      {testOnly ? <TestOnlyNotice /> : null}
       {edu?.active && (
         <p className="muted">
           Идёт обучение ({edu.education}) — доступны только подработки

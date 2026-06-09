@@ -28,17 +28,16 @@ import { EmergencyLoaderBriefPanel } from "./EmergencyLoaderBriefPanel";
 
 type JobCard = JobView;
 
-type JobsNav = "hub" | "side_jobs" | "career" | "secondary_edu" | "higher_edu" | "freelance";
+type JobsNav = "hub" | "side_jobs" | "freelance";
 
-const JOBS_MENU: { id: "side_jobs" | "career"; title: string; icon: string }[] = [
+const JOBS_MENU: {
+  id: "side_jobs" | "career";
+  title: string;
+  icon: string;
+  testOnly?: boolean;
+}[] = [
   { id: "side_jobs", title: "Подработка", icon: "₽" },
-  { id: "career", title: "Карьера", icon: "▲" },
-];
-
-const CAREER_MENU: { id: "secondary_edu" | "higher_edu" | "freelance"; title: string; icon: string }[] = [
-  { id: "secondary_edu", title: "Среднее образование", icon: "Ⅱ" },
-  { id: "higher_edu", title: "Высшее образование", icon: "Ⅲ" },
-  { id: "freelance", title: "Фриланс", icon: "⌁" },
+  { id: "career", title: "Карьера", icon: "▲", testOnly: true },
 ];
 
 function isLoaderEmployment(jobId: string | null | undefined): boolean {
@@ -47,10 +46,6 @@ function isLoaderEmployment(jobId: string | null | undefined): boolean {
 
 function matchesEmployment(job: JobCard, employedId: string): boolean {
   return job.id === employedId || (job.templateKey === "loader" && isLoaderEmployment(employedId));
-}
-
-function careerNavTitle(nav: JobsNav): string | null {
-  return CAREER_MENU.find((c) => c.id === nav)?.title ?? null;
 }
 
 function resolveJobCooldown(
@@ -216,11 +211,11 @@ export function JobsSection({
       onSelectJob(null);
       return true;
     }
-    if (nav === "secondary_edu" || nav === "higher_edu" || nav === "freelance") {
-      setNav("career");
+    if (nav === "freelance") {
+      setNav("hub");
       return true;
     }
-    if (nav === "side_jobs" || nav === "career") {
+    if (nav === "side_jobs") {
       if (workAccess?.emergencyLoader && nav === "side_jobs") {
         onBack?.();
         return true;
@@ -709,8 +704,6 @@ export function JobsSection({
     );
   }
 
-  const careerTitle = careerNavTitle(nav);
-
   return (
     <div className="city-jobs-stack">
       {activeEmployment?.workBlockedReason && nav === "side_jobs" && (
@@ -727,11 +720,20 @@ export function JobsSection({
             <h2>Вакансии</h2>
           )}
           <div className="city-grid shop-categories jobs-menu-grid">
-            {JOBS_MENU.map((item) => (
-              <CityGridButton key={item.id} title={item.title} onClick={() => setNav(item.id)}>
-                <span className="city-grid-icon" aria-hidden>{item.icon}</span>
-              </CityGridButton>
-            ))}
+            {JOBS_MENU.map((item) => {
+              const locked = item.testOnly && !user.isTest;
+              return (
+                <CityGridButton
+                  key={item.id}
+                  title={item.title}
+                  hint={locked ? "Скоро" : item.testOnly && user.isTest ? "Тест" : undefined}
+                  disabled={locked}
+                  onClick={() => setNav(item.id === "career" ? "freelance" : item.id)}
+                >
+                  <span className="city-grid-icon" aria-hidden>{item.icon}</span>
+                </CityGridButton>
+              );
+            })}
           </div>
         </div>
       )}
@@ -767,30 +769,15 @@ export function JobsSection({
         </div>
       )}
 
-      {nav === "career" && (
-        <div className="card">
-          {onBack ? (
-            <CitySectionHeader title="Карьера" onBack={handleJobsBack} backLabel="Вакансии" />
-          ) : (
-            <h2>Карьера</h2>
-          )}
-          <div className="city-grid shop-categories jobs-menu-grid">
-            {CAREER_MENU.map((item) => (
-              <CityGridButton key={item.id} title={item.title} onClick={() => setNav(item.id)}>
-                <span className="city-grid-icon" aria-hidden>{item.icon}</span>
-              </CityGridButton>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {careerTitle && (
+      {nav === "freelance" && (
         <CareerEducationPanel
-          mode={nav as "secondary_edu" | "higher_edu" | "freelance"}
+          mode="freelance"
           user={user}
           setUser={setUser}
           onToast={onToast}
           onBack={handleJobsBack}
+          backLabel="Вакансии"
+          testOnly
         />
       )}
     </div>

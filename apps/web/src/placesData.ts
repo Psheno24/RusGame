@@ -5,6 +5,7 @@ export type PlaceId =
   | "cinema"
   | "car_repair"
   | "gas_station"
+  | "education"
   | "phone_repair"
   | "police"
   | "ambulance"
@@ -15,6 +16,7 @@ export const CITY_PLACES: { id: PlaceId; title: string; hint?: string }[] = [
   { id: "cinema", title: "Кино", hint: `${formatRub(500)} · +22 настроение` },
   { id: "car_repair", title: "Ремонт авто" },
   { id: "gas_station", title: "АЗС", hint: `АИ-92 от ${formatRub(70)}/л` },
+  { id: "education", title: "Образование" },
   { id: "phone_repair", title: "Ремонт телефона" },
   { id: "police", title: "Полиция" },
   { id: "ambulance", title: "Скорая" },

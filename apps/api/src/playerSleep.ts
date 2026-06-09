@@ -1,5 +1,5 @@
 import { getBalanceBible } from "./balanceBible.js";
-import { getPlayer, updatePlayer } from "./db.js";
+import { getPlayer, updatePlayer, type PlayerRow } from "./db.js";
 import { formatDuration } from "./formatDuration.js";
 import { isCityResident } from "./housing.js";
 import { taxiBlocksWork } from "./playerTaxi.js";

@@ -6,6 +6,7 @@ import { CarRepairPlace } from "./CarRepairPlace";
 import { GasStationPlace } from "./GasStationPlace";
 import { CityGridButton } from "./ui/CityGridButton";
 import { PoliceLicenseShop } from "./PoliceLicenseShop";
+import { EducationPlace } from "./EducationPlace";
 
 type Props = {
   placeId: PlaceId | null;
@@ -27,7 +28,13 @@ export function PlacesSection({
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!placeId || placeId === "police" || placeId === "car_repair" || placeId === "gas_station") {
+    if (
+      !placeId ||
+      placeId === "police" ||
+      placeId === "car_repair" ||
+      placeId === "gas_station" ||
+      placeId === "education"
+    ) {
       registerBack(null);
       return;
     }
@@ -64,6 +71,20 @@ export function PlacesSection({
       return (
         <div className="place-detail">
           <CarRepairPlace
+            user={user}
+            setUser={setUser}
+            onToast={onToast}
+            registerBack={registerBack}
+            onExitPlace={() => onPlace(null)}
+          />
+        </div>
+      );
+    }
+
+    if (placeId === "education") {
+      return (
+        <div className="place-detail">
+          <EducationPlace
             user={user}
             setUser={setUser}
             onToast={onToast}
@@ -123,9 +144,19 @@ export function PlacesSection({
 
   return (
     <div className="city-grid places-grid">
-      {CITY_PLACES.map((p) => (
-        <CityGridButton key={p.id} title={p.title} onClick={() => onPlace(p.id)} />
-      ))}
+      {CITY_PLACES.map((p) => {
+        const isEducation = p.id === "education";
+        const locked = isEducation && !user.isTest;
+        return (
+          <CityGridButton
+            key={p.id}
+            title={p.title}
+            hint={locked ? "Скоро" : isEducation && user.isTest ? "Тест" : p.hint}
+            disabled={locked}
+            onClick={() => onPlace(p.id)}
+          />
+        );
+      })}
     </div>
   );
 }

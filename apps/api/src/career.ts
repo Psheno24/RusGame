@@ -44,7 +44,7 @@ function avgSkill(player: PlayerRow): number {
 export function canPromoteCareer(
   player: PlayerRow,
   now = Date.now(),
-): { ok: true; level: (typeof careerLevels)[0] } | { ok: false; error: string } {
+): { ok: true; level: ReturnType<typeof careerLevels>[number] } | { ok: false; error: string } {
   if (isEducationActive(player, now)) {
     return { ok: false, error: "Во время обучения карьера недоступна" };
   }

@@ -69,7 +69,7 @@ export function startEducation(
   })?.energy;
 
   const endsAt = now + cfg.days * MS_DAY;
-  const repGain = bible.reputationGain ?? 10;
+  const repGain = cfg.reputationGain ?? 10;
   updatePlayer(player.user_id, {
     rubles: player.rubles - cfg.cost,
     education: key,

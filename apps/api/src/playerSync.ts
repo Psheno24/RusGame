@@ -17,8 +17,8 @@ export function refreshPlayerState(userId: number, now = Date.now()) {
   let player = getPlayer(userId);
   if (!player) return undefined;
   player = resolveTravel(player, now);
-  player = syncPlayerSleep(player, now);
-  player = syncPlayerVehicleRental(player, now);
+  player = syncPlayerSleep(player, now) ?? player;
+  player = syncPlayerVehicleRental(player, now) ?? player;
   player = syncPlayerHousing(player, now);
   syncPlayerSimTariffBilling(userId, now);
   syncPlayerCarMaintenance(userId, now);
