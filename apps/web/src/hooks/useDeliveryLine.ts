@@ -58,6 +58,7 @@ export function useDeliveryLine(
     takeOrder,
     refresh,
     canTakeOrder: status?.canTakeOrder ?? false,
+    takeOrderBlockedReason: status?.takeOrderBlockedReason ?? null,
     transport: status?.transport ?? "walk",
     sessionIncomeRub: status?.sessionIncomeRub ?? 0,
     ordersCompleted: status?.ordersCompleted ?? 0,

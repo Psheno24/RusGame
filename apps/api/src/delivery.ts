@@ -235,6 +235,7 @@ export type DeliveryStatus = {
   sessionIncomeRub: number;
   ordersCompleted: number;
   canTakeOrder: boolean;
+  takeOrderBlockedReason?: string | null;
   completedMessage?: string;
   completedPayout?: number;
 };
@@ -260,7 +261,14 @@ export function getDeliveryStatus(player: PlayerRow, job: JobDef, now = Date.now
   }
 
   const accessError = validateJobWorkAccess(player, job.id, now);
-  const canTakeOrder = !accessError && !state.activeTrip && (player.energy ?? 0) >= 2;
+  const energyCost = scaleWorkCosts(player, { energy: 2 })?.energy ?? 2;
+  let takeOrderBlockedReason: string | null = null;
+  if (accessError) takeOrderBlockedReason = accessError;
+  else if (state.activeTrip) takeOrderBlockedReason = "Сначала завершите текущую доставку";
+  else if ((player.energy ?? 0) < energyCost) {
+    takeOrderBlockedReason = "Недостаточно энергии для заказа";
+  }
+  const canTakeOrder = takeOrderBlockedReason == null;
 
   return {
     transport,
@@ -268,6 +276,7 @@ export function getDeliveryStatus(player: PlayerRow, job: JobDef, now = Date.now
     sessionIncomeRub: state.sessionIncomeRub,
     ordersCompleted: state.ordersCompleted,
     canTakeOrder,
+    takeOrderBlockedReason,
     completedMessage: advanced.completedMessage,
     completedPayout: advanced.completedPayout,
   };

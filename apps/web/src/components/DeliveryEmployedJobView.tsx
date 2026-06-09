@@ -43,13 +43,29 @@ export function DeliveryEmployedJobView({
   jobRequirements,
 }: Props) {
   const delivery = useDeliveryLine(setUser, onToast);
-  const { inTrip, busy: deliveryBusy, takeOrder, canTakeOrder, transport, sessionIncomeRub, ordersCompleted, activeTrip } =
-    delivery;
+  const {
+    inTrip,
+    busy: deliveryBusy,
+    takeOrder,
+    canTakeOrder,
+    takeOrderBlockedReason,
+    transport,
+    sessionIncomeRub,
+    ordersCompleted,
+    activeTrip,
+  } = delivery;
 
+  const requirementsMet = jobRequirementsMet(jobRequirements);
   const deliveryBlocksQuit = inTrip;
   const canQuit = canQuitBase && !deliveryBlocksQuit;
   const quitReason = deliveryBlocksQuit ? "дождитесь доставки" : undefined;
   const lineBusy = parentBusy || deliveryBusy;
+  const takeOrderDisabled = lineBusy || !canTakeOrder || !requirementsMet;
+  const takeOrderDisabledReason = !requirementsMet
+    ? "не выполнены требования"
+    : lineBusy
+      ? "подождите"
+      : takeOrderBlockedReason ?? undefined;
 
   return (
     <>
@@ -74,37 +90,38 @@ export function DeliveryEmployedJobView({
             <JobRequirementsList requirements={jobRequirements} />
           </dl>
 
-          {activeTrip ? (
-            <div className="taxi-active-trip">
-              <p>
-                Доставка {activeTrip.order.distanceKm} км · {activeTrip.order.modifierTitle}
-              </p>
-              <p>Осталось: {formatDuration(activeTrip.remainingMs)}</p>
-              <p>Ожидаемая оплата: ~{formatRub(activeTrip.order.basePayoutRub)}</p>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={lineBusy || !canTakeOrder || !jobRequirementsMet(jobRequirements)}
-              onClick={() => void takeOrder()}
-            >
-              Получить заказ
-            </button>
-          )}
-
           <div className="job-detail-actions">
+            {activeTrip ? (
+              <div className="taxi-active-trip job-detail-action-btn">
+                <p>
+                  Доставка {activeTrip.order.distanceKm} км · {activeTrip.order.modifierTitle}
+                </p>
+                <p>Осталось: {formatDuration(activeTrip.remainingMs)}</p>
+                <p>Ожидаемая оплата: ~{formatRub(activeTrip.order.basePayoutRub)}</p>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-primary job-detail-action-btn"
+                disabled={takeOrderDisabled}
+                onClick={() => void takeOrder()}
+              >
+                <JobActionButtonLabel
+                  base="Получить заказ"
+                  disabledReason={takeOrderDisabled ? takeOrderDisabledReason : undefined}
+                />
+              </button>
+            )}
             <button
               type="button"
-              className="btn btn-secondary"
-              disabled={!canQuit || employmentBlocked}
-              title={quitReason}
+              className="btn btn-danger job-detail-action-btn"
+              disabled={!canQuit || employmentBlocked || parentBusy}
               onClick={onRequestQuit}
             >
               <JobActionButtonLabel
-                label="Уволиться"
-                blocked={employmentBlocked}
+                base="Уволиться"
                 remainingMs={quitRemainingMs}
+                disabledReason={!canQuit && deliveryBlocksQuit ? quitReason : undefined}
               />
             </button>
           </div>
