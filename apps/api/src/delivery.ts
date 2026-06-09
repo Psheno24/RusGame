@@ -5,7 +5,6 @@ import { appendPlayerFeed } from "./playerFeed.js";
 import { getBalanceBible, getCityEconomyMultiplier, scaledWorkEnergyCost } from "./balanceBible.js";
 import { randInt } from "./random.js";
 import type { JobDef } from "./gameData.js";
-import { skillPayoutMultiplier } from "./jobSalaries.js";
 import { effectiveMood } from "./housingMood.js";
 import { recordSkillActionForTemplate, SKILL_LABELS } from "./skills.js";
 import {
@@ -78,10 +77,9 @@ function generateOrder(player: PlayerRow, now: number): DeliveryOrder {
   const modifier = pickModifier();
   const modMult = bible.modifiers[modifier] ?? 1;
   const cityMult = getCityEconomyMultiplier(player.city_id);
-  const skillMult = skillPayoutMultiplier(player, "delivery");
   const basePayoutRub = Math.max(
     100,
-    Math.round(distanceKm * cfg.ratePerKm * modMult * cityMult * skillMult),
+    Math.round(distanceKm * cfg.ratePerKm * modMult * cityMult),
   );
   const tripMinutes = Math.max(1, Math.round(distanceKm * cfg.minPerKm));
 

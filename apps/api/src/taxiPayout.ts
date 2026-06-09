@@ -71,10 +71,9 @@ export function taxiKmPayoutRub(
   tariff: string,
   demandMult: number,
   cityMult: number,
-  skillMult = 1,
 ): number {
   const rate = taxiBible().tariffPerKm[tariff] ?? taxiBible().tariffPerKm.economy ?? 220;
-  return Math.max(150, Math.round(km * rate * demandMult * cityMult * skillMult));
+  return Math.max(150, Math.round(km * rate * demandMult * cityMult));
 }
 
 /** @deprecated legacy hourly curve */

@@ -63,7 +63,6 @@ import {
 } from "./workCooldown.js";
 import { scaleTravelMs, scaleCooldownMs } from "./testAccount.js";
 import { scheduleShiftReadyPush } from "./pushNotifications.js";
-import { finalShiftPayout, skillPayoutMultiplier } from "./jobSalaries.js";
 import { playerMeetsCarRequirement, taxiBlocksShift } from "./taxi.js";
 import { saveTaxiState } from "./playerTaxi.js";
 import { deliveryBlocksShift, clearDeliveryState } from "./delivery.js";
@@ -173,9 +172,8 @@ function calculateCooldownJobPayout(
   const mid = Math.floor(((job.payoutMin ?? 0) + (job.payoutMax ?? 0)) / 2);
   const base = randInt(job.payoutMin ?? mid, job.payoutMax ?? mid);
   const timeMult = getPayoutMultiplier(localTime.hour, job.payoutPeriods);
-  const skillMult = skillPayoutMultiplier(player, job.templateKey);
   const vitalMult = workPayoutMultiplier(player);
-  const multiplier = timeMult * skillMult * vitalMult;
+  const multiplier = timeMult * vitalMult;
   return { payout: Math.floor(base * multiplier), multiplier };
 }
 
@@ -189,8 +187,7 @@ function calculateNightGuardPayout(
   const timeMult = getPayoutMultiplier(localTime.hour, job.payoutPeriods);
   const vitalMult = workPayoutMultiplier(player);
   const multiplier = timeMult * vitalMult;
-  const payout = finalShiftPayout(player, job.templateKey, player.city_id, mid, 1);
-  return { payout: Math.floor(payout * timeMult * vitalMult), multiplier };
+  return { payout: Math.floor(mid * multiplier), multiplier };
 }
 
 function calculateDurationJobPayout(

@@ -24,16 +24,5 @@
     "night_guard": 30000,
     "loader": 500
   },
-  "skillWeights": {
-    "delivery": { "stamina": 1 },
-    "taxi": { "driving": 1 },
-    "cashier": { "charisma": 1 },
-    "night_guard": { "discipline": 1 }
-  },
-  "skillMultiplier": {
-    "min": 0.7,
-    "max": 1.5,
-    "referenceLevel": 100
-  },
   "payoutVariancePct": 0
 }
