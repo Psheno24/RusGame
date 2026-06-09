@@ -39,6 +39,7 @@ import { CityGridButton } from "./ui/CityGridButton";
 import { TimerIcon } from "./ui/TimerIcon";
 import { PlateShopPanel } from "./PlateShopPanel";
 import { VehiclePlate } from "./VehiclePlate";
+import { testOnlyGridHint, testOnlyLocked } from "../testOnlyUi";
 import { CarColorPicker, CarModelPreview, DEFAULT_CAR_BODY_COLOR, hasCar3dModel } from "./cars";
 
 type CarNav =
@@ -187,6 +188,7 @@ function ShopCarBanner({
 }
 
 export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: Props) {
+  const isTest = Boolean(user.isTest);
   const [nav, setNav] = useState<CarNav>("hub");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [carId, setCarId] = useState<string | null>(null);
@@ -537,7 +539,14 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
           <CityGridButton title="Купить авто" onClick={() => go("buyChoice")} />
           <CityGridButton title="Аренда" onClick={() => go("rent")} />
           <CityGridButton title="Гос.номер" onClick={() => go("plate")} />
-          <CityGridButton title="Скоро" hint="Тюнинг" disabled />
+          <CityGridButton
+            title="Тюнинг"
+            hint={testOnlyGridHint(isTest, true)}
+            disabled={testOnlyLocked(isTest, true)}
+            onClick={() => {
+              if (isTest) go("tuning");
+            }}
+          />
         </div>
       )}
 

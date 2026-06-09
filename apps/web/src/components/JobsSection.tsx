@@ -25,6 +25,7 @@ import { TaxiEmployedJobView } from "./TaxiEmployedJobView";
 import { DeliveryEmployedJobView } from "./DeliveryEmployedJobView";
 import { CareerEducationPanel } from "./CareerEducationPanel";
 import { EmergencyLoaderBriefPanel } from "./EmergencyLoaderBriefPanel";
+import { testOnlyGridHint, testOnlyLocked } from "../testOnlyUi";
 
 type JobCard = JobView;
 
@@ -721,12 +722,13 @@ export function JobsSection({
           )}
           <div className="city-grid shop-categories jobs-menu-grid">
             {JOBS_MENU.map((item) => {
-              const locked = item.testOnly && !user.isTest;
+              const isTest = Boolean(user.isTest);
+              const locked = testOnlyLocked(isTest, item.testOnly);
               return (
                 <CityGridButton
                   key={item.id}
                   title={item.title}
-                  hint={locked ? "Скоро" : item.testOnly && user.isTest ? "Тест" : undefined}
+                  hint={testOnlyGridHint(isTest, item.testOnly)}
                   disabled={locked}
                   onClick={() => setNav(item.id === "career" ? "freelance" : item.id)}
                 >

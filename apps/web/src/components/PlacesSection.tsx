@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { performAction, type User } from "../api";
+import type { User } from "../api";
 import type { NavBackHandler } from "../navBack";
 import { CITY_PLACES, type PlaceId } from "../placesData";
+import { testOnlyGridHint, testOnlyLocked } from "../testOnlyUi";
 import { CarRepairPlace } from "./CarRepairPlace";
 import { GasStationPlace } from "./GasStationPlace";
 import { CityGridButton } from "./ui/CityGridButton";
@@ -17,6 +18,13 @@ type Props = {
   onToast: (msg: string, isErr?: boolean) => void;
 };
 
+const STUB_PLACE_IDS = new Set<PlaceId>([
+  "flea_market",
+  "phone_repair",
+  "ambulance",
+  "court",
+]);
+
 export function PlacesSection({
   placeId,
   onPlace,
@@ -25,7 +33,7 @@ export function PlacesSection({
   setUser,
   onToast,
 }: Props) {
-  const [busy, setBusy] = useState(false);
+  const isTest = Boolean(user.isTest);
 
   useEffect(() => {
     if (
@@ -47,12 +55,6 @@ export function PlacesSection({
   }, [placeId, onPlace, registerBack]);
 
   if (placeId) {
-    const place = CITY_PLACES.find((p) => p.id === placeId)!;
-
-    if (placeId === "flea_market") {
-      return <p className="shop-stub">Скоро</p>;
-    }
-
     if (placeId === "police") {
       return (
         <div className="place-detail">
@@ -109,34 +111,8 @@ export function PlacesSection({
       );
     }
 
-    if (placeId === "cinema") {
-      const rubles = user.player.rubles;
-      return (
-        <div className="place-detail">
-          {place.hint ? <p className="place-detail-lead">{place.hint}</p> : null}
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={busy}
-            onClick={() => {
-              if (rubles < 500) {
-                onToast("Не хватает денег", true);
-                return;
-              }
-              setBusy(true);
-              performAction("cinema")
-                .then((r) => {
-                  setUser(r.user);
-                  onToast(r.message);
-                })
-                .catch((e) => onToast(e instanceof Error ? e.message : "Ошибка", true))
-                .finally(() => setBusy(false));
-            }}
-          >
-            {busy ? "…" : "Купить билет"}
-          </button>
-        </div>
-      );
+    if (STUB_PLACE_IDS.has(placeId)) {
+      return <p className="shop-stub">Скоро</p>;
     }
 
     return <p className="shop-stub">Скоро</p>;
@@ -145,13 +121,12 @@ export function PlacesSection({
   return (
     <div className="city-grid places-grid">
       {CITY_PLACES.map((p) => {
-        const isEducation = p.id === "education";
-        const locked = isEducation && !user.isTest;
+        const locked = testOnlyLocked(isTest, p.testOnly);
         return (
           <CityGridButton
             key={p.id}
             title={p.title}
-            hint={locked ? "Скоро" : isEducation && user.isTest ? "Тест" : p.hint}
+            hint={testOnlyGridHint(isTest, p.testOnly, p.hint)}
             disabled={locked}
             onClick={() => onPlace(p.id)}
           />

@@ -3,6 +3,7 @@ import type { NavBackHandler } from "../navBack";
 import type { User } from "../api";
 import { CareerEducationPanel } from "./CareerEducationPanel";
 import { TestOnlyNotice } from "./TestOnlyNotice";
+import { testOnlyGridHint, testOnlyLocked } from "../testOnlyUi";
 import { CityGridButton } from "./ui/CityGridButton";
 
 type EduNav = "hub" | "secondary_edu" | "higher_edu";
@@ -52,14 +53,14 @@ export function EducationPlace({ user, setUser, onToast, registerBack, onExitPla
       <div className="city-grid shop-categories education-hub">
         <CityGridButton
           title="Среднее образование"
-          hint={isTest ? undefined : "Скоро"}
-          disabled={!isTest}
+          hint={testOnlyGridHint(isTest, true)}
+          disabled={testOnlyLocked(isTest, true)}
           onClick={() => setNav("secondary_edu")}
         />
         <CityGridButton
           title="Высшее образование"
-          hint={isTest ? undefined : "Скоро"}
-          disabled={!isTest}
+          hint={testOnlyGridHint(isTest, true)}
+          disabled={testOnlyLocked(isTest, true)}
           onClick={() => setNav("higher_edu")}
         />
       </div>
