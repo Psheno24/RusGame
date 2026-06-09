@@ -16,7 +16,7 @@ import {
   pickWeightedOrderTariff,
   TAXI_TARIFF_ORDER,
 } from "./taxiTariff.js";
-import { getCitySalaryMultiplier, skillPayoutMultiplier } from "./jobSalaries.js";
+import { getCitySalaryMultiplier } from "./jobSalaries.js";
 import { recordSkillAction, SKILL_LABELS } from "./skills.js";
 import { listPlayerCars, playerHasAnyCar } from "./playerCars.js";
 import {
@@ -179,8 +179,7 @@ function generateOrder(player: PlayerRow, orderTariff: string): TaxiOrder {
         ? randInt(35, 41) / 10
         : randInt(30, 34) / 10;
   const payment: "card" | "cash" = Math.random() < 0.38 ? "cash" : "card";
-  const skillMult = skillPayoutMultiplier(player, "taxi");
-  const payoutRub = taxiKmPayoutRub(distanceKm, orderTariff, demand.mult, cityMult, skillMult);
+  const payoutRub = taxiKmPayoutRub(distanceKm, orderTariff, demand.mult, cityMult);
 
   return {
     id: `o-${Date.now()}-${randInt(1000, 9999)}`,
