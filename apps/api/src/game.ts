@@ -52,10 +52,6 @@ import {
   workPayoutMultiplier,
 } from "./playerStats.js";
 import { applyCarCooldownReduction, hasDriverLicense } from "./playerCars.js";
-import {
-  educationBlockMessage,
-  educationBlocksMainWork,
-} from "./education.js";
 import { sleepBlockMessage } from "./playerSleep.js";
 import { playerMeetsSimTariff, syncPlayerSimTariffBilling, type SimTariffId } from "./simTariff.js";
 import {
@@ -116,9 +112,6 @@ function cooldownBlockedMessage(remainingMs: number): string {
 }
 
 function checkJobRequirements(player: PlayerRow, job: JobDef, jobId?: string): string | null {
-  if (educationBlocksMainWork(player, jobId)) {
-    return educationBlockMessage();
-  }
   if (job.requiresDriversLicense && !hasDriverLicense(player, "B")) {
     return "Нужны права категории B — оформите в полиции";
   }
@@ -269,8 +262,6 @@ export function applyJob(
     if (!shouldOfferEmergencyLoader(player, now)) {
       return { ok: false, error: "Подработка «Грузчик» недоступна" };
     }
-  } else if (educationBlocksMainWork(player, jobId)) {
-    return { ok: false, error: educationBlockMessage() };
   } else {
     const guestErr = requireCityResident(player, now);
     if (guestErr) return { ok: false, error: guestErr, code: "guest_no_housing" };

@@ -10,7 +10,7 @@ import {
   clampVital,
   scaleWorkCosts,
 } from "./playerStats.js";
-import { hasHigherEducation, hasSecondaryEducation, isEnrolledInEducation } from "./education.js";
+import { hasHigherEducation, hasSecondaryEducation } from "./education.js";
 
 const MS_HOUR = 60 * 60 * 1000;
 
@@ -45,9 +45,6 @@ export function canPromoteCareer(
   player: PlayerRow,
   now = Date.now(),
 ): { ok: true; level: ReturnType<typeof careerLevels>[number] } | { ok: false; error: string } {
-  if (isEnrolledInEducation(player)) {
-    return { ok: false, error: "Во время обучения карьера недоступна" };
-  }
   const next = nextCareerLevel(player);
   if (!next) return { ok: false, error: "Вы достигли максимального уровня карьеры" };
 
@@ -106,9 +103,6 @@ export function doCareerShift(
   player: PlayerRow,
   now = Date.now(),
 ): { ok: true; payout: number; message: string } | { ok: false; error: string } {
-  if (isEnrolledInEducation(player)) {
-    return { ok: false, error: "Во время обучения доступны только подработки" };
-  }
   const level = currentCareerLevel(player);
   if (!level) {
     return { ok: false, error: "Сначала получите должность стажёра" };

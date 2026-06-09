@@ -53,6 +53,28 @@ export function rollDemandMult(): { key: string; mult: number } {
   return { key: d.key, mult: d.mult };
 }
 
+/** Время и дистанция заказа — как в Омске; город влияет только на ₽/км. */
+export function rollTaxiOrderTrip(tripMinutesMin: number, tripMinutesMax: number): {
+  tripMinutes: number;
+  distanceKm: number;
+  demand: { key: string; mult: number };
+} {
+  const cfg = taxiBible();
+  const tripMinutes = randInt(tripMinutesMin, tripMinutesMax);
+  const pickup = randInt(cfg.pickupMinMin, Math.min(cfg.pickupMaxMin, tripMinutes - 1));
+  const travelMin = tripMinutes - pickup;
+  const demand = rollDemandMult();
+  const speed =
+    demand.key === "peak" || demand.key === "surge"
+      ? cfg.speedMinPerKm.peak
+      : cfg.speedMinPerKm.normal;
+  const distanceKm = Math.max(
+    0.5,
+    Math.round((travelMin / speed) * (randInt(90, 110) / 100) * 10) / 10,
+  );
+  return { tripMinutes, distanceKm, demand };
+}
+
 export function tripMinutesFromKm(km: number, demandKey: string): number {
   const cfg = taxiBible();
   const pickup = randInt(cfg.pickupMinMin, cfg.pickupMaxMin);

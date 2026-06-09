@@ -679,6 +679,11 @@ function migrate(database: Database.Database) {
         "ALTER TABLE notification_prefs ADD COLUMN relocation INTEGER NOT NULL DEFAULT 0",
       );
     }
+    if (!colsNotifPrefs.some((c) => c.name === "education_ready")) {
+      database.exec(
+        "ALTER TABLE notification_prefs ADD COLUMN education_ready INTEGER NOT NULL DEFAULT 0",
+      );
+    }
   }
 }
 

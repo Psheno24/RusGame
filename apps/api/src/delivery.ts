@@ -71,19 +71,28 @@ function generateOrder(player: PlayerRow, now: number): DeliveryOrder {
       { ratePerKm: number; minKm: number; maxKm: number; minPerKm: number }
     >;
     modifiers: Record<DeliveryModifier, number>;
+    maxTripMinutes?: number;
   };
   const transport = detectTransport(player, now);
   const cfg = bible.transport[transport];
-  const distanceKm = randInt(cfg.minKm * 10, cfg.maxKm * 10) / 10;
+  let distanceKm = randInt(cfg.minKm * 10, cfg.maxKm * 10) / 10;
   const modifier = pickModifier();
   const modMult = bible.modifiers[modifier] ?? 1;
   const cityMult = getCityEconomyMultiplier(player.city_id);
+  let effectiveMinPerKm = cfg.minPerKm * randInt(90, 110) / 100;
+  let tripMinutes = Math.max(1, Math.round(distanceKm * effectiveMinPerKm));
+
+  const maxTripMinutes = bible.maxTripMinutes ?? 45;
+  if (tripMinutes > maxTripMinutes) {
+    const scale = maxTripMinutes / tripMinutes;
+    tripMinutes = maxTripMinutes;
+    distanceKm = Math.max(0.5, Math.round(distanceKm * scale * 10) / 10);
+  }
+
   const basePayoutRub = Math.max(
     100,
     Math.round(distanceKm * cfg.ratePerKm * modMult * cityMult),
   );
-  const effectiveMinPerKm = cfg.minPerKm * randInt(90, 110) / 100;
-  const tripMinutes = Math.max(1, Math.round(distanceKm * effectiveMinPerKm));
 
   return {
     id: `d-${Date.now()}-${randInt(1000, 9999)}`,

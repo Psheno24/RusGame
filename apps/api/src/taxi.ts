@@ -39,10 +39,8 @@ import { jobCityId, validateJobWorkAccess } from "./jobLocation.js";
 import { isVehicleRentalActive } from "./vehicleRental.js";
 import {
   cashPaymentRiskChances,
-  rollDemandMult,
-  rollTripKm,
+  rollTaxiOrderTrip,
   taxiKmPayoutRub,
-  tripMinutesFromKm,
   type TaxiCashRiskConfig,
 } from "./taxiPayout.js";
 
@@ -159,9 +157,10 @@ export function listTaxiCarOptions(player: PlayerRow, now = Date.now()): TaxiCar
 function generateOrder(player: PlayerRow, orderTariff: string): TaxiOrder {
   const cityMult = getCitySalaryMultiplier(player.city_id);
   const tariffDef = taxiConfig.tariffs[orderTariff] ?? taxiConfig.tariffs.economy!;
-  const distanceKm = rollTripKm();
-  const demand = rollDemandMult();
-  const tripMinutes = tripMinutesFromKm(distanceKm, demand.key);
+  const { tripMinutes, distanceKm, demand } = rollTaxiOrderTrip(
+    taxiConfig.tripMinutesMin,
+    taxiConfig.tripMinutesMax,
+  );
   const passengerRating =
     Math.random() < 0.65
       ? randInt(42, 50) / 10

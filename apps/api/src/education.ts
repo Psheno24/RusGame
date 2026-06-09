@@ -4,6 +4,10 @@ import { getPlayer, updatePlayer } from "./db.js";
 import { appendPlayerFeed } from "./playerFeed.js";
 import { educationEnrollmentReputationGain, workEnergyCost } from "./balanceBible.js";
 import {
+  cancelEducationLessonReadyPush,
+  scheduleEducationLessonReadyPush,
+} from "./pushNotifications.js";
+import {
   EDUCATION_DIRECTION_LABELS,
   EDUCATION_TIER_LABELS,
   getInstitution,
@@ -11,7 +15,6 @@ import {
   type EducationInstitution,
   type EducationTier,
 } from "./educationCatalog.js";
-import { isEmergencyLoaderJobId } from "./emergencyLoader.js";
 import { formatDuration } from "./formatDuration.js";
 import {
   clampReputation,
@@ -84,16 +87,6 @@ export function hasHigherEducation(player: PlayerRow): boolean {
   return (player.education_tier ?? "none") === "higher";
 }
 
-export function educationBlocksMainWork(player: PlayerRow, jobId?: string | null): boolean {
-  if (!isEnrolledInEducation(player)) return false;
-  if (jobId && isEmergencyLoaderJobId(jobId)) return false;
-  return true;
-}
-
-export function educationBlockMessage(): string {
-  return "Во время обучения недоступно — только подработки";
-}
-
 function lessonCooldownRemaining(enrollment: EducationEnrollment, now: number): number {
   if (enrollment.lastLessonAt == null) return 0;
   return Math.max(0, enrollment.lastLessonAt + LESSON_COOLDOWN_MS - now);
@@ -145,10 +138,6 @@ export function canEnrollInInstitution(
     return { ok: false, error: "Вы уже учитесь — можно быть только в одном заведении" };
   }
 
-  if (player.job_id && !isEmergencyLoaderJobId(player.job_id)) {
-    return { ok: false, error: "Сначала увольтесь с основной работы" };
-  }
-
   if (institution.tier === "higher" && !hasSecondaryEducation(player)) {
     return { ok: false, error: "Нужно среднее профессиональное образование" };
   }
@@ -178,10 +167,6 @@ export function enrollInInstitution(
   const institution = getInstitution(institutionId)!;
   const { costRub, resumeSessionsDone } = check.quote;
 
-  const energyCost = scaleWorkCosts(player, {
-    energy: workEnergyCost("education"),
-  })?.energy;
-
   const enrollment: EducationEnrollment = {
     institutionId,
     sessionsDone: resumeSessionsDone,
@@ -194,9 +179,6 @@ export function enrollInInstitution(
     rubles: player.rubles - costRub,
     education_enrollment: JSON.stringify(enrollment),
     education_dropout: null,
-    energy: energyCost
-      ? clampVital("energy", (player.energy ?? 80) - energyCost)
-      : player.energy,
     reputation: clampReputation((player.reputation ?? 0) + educationEnrollmentReputationGain()),
   });
 
@@ -233,16 +215,25 @@ export function attendLesson(
     return { ok: false, error: "Обучение уже завершено" };
   }
 
+  const energyCost = scaleWorkCosts(player, {
+    energy: workEnergyCost("education"),
+  })?.energy ?? 5;
+  if ((player.energy ?? 0) < energyCost) {
+    return { ok: false, error: "Недостаточно энергии для занятия" };
+  }
+
   const nextDone = enrollment.sessionsDone + 1;
   const completed = nextDone >= enrollment.sessionsTotal;
 
   if (completed) {
+    cancelEducationLessonReadyPush(player.user_id);
     updatePlayer(player.user_id, {
       education: institution.direction,
       education_tier: institution.tier,
       education_enrollment: null,
       education_dropout: null,
       education_ends_at: null,
+      energy: clampVital("energy", (player.energy ?? 80) - energyCost),
     });
     appendPlayerFeed(
       player.user_id,
@@ -263,6 +254,10 @@ export function attendLesson(
     lastLessonAt: now,
   };
   saveEnrollment(player.user_id, next);
+  updatePlayer(player.user_id, {
+    energy: clampVital("energy", (player.energy ?? 80) - energyCost),
+  });
+  scheduleEducationLessonReadyPush(player.user_id, now + LESSON_COOLDOWN_MS);
   appendPlayerFeed(
     player.user_id,
     "education:lesson",
@@ -289,6 +284,7 @@ export function dropoutFromEducation(
     sessionsDone: enrollment.sessionsDone,
     droppedAt: now,
   });
+  cancelEducationLessonReadyPush(player.user_id);
   updatePlayer(player.user_id, { education_enrollment: null });
 
   appendPlayerFeed(
@@ -308,6 +304,7 @@ export function dropoutFromEducation(
 }
 
 export function educationStatus(player: PlayerRow, now = Date.now()) {
+  syncEducationLessonPush(player, now);
   const enrollment = parseEnrollment(player);
   const institution = enrollment ? getInstitution(enrollment.institutionId) : null;
   const lessonCooldownMs = enrollment ? lessonCooldownRemaining(enrollment, now) : 0;
@@ -405,8 +402,19 @@ export function startEducation(
   return enrollInInstitution(player, institutionId, now);
 }
 
-export function syncEducation(player: PlayerRow, _now = Date.now()): PlayerRow {
+export function syncEducation(player: PlayerRow, now = Date.now()): PlayerRow {
+  syncEducationLessonPush(player, now);
   return player;
+}
+
+function syncEducationLessonPush(player: PlayerRow, now = Date.now()) {
+  cancelEducationLessonReadyPush(player.user_id);
+  const enrollment = parseEnrollment(player);
+  if (!enrollment || enrollment.sessionsDone >= enrollment.sessionsTotal) return;
+  const remaining = lessonCooldownRemaining(enrollment, now);
+  if (remaining > 0) {
+    scheduleEducationLessonReadyPush(player.user_id, now + remaining);
+  }
 }
 
 export function listInstitutionsForTier(tier: EducationTier) {

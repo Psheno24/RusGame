@@ -57,15 +57,10 @@ export function CareerEducationPanel({
     }
   };
 
-  const enrolled = Boolean(edu?.enrolled);
-
   return (
     <div className="card">
       <CitySectionHeader title="Карьера" onBack={onBack} backLabel={backLabel} />
       {testOnly ? <TestOnlyNotice /> : null}
-      {enrolled && (
-        <p className="muted">Идёт обучение — карьера недоступна, доступны только подработки.</p>
-      )}
 
       {career && (
         <div className="job-detail">
@@ -95,7 +90,7 @@ export function CareerEducationPanel({
             <button
               type="button"
               className="btn btn-secondary"
-              disabled={busy || !career.canPromote || enrolled}
+              disabled={busy || !career.canPromote}
               onClick={() => void run(() => careerPromote())}
             >
               Повышение
@@ -103,7 +98,7 @@ export function CareerEducationPanel({
             <button
               type="button"
               className="btn btn-primary"
-              disabled={busy || career.level === "none" || enrolled}
+              disabled={busy || career.level === "none"}
               onClick={() => void run(() => careerShift())}
             >
               Рабочая смена

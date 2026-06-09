@@ -84,6 +84,10 @@ export async function setRelocationNotifications(enabled: boolean): Promise<stri
   return setPref("relocation", enabled);
 }
 
+export async function setEducationReadyNotifications(enabled: boolean): Promise<string | null> {
+  return setPref("educationReady", enabled);
+}
+
 export async function loadNotificationPrefs() {
   const { prefs } = await fetchNotificationPrefs();
   return prefs;

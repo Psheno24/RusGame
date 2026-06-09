@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   cashPaymentRiskChances,
+  rollTaxiOrderTrip,
   rollTripMinutes,
+  taxiKmPayoutRub,
   tripHourlyRateRub,
   tripPayoutRub,
   type TaxiCashRiskConfig,
@@ -55,5 +57,16 @@ describe("taxiPayout", () => {
     assert.ok(bad.noPayChance > good.noPayChance);
     assert.ok(bad.partialPayChance > good.partialPayChance);
     assert.ok(bad.noPayChance < 0.08);
+  });
+
+  it("rollTaxiOrderTrip keeps 5–45 min regardless of city payout mult", () => {
+    for (let i = 0; i < 200; i++) {
+      const { tripMinutes, distanceKm } = rollTaxiOrderTrip(5, 45);
+      assert.ok(tripMinutes >= 5 && tripMinutes <= 45);
+      assert.ok(distanceKm >= 0.5 && distanceKm <= 20);
+    }
+    const omskPay = taxiKmPayoutRub(5, "economy", 1, 1);
+    const moscowPay = taxiKmPayoutRub(5, "economy", 1, 4);
+    assert.equal(moscowPay, omskPay * 4);
   });
 });

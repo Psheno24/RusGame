@@ -20,7 +20,12 @@ export function registerNotificationRoutes(app: FastifyInstance): void {
   });
 
   app.patch<{
-    Body: { shiftReady?: boolean; housingPayment?: boolean; relocation?: boolean };
+    Body: {
+      shiftReady?: boolean;
+      housingPayment?: boolean;
+      relocation?: boolean;
+      educationReady?: boolean;
+    };
   }>("/api/notifications/prefs", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
@@ -30,6 +35,8 @@ export function registerNotificationRoutes(app: FastifyInstance): void {
       housingPayment:
         typeof body.housingPayment === "boolean" ? body.housingPayment : undefined,
       relocation: typeof body.relocation === "boolean" ? body.relocation : undefined,
+      educationReady:
+        typeof body.educationReady === "boolean" ? body.educationReady : undefined,
     });
     return { prefs };
   });

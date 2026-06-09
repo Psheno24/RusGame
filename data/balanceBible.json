@@ -56,7 +56,7 @@
       "taxi": 3,
       "cashier": 15,
       "night_guard": 25,
-      "education": 20,
+      "education": 5,
       "career": 15
     },
     "sleepFullMs": 14400000
@@ -205,6 +205,7 @@
       "night": 1.5
     },
     "modifierWeights": { "short": 0.15, "normal": 0.45, "urgent": 0.2, "heavy": 0.12, "night": 0.08 },
+    "maxTripMinutes": 45,
     "events": {
       "tips": { "chance": 0.15, "bonusMin": 500, "bonusMax": 3000 },
       "regularClient": { "chance": 0.05, "payMult": 1.5 },

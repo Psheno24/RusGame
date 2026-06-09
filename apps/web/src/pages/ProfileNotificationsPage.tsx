@@ -4,12 +4,13 @@ import { useNotice } from "../noticeContext";
 import {
   loadNotificationPrefs,
   pushSupported,
+  setEducationReadyNotifications,
   setHousingPaymentNotifications,
   setRelocationNotifications,
   setShiftReadyNotifications,
 } from "../pushNotifications";
 
-type ToggleKey = "shiftReady" | "housingPayment" | "relocation";
+type ToggleKey = "shiftReady" | "housingPayment" | "relocation" | "educationReady";
 
 const TOGGLES: Array<{
   key: ToggleKey;
@@ -35,6 +36,12 @@ const TOGGLES: Array<{
     desc: "Когда поездка в другой город завершена",
     enable: setRelocationNotifications,
   },
+  {
+    key: "educationReady",
+    title: "Образование",
+    desc: "Когда снова можно пойти на занятие (раз в сутки)",
+    enable: setEducationReadyNotifications,
+  },
 ];
 
 export function ProfileNotificationsPage() {
@@ -43,6 +50,7 @@ export function ProfileNotificationsPage() {
     shiftReady: false,
     housingPayment: false,
     relocation: false,
+    educationReady: false,
   });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<ToggleKey | null>(null);
@@ -57,6 +65,7 @@ export function ProfileNotificationsPage() {
             shiftReady: loaded.shiftReady,
             housingPayment: loaded.housingPayment,
             relocation: loaded.relocation,
+            educationReady: loaded.educationReady,
           });
         }
       })

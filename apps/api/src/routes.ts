@@ -108,6 +108,7 @@ import {
   quoteHousingPurchase,
 } from "./housingShop.js";
 import { jobAccessStatus, jobCityId } from "./jobLocation.js";
+import { employmentSwitchBlock } from "./workCooldown.js";
 import {
   changePlateDigits,
   changePlateLetters,
@@ -289,12 +290,16 @@ export async function registerRoutes(app: FastifyInstance) {
       physicallyHere: boolean;
       residentHere: boolean;
       workBlockedReason: string | null;
+      switchBlocked: boolean;
+      switchBlockedReason: string | null;
+      switchBlockedRemainingMs: number;
     } | null = null;
     if (player.job_id) {
       const wc = workCityIdForPlayer(player, player.job_id);
       const aj = wc ? findCityJob(wc, player.job_id) : null;
       if (aj && wc) {
         const access = jobAccessStatus(player, player.job_id, now);
+        const switchBlock = employmentSwitchBlock(player, now);
         activeEmployment = {
           job: jobPayload(aj),
           workCityId: wc,
@@ -302,6 +307,9 @@ export async function registerRoutes(app: FastifyInstance) {
           physicallyHere: access.physicallyHere,
           residentHere: access.residentHere,
           workBlockedReason: access.error,
+          switchBlocked: switchBlock.blocked,
+          switchBlockedReason: switchBlock.reason,
+          switchBlockedRemainingMs: switchBlock.remainingMs,
         };
       }
     }

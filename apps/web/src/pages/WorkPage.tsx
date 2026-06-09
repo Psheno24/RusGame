@@ -4,21 +4,16 @@ import { type JobView } from "../api";
 import { fetchCityCached, invalidateCityCache } from "../cityDataCache";
 import { useIntervalTick } from "../hooks/useIntervalTick";
 import { JobsSection } from "../components/JobsSection";
-import { WorkEducationPanel } from "../components/WorkEducationPanel";
 import { TravelingCard } from "../components/TravelingCard";
-import { WORK_HUB_ICONS } from "../gridIcons";
-import { CityGridButton } from "../components/ui/CityGridButton";
 import { useApp } from "../context";
 import { useNotice } from "../noticeContext";
 import { useNavBackSlot } from "../navBack";
-import { useWorkNav } from "../workNav";
 import type { ToastFn } from "../hooks/useToastRef";
 import type { CityOpenState } from "./cityRouteState";
 
 export function WorkPage() {
   const { user, setUser } = useApp();
   const { showNotice } = useNotice();
-  const workNav = useWorkNav();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { register: registerSectionBack } = useNavBackSlot();
@@ -34,10 +29,8 @@ export function WorkPage() {
   const [traveling, setTraveling] = useState(false);
   const [arrivesAt, setArrivesAt] = useState<number | null>(null);
   const [dataReady, setDataReady] = useState(false);
-  const [workHub, setWorkHub] = useState<"hub" | "work" | "education">("hub");
 
   const employedId = user?.player.jobId ?? null;
-  const educationEnrolled = Boolean(user?.player.educationEnrolled);
 
   const load = useCallback(async (force = false) => {
     const data = await fetchCityCached(force);
@@ -47,7 +40,7 @@ export function WorkPage() {
     setWorkAccess(data.workAccess ?? null);
     setActiveEmployment(data.activeEmployment ?? null);
     setTraveling(data.traveling);
-    setArrivesAt(data.travelArrivesAt);
+    setTravelArrivesAt(data.travelArrivesAt);
     setUser((prev) => (prev ? { ...prev, player: data.player } : prev));
     setDataReady(true);
   }, [setUser]);
@@ -61,7 +54,6 @@ export function WorkPage() {
 
   useEffect(() => {
     if (searchParams.get("panel") !== "job") return;
-    setWorkHub("work");
     setSearchParams({}, { replace: true });
   }, [searchParams, setSearchParams]);
 
@@ -72,23 +64,9 @@ export function WorkPage() {
     if (Date.now() >= arrivesAt) load();
   }, [traveling, arrivesAt, load, tick]);
 
-  useEffect(() => {
-    workNav?.registerReset(() => {
-      if (educationEnrolled) setWorkHub("hub");
-    });
-    return () => workNav?.registerReset(null);
-  }, [workNav, educationEnrolled]);
-
-  useEffect(() => {
-    if (!educationEnrolled) setWorkHub("work");
-  }, [educationEnrolled]);
-
   const showToast = useCallback<ToastFn>((msg, isErr = false) => {
     showNotice(msg, isErr ? "error" : "success");
   }, [showNotice]);
-
-  const backToWorkHub = educationEnrolled ? () => setWorkHub("hub") : undefined;
-  const workHubBackLabel = "Моя работа";
 
   const goToVacancies = () => {
     navigate("/city", { state: { openSection: "jobs" } satisfies CityOpenState });
@@ -134,33 +112,6 @@ export function WorkPage() {
     );
   }
 
-  if (educationEnrolled && workHub === "hub") {
-    return (
-      <div className="card">
-        <h2>Моя работа</h2>
-        <div className="city-grid shop-categories jobs-menu-grid">
-          <CityGridButton title="Работа" icon={WORK_HUB_ICONS.work} onClick={() => setWorkHub("work")} />
-          <CityGridButton
-            title="Образование"
-            icon={WORK_HUB_ICONS.education}
-            onClick={() => setWorkHub("education")}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (educationEnrolled && workHub === "education") {
-    return (
-      <WorkEducationPanel
-        user={user}
-        setUser={setUser}
-        onToast={showToast}
-        onBack={() => setWorkHub("hub")}
-      />
-    );
-  }
-
   if (!employedId) {
     if (workAccess?.needsHousing) {
       return (
@@ -193,15 +144,13 @@ export function WorkPage() {
             await load(true);
           }}
           listMode="vacancies"
-          onBack={backToWorkHub}
-          backLabel={workHubBackLabel}
         />
       );
     }
     return (
       <div className="card work-empty-card">
         <h2 className="work-empty-title">Сейчас вы не трудоустроены</h2>
-        <p className="work-empty-hint">Откройте вакансии в городе и выберите доступную работу.</p>
+        <p className="work-empty-hint">Откройте вакансии в городе и выберите доступную подработку.</p>
         <button type="button" className="btn btn-primary" onClick={goToVacancies}>
           Перейти к вакансиям
         </button>
@@ -239,8 +188,6 @@ export function WorkPage() {
         await load(true);
       }}
       listMode="none"
-      onBack={backToWorkHub}
-      backLabel={workHubBackLabel}
     />
   );
 }

@@ -164,8 +164,10 @@ function hireDisabledReason(opts: {
   busy: boolean;
   requirementsMet: boolean;
   shiftCooldownMs?: number;
+  blockReason?: string;
 }): string | undefined {
   if (opts.busy) return "подождите";
+  if (opts.blockReason) return opts.blockReason;
   if (opts.shiftCooldownMs != null && opts.shiftCooldownMs > 0) return "дождитесь смены";
   if (!opts.requirementsMet) return "не выполнены требования";
   return undefined;
@@ -299,6 +301,9 @@ export function JobsSection({
     [employedCooldownRaw, user.isTest, scheduleTick],
   );
   const employmentBlocked = employedId != null && !employedCooldown.ready;
+  const switchBlocked = activeEmployment?.switchBlocked ?? false;
+  const switchBlockedReason = activeEmployment?.switchBlockedReason ?? undefined;
+  const switchBlockedRemainingMs = activeEmployment?.switchBlockedRemainingMs ?? 0;
 
   useEffect(() => {
     if (listMode === "none") {
@@ -373,9 +378,11 @@ export function JobsSection({
   };
 
   const requestApply = (job: JobCard) => {
-    if (employmentBlocked) {
+    if (switchBlocked) {
       onToast(
-        `Смена работы недоступна. Дождитесь окончания смены (${formatDuration(employedCooldown.remainingMs)})`,
+        switchBlockedRemainingMs > 0
+          ? `Смена работы недоступна. ${switchBlockedReason ?? "Подождите"} (${formatDuration(switchBlockedRemainingMs)})`
+          : `Смена работы недоступна: ${switchBlockedReason ?? "завершите текущую активность"}`,
         true,
       );
       return;
@@ -496,13 +503,13 @@ export function JobsSection({
       requirementsMet &&
       !employed &&
       !busy &&
-      (!employedId || (!employmentBlocked && employedId !== selected.id));
+      (!employedId || (!switchBlocked && employedId !== selected.id));
 
     const leftRemainingMs =
       employed && !selectedCooldown.ready
         ? selectedCooldown.remainingMs
-        : !employed && employedId && employedId !== selected.id && employmentBlocked
-          ? employedCooldown.remainingMs
+        : !employed && employedId && employedId !== selected.id && switchBlocked
+          ? switchBlockedRemainingMs
           : undefined;
 
     const hireReason =
@@ -511,6 +518,10 @@ export function JobsSection({
             busy,
             requirementsMet,
             shiftCooldownMs: leftRemainingMs,
+            blockReason:
+              !employed && employedId && employedId !== selected.id && switchBlocked
+                ? switchBlockedReason
+                : undefined,
           })
         : undefined;
 

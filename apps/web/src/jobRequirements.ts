@@ -40,7 +40,6 @@ export function buildJobRequirements(
 ): JobRequirement[] {
   const licenseCategories = new Set(player.driverLicenseCategories ?? []);
   const hasLicenseB = licenseCategories.has("B");
-  const isLoader = job.templateKey === "loader";
   const reqs: JobRequirement[] = [
     {
       label: `Сейчас в ${opts.workCityName}`,
@@ -81,15 +80,6 @@ export function buildJobRequirements(
       ok: hasCar,
       status: hasCar ? undefined : "нет",
     });
-  }
-  if (!isLoader && player.educationEnrolled) {
-    reqs.push({
-      label: "Не на обучении",
-      ok: false,
-      status: "учитесь",
-    });
-  } else if (!isLoader) {
-    reqs.push({ label: "Не на обучении", ok: true });
   }
   if (job.skill && job.skillMin != null) {
     const skillVal = player.skills[job.skill as keyof typeof player.skills] ?? 0;

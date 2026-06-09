@@ -504,6 +504,9 @@ export async function fetchCity() {
       physicallyHere: boolean;
       residentHere: boolean;
       workBlockedReason: string | null;
+      switchBlocked: boolean;
+      switchBlockedReason: string | null;
+      switchBlockedRemainingMs: number;
     } | null;
     traveling: boolean;
     travelArrivesAt: number | null;
@@ -1711,6 +1714,7 @@ export type NotificationPrefs = {
   shiftReady: boolean;
   housingPayment: boolean;
   relocation: boolean;
+  educationReady: boolean;
 };
 
 export async function fetchVapidPublicKey() {

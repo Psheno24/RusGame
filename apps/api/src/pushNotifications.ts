@@ -10,6 +10,7 @@ export type NotificationPrefs = {
   shiftReady: boolean;
   housingPayment: boolean;
   relocation: boolean;
+  educationReady: boolean;
 };
 
 export type PushScheduleKind =
@@ -17,7 +18,8 @@ export type PushScheduleKind =
   | "taxi_trip_end"
   | "delivery_trip_end"
   | "housing_payment"
-  | "travel_arrive";
+  | "travel_arrive"
+  | "education_lesson_ready";
 
 type PushPayload = {
   title: string;
@@ -40,16 +42,19 @@ export function getVapidPublicKey(): string {
 export function getNotificationPrefs(userId: number): NotificationPrefs {
   const row = getDb()
     .prepare(
-      "SELECT shift_ready, housing_payment, relocation FROM notification_prefs WHERE user_id = ?",
+      "SELECT shift_ready, housing_payment, relocation, education_ready FROM notification_prefs WHERE user_id = ?",
     )
     .get(userId) as
-    | { shift_ready: number; housing_payment: number; relocation: number }
+    | { shift_ready: number; housing_payment: number; relocation: number; education_ready?: number }
     | undefined;
-  if (!row) return { shiftReady: false, housingPayment: false, relocation: false };
+  if (!row) {
+    return { shiftReady: false, housingPayment: false, relocation: false, educationReady: false };
+  }
   return {
     shiftReady: row.shift_ready === 1,
     housingPayment: row.housing_payment === 1,
     relocation: row.relocation === 1,
+    educationReady: (row.education_ready ?? 0) === 1,
   };
 }
 
@@ -62,15 +67,17 @@ export function updateNotificationPrefs(
     shiftReady: patch.shiftReady ?? cur.shiftReady,
     housingPayment: patch.housingPayment ?? cur.housingPayment,
     relocation: patch.relocation ?? cur.relocation,
+    educationReady: patch.educationReady ?? cur.educationReady,
   };
   getDb()
     .prepare(
-      `INSERT INTO notification_prefs (user_id, shift_ready, taxi_trip_end, housing_payment, relocation, updated_at)
-       VALUES (?, ?, 0, ?, ?, ?)
+      `INSERT INTO notification_prefs (user_id, shift_ready, taxi_trip_end, housing_payment, relocation, education_ready, updated_at)
+       VALUES (?, ?, 0, ?, ?, ?, ?)
        ON CONFLICT(user_id) DO UPDATE SET
          shift_ready = excluded.shift_ready,
          housing_payment = excluded.housing_payment,
          relocation = excluded.relocation,
+         education_ready = excluded.education_ready,
          updated_at = excluded.updated_at`,
     )
     .run(
@@ -78,6 +85,7 @@ export function updateNotificationPrefs(
       next.shiftReady ? 1 : 0,
       next.housingPayment ? 1 : 0,
       next.relocation ? 1 : 0,
+      next.educationReady ? 1 : 0,
       Date.now(),
     );
   return next;
@@ -146,6 +154,14 @@ export function scheduleDeliveryTripEndPush(userId: number, fireAt: number) {
   schedulePush(userId, "delivery_trip_end", fireAt, {});
 }
 
+export function scheduleEducationLessonReadyPush(userId: number, fireAt: number) {
+  schedulePush(userId, "education_lesson_ready", fireAt, {});
+}
+
+export function cancelEducationLessonReadyPush(userId: number) {
+  cancelPendingSchedule(userId, "education_lesson_ready");
+}
+
 export function scheduleTravelArrivePush(userId: number, cityId: string, fireAt: number) {
   const city = getCity(cityId);
   schedulePush(userId, "travel_arrive", fireAt, { cityId, cityName: city?.name ?? cityId });
@@ -204,6 +220,8 @@ function prefEnabledForKind(prefs: NotificationPrefs, kind: PushScheduleKind): b
       return prefs.housingPayment;
     case "travel_arrive":
       return prefs.relocation;
+    case "education_lesson_ready":
+      return prefs.educationReady;
     default:
       return false;
   }
@@ -255,6 +273,12 @@ function buildPushPayload(kind: PushScheduleKind, payloadJson: string): PushPayl
         url: "/map?panel=travel",
       };
     }
+    case "education_lesson_ready":
+      return {
+        title: "Можно идти на занятие",
+        body: "Образование",
+        url: "/city?panel=education",
+      };
     default:
       return { title: "", body: "", url: "/" };
   }

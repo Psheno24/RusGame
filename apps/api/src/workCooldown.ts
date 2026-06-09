@@ -7,7 +7,8 @@ import {
   nightGuardCooldownMsAtWork,
 } from "./jobShift.js";
 import { scaleCooldownMs } from "./testAccount.js";
-import { taxiBlocksWork } from "./playerTaxi.js";
+import { deliveryBlocksWork, parseDeliveryState } from "./playerDelivery.js";
+import { parseTaxiState } from "./playerTaxi.js";
 
 export function formatCooldown(readyAt: number, now = Date.now()): { ready: boolean; remainingMs: number } {
   const remainingMs = Math.max(0, readyAt - now);
@@ -158,15 +159,47 @@ export function canWorkJobNow(
   return { ok: st.ready, remainingMs: st.remainingMs };
 }
 
+/** Нельзя устроиться на другую работу: смена, доставка, такси. */
+export function employmentSwitchBlock(
+  player: PlayerRow,
+  now = Date.now(),
+): { blocked: boolean; reason: string | null; remainingMs: number } {
+  if (!player.job_id) return { blocked: false, reason: null, remainingMs: 0 };
+
+  if (deliveryBlocksWork(player, now)) {
+    const trip = parseDeliveryState(player)?.activeTrip;
+    return {
+      blocked: true,
+      reason: "дождитесь доставки",
+      remainingMs: trip ? Math.max(0, trip.endsAt - now) : 0,
+    };
+  }
+
+  const taxi = parseTaxiState(player);
+  if (taxi?.activeTrip) {
+    return {
+      blocked: true,
+      reason: "дождитесь поездки",
+      remainingMs: Math.max(0, taxi.activeTrip.endsAt - now),
+    };
+  }
+  if (taxi?.onLine) {
+    return { blocked: true, reason: "сойдите с линии такси", remainingMs: 0 };
+  }
+
+  const st = canWorkJobNow(player, player.job_id, now);
+  if (!st.ok) {
+    return { blocked: true, reason: "дождитесь смены", remainingMs: st.remainingMs };
+  }
+
+  return { blocked: false, reason: null, remainingMs: 0 };
+}
+
 /** Игрок на смене (КД после работы) — нельзя уволиться, сменить работу, уехать. */
 export function activeJobShiftBlock(
   player: PlayerRow,
   now = Date.now(),
 ): { blocked: boolean; remainingMs: number } {
-  if (!player.job_id) return { blocked: false, remainingMs: 0 };
-  if (taxiBlocksWork(player)) {
-    return { blocked: true, remainingMs: 60 * 60 * 1000 };
-  }
-  const st = canWorkJobNow(player, player.job_id, now);
-  return { blocked: !st.ok, remainingMs: st.remainingMs };
+  const sw = employmentSwitchBlock(player, now);
+  return { blocked: sw.blocked, remainingMs: sw.remainingMs };
 }
