@@ -253,15 +253,27 @@ export function HomePage() {
         ? housingExtend?.dormDisabledReason
         : housingExtend?.rentDisabledReason;
 
-  const extendConfirmText = canExtendDorm
-    ? `Продлить общежитие на ${housingExtend?.dormExtendLabel} за ${formatRub(housingExtend?.dormExtendRub)}?`
-    : `Продлить аренду на ${housingExtend?.rentExtendLabel} за ${formatRub(housingExtend?.rentExtendRub)}?`;
+  const extendConfirmText = `Продлить аренду на ${housingExtend?.rentExtendLabel} за ${formatRub(housingExtend?.rentExtendRub)}?`;
+
+  const onExtendDorm = async () => {
+    setBusy(true);
+    try {
+      const r = await payHousingDorm();
+      setUser(r.user);
+      showNotice(r.message, "success");
+      await load();
+    } catch (e) {
+      showNotice(e instanceof Error ? e.message : "Ошибка", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const onExtendRent = async () => {
     setExtendPending(false);
     setBusy(true);
     try {
-      const r = canExtendDorm ? await payHousingDorm() : await payHousingRent();
+      const r = await payHousingRent();
       setUser(r.user);
       showNotice(r.message, "success");
       await load();
@@ -321,15 +333,27 @@ export function HomePage() {
               Отдохнуть
             </button>
             {showExtendBtn ? (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={busy || (!canExtendDorm && !canExtendRent)}
-                title={extendDisabledReason ?? undefined}
-                onClick={() => setExtendPending(true)}
-              >
-                Продлить аренду
-              </button>
+              canExtendDorm ? (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={busy}
+                  title={extendDisabledReason ?? undefined}
+                  onClick={() => void onExtendDorm()}
+                >
+                  Продлить общежитие
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={busy || !canExtendRent}
+                  title={extendDisabledReason ?? undefined}
+                  onClick={() => setExtendPending(true)}
+                >
+                  Продлить аренду
+                </button>
+              )
             ) : housingType === "dorm" || housingType === "rent" ? (
               <button
                 type="button"
@@ -337,13 +361,13 @@ export function HomePage() {
                 disabled
                 title={extendDisabledReason ?? undefined}
               >
-                Продлить аренду
+                {housingType === "dorm" ? "Продлить общежитие" : "Продлить аренду"}
               </button>
             ) : null}
           </div>
         </div>
       )}
-      {extendPending && (
+      {extendPending && canExtendRent && (
         <ConfirmDialog
           title="Продлить аренду?"
           text={extendConfirmText}

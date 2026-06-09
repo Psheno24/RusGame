@@ -472,7 +472,7 @@ export function getHousingExtendInfo(player: PlayerRow, now = Date.now()): Housi
     canExtendRent,
     dormExtendRub: prices.dormRub,
     rentExtendRub: prices.rentRub,
-    dormExtendLabel: `+${config.dormHours} ч`,
+    dormExtendLabel: "+1 дн.",
     rentExtendLabel: `+${config.rentDays} дн.`,
     dormDisabledReason,
     rentDisabledReason,
@@ -775,8 +775,8 @@ function payDorm(player: PlayerRow, now: number): HousingPayResult {
   const days = Math.round((extend - (extending ? player.housing_expires_at! : now)) / MS_DAY);
   const msg =
     income > 0
-      ? `Общежитие на ${config.dormHours} ч (−${formatRub(prices.dormRub)}). Квартиры сданы/продлены (+${formatRub(income)}).`
-      : `Общежитие оплачено на ${config.dormHours} ч (−${formatRub(prices.dormRub)})`;
+      ? `Общежитие +1 дн. (−${formatRub(prices.dormRub)}). Квартиры сданы/продлены (+${formatRub(income)}).`
+      : `Общежитие оплачено на 1 дн. (−${formatRub(prices.dormRub)})`;
   appendPlayerFeed(player.user_id, "housing:dorm", msg, now);
   return { ok: true, message: msg };
 }

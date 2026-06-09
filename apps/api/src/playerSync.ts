@@ -11,6 +11,7 @@ import { jobCityId } from "./jobLocation.js";
 import { syncEducation } from "./education.js";
 import { syncPlayerVehicleRental } from "./vehicleRental.js";
 import { syncEmergencyLoaderEmployment } from "./emergencyLoader.js";
+import { syncHousingPaymentPush } from "./pushNotifications.js";
 
 /** Синхронизация состояния по серверному времени (прибытие, жильё, сим). */
 export function refreshPlayerState(userId: number, now = Date.now()) {
@@ -20,6 +21,7 @@ export function refreshPlayerState(userId: number, now = Date.now()) {
   player = syncPlayerSleep(player, now) ?? player;
   player = syncPlayerVehicleRental(player, now) ?? player;
   player = syncPlayerHousing(player, now);
+  syncHousingPaymentPush(player, now);
   syncPlayerSimTariffBilling(userId, now);
   syncPlayerCarMaintenance(userId, now);
   syncTaxiForPlayer(player, now);

@@ -19,18 +19,20 @@ export function registerNotificationRoutes(app: FastifyInstance): void {
     return { prefs: getNotificationPrefs(userId) };
   });
 
-  app.patch<{ Body: { shiftReady?: boolean } }>(
-    "/api/notifications/prefs",
-    async (req, reply) => {
-      const userId = await resolveUserId(req);
-      if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-      const body = req.body ?? {};
-      const prefs = updateNotificationPrefs(userId, {
-        shiftReady: typeof body.shiftReady === "boolean" ? body.shiftReady : undefined,
-      });
-      return { prefs };
-    },
-  );
+  app.patch<{
+    Body: { shiftReady?: boolean; housingPayment?: boolean; relocation?: boolean };
+  }>("/api/notifications/prefs", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const body = req.body ?? {};
+    const prefs = updateNotificationPrefs(userId, {
+      shiftReady: typeof body.shiftReady === "boolean" ? body.shiftReady : undefined,
+      housingPayment:
+        typeof body.housingPayment === "boolean" ? body.housingPayment : undefined,
+      relocation: typeof body.relocation === "boolean" ? body.relocation : undefined,
+    });
+    return { prefs };
+  });
 
   app.put<{ Body: { endpoint?: string; keys?: { p256dh?: string; auth?: string } } }>(
     "/api/notifications/subscription",

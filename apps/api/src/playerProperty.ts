@@ -7,6 +7,7 @@ import { getHousingProperty } from "./housingCatalog.js";
 import { housingStatusForPlayer, syncPlayerHousing } from "./housing.js";
 import { listPlayerCars, carBodyColorFromRow } from "./playerCars.js";
 import { formatLocaleDateRu } from "./formatLocaleDate.js";
+import { formatHousingRemaining } from "./formatDuration.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 import { isSubletActive, listOwnedHousing } from "./playerOwnedHousing.js";
 import { playerHasVehicleRentalRecord } from "./vehicleRental.js";
@@ -114,7 +115,7 @@ export function buildPropertyCards(player: PlayerRow, now = Date.now()): Propert
       id: "housing-rent",
       kind: "housing",
       title: `${p.housing_type === "rent" ? "Аренда" : "Общежитие"} (${cityLabel})`,
-      rightText: housing.expiresAt ? `до ${formatLocaleDateRu(housing.expiresAt)}` : null,
+      rightText: housing.expiresAt ? formatHousingRemaining(housing.expiresAt, now) : null,
       rightSubtext: null,
       plate: null,
       accent: "#4a6fa5",

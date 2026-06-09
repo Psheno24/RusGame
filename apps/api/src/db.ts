@@ -608,6 +608,8 @@ function migrate(database: Database.Database) {
       user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       shift_ready INTEGER NOT NULL DEFAULT 0,
       taxi_trip_end INTEGER NOT NULL DEFAULT 0,
+      housing_payment INTEGER NOT NULL DEFAULT 0,
+      relocation INTEGER NOT NULL DEFAULT 0,
       updated_at INTEGER NOT NULL
     );
 
@@ -647,6 +649,22 @@ function migrate(database: Database.Database) {
   const colsFuel = database.prepare("PRAGMA table_info(player_cars)").all() as { name: string }[];
   if (!colsFuel.some((c) => c.name === "fuel_level_l")) {
     database.exec("ALTER TABLE player_cars ADD COLUMN fuel_level_l REAL");
+  }
+
+  const colsNotifPrefs = database.prepare("PRAGMA table_info(notification_prefs)").all() as {
+    name: string;
+  }[];
+  if (colsNotifPrefs.length > 0) {
+    if (!colsNotifPrefs.some((c) => c.name === "housing_payment")) {
+      database.exec(
+        "ALTER TABLE notification_prefs ADD COLUMN housing_payment INTEGER NOT NULL DEFAULT 0",
+      );
+    }
+    if (!colsNotifPrefs.some((c) => c.name === "relocation")) {
+      database.exec(
+        "ALTER TABLE notification_prefs ADD COLUMN relocation INTEGER NOT NULL DEFAULT 0",
+      );
+    }
   }
 }
 

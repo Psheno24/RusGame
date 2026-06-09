@@ -1630,6 +1630,8 @@ export async function setTestAccountBalance(login: string, rubles: number) {
 
 export type NotificationPrefs = {
   shiftReady: boolean;
+  housingPayment: boolean;
+  relocation: boolean;
 };
 
 export async function fetchVapidPublicKey() {
@@ -1668,6 +1670,8 @@ export function formatHousingExpiry(ts: number | null): string {
   if (ts == null) return "";
   return formatLocaleDateRu(ts, { withTime: true });
 }
+
+export { formatHousingRemaining } from "./formatDuration.js";
 
 export { formatDuration } from "./formatDuration.js";
 export { formatRub, formatRubRange, formatRubPerHour, formatRubPerWeek, RUB_SUFFIX } from "./formatRub.js";

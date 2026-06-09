@@ -4,6 +4,7 @@ import {
   fetchVapidPublicKey,
   savePushSubscription,
   updateNotificationPrefs,
+  type NotificationPrefs,
 } from "./api";
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {
@@ -59,13 +60,28 @@ export async function ensurePushSubscription(): Promise<{ ok: true } | { ok: fal
   return { ok: true };
 }
 
-export async function setShiftReadyNotifications(enabled: boolean): Promise<string | null> {
+async function setPref<K extends keyof NotificationPrefs>(
+  key: K,
+  enabled: boolean,
+): Promise<string | null> {
   if (enabled) {
     const sub = await ensurePushSubscription();
     if (!sub.ok) return sub.reason;
   }
-  await updateNotificationPrefs({ shiftReady: enabled });
+  await updateNotificationPrefs({ [key]: enabled });
   return null;
+}
+
+export async function setShiftReadyNotifications(enabled: boolean): Promise<string | null> {
+  return setPref("shiftReady", enabled);
+}
+
+export async function setHousingPaymentNotifications(enabled: boolean): Promise<string | null> {
+  return setPref("housingPayment", enabled);
+}
+
+export async function setRelocationNotifications(enabled: boolean): Promise<string | null> {
+  return setPref("relocation", enabled);
 }
 
 export async function loadNotificationPrefs() {

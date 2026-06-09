@@ -26,9 +26,11 @@ self.addEventListener("push", (event) => {
   } catch {
     data = { body: event.data?.text() ?? "" };
   }
+  const title = data.title?.trim() ? data.title : (data.body ?? "Россия — жизнь");
+  const body = data.title?.trim() ? (data.body ?? "") : "";
   event.waitUntil(
-    self.registration.showNotification(data.title ?? "Россия — жизнь", {
-      body: data.body ?? "",
+    self.registration.showNotification(title, {
+      body,
       icon: "/icon.svg",
       badge: "/icon.svg",
       tag: data.url ?? "default",

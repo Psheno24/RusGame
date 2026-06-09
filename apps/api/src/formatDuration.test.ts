@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { formatDuration } from "./formatDuration.js";
+import { formatDuration, formatHousingRemaining } from "./formatDuration.js";
 
 describe("formatDuration", () => {
   it("zero and negative", () => {
@@ -36,5 +36,23 @@ describe("formatDuration", () => {
     assert.equal(formatDuration(7 * 86_400_000), "7 дн");
     assert.equal(formatDuration(8 * 86_400_000), "8 дн");
     assert.equal(formatDuration(7 * 86_400_000 + 12 * 3_600_000), "8 дн");
+  });
+});
+
+describe("formatHousingRemaining", () => {
+  const now = 1_700_000_000_000;
+
+  it("expired", () => {
+    assert.equal(formatHousingRemaining(now - 1, now), "истекло");
+  });
+
+  it("days and hours", () => {
+    assert.equal(formatHousingRemaining(now + 2 * 86_400_000 + 5 * 3_600_000, now), "2 дн 5 ч");
+    assert.equal(formatHousingRemaining(now + 86_400_000, now), "1 дн");
+  });
+
+  it("hours and minutes under one day", () => {
+    assert.equal(formatHousingRemaining(now + 3 * 3_600_000 + 25 * 60_000, now), "3 ч 25 мин");
+    assert.equal(formatHousingRemaining(now + 2 * 3_600_000, now), "2 ч");
   });
 });

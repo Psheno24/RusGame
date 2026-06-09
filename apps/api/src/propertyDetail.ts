@@ -25,6 +25,7 @@ import {
 } from "./housing.js";
 import { getHousingProperty, housingPropertyLabel } from "./housingCatalog.js";
 import { formatLocaleDateRu } from "./formatLocaleDate.js";
+import { formatHousingRemaining } from "./formatDuration.js";
 import {
   formatVehiclePlate,
   parsePlatePartsFromRow,
@@ -302,10 +303,8 @@ export function getPropertyDetail(
       status: [
         { label: "Статус", value: "Вы живёте здесь" },
         {
-          label: "Оплачено до",
-          value: housing.expiresAt
-            ? formatLocaleDateRu(housing.expiresAt, { withTime: true })
-            : "—",
+          label: "Осталось",
+          value: housing.expiresAt ? formatHousingRemaining(housing.expiresAt, now) : "—",
         },
         {
           label: "Регистрация",

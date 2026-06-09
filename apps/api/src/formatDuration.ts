@@ -31,3 +31,21 @@ export function formatDuration(ms: number): string {
 
   return `${Math.ceil(ms / DAY_MS)} дн`;
 }
+
+/** Оставшееся время до окончания аренды жилья (профиль). */
+export function formatHousingRemaining(expiresAt: number, now = Date.now()): string {
+  const ms = expiresAt - now;
+  if (ms <= 0) return "истекло";
+
+  if (ms >= DAY_MS) {
+    const d = Math.floor(ms / DAY_MS);
+    const h = Math.floor((ms % DAY_MS) / HOUR_MS);
+    if (h === 0) return `${d} дн`;
+    return `${d} дн ${h} ч`;
+  }
+
+  const h = Math.floor(ms / HOUR_MS);
+  const m = Math.floor((ms % HOUR_MS) / MIN_MS);
+  if (m === 0) return `${h} ч`;
+  return `${h} ч ${m} мин`;
+}

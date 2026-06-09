@@ -27,6 +27,7 @@ import {
   type DeliveryState,
   type DeliveryTransport,
 } from "./playerDelivery.js";
+import { scheduleDeliveryTripEndPush } from "./pushNotifications.js";
 
 const MODIFIER_TITLES: Record<DeliveryModifier, string> = {
   short: "Короткий",
@@ -344,6 +345,7 @@ export function deliveryTakeOrder(
     lastActivityAt: now,
   };
   saveDeliveryState(player.user_id, state);
+  scheduleDeliveryTripEndPush(player.user_id, state.activeTrip!.endsAt);
 
   return {
     ok: true,

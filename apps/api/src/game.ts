@@ -63,7 +63,11 @@ import {
   withLastWork,
 } from "./workCooldown.js";
 import { scaleTravelMs, scaleCooldownMs } from "./testAccount.js";
-import { scheduleShiftReadyPush } from "./pushNotifications.js";
+import {
+  cancelTravelArrivePush,
+  scheduleShiftReadyPush,
+  scheduleTravelArrivePush,
+} from "./pushNotifications.js";
 import { playerMeetsCarRequirement, taxiBlocksShift } from "./taxi.js";
 import { saveTaxiState } from "./playerTaxi.js";
 import { deliveryBlocksShift, clearDeliveryState } from "./delivery.js";
@@ -82,6 +86,7 @@ export function resolveTravel(player: PlayerRow, now = Date.now()): PlayerRow {
 
   const arrivedAt = player.travel_arrives_at;
   const to = player.travel_to_city_id ?? player.city_id;
+  cancelTravelArrivePush(player.user_id);
   const dest = getCity(to);
   appendPlayerFeed(
     player.user_id,
@@ -601,6 +606,7 @@ export function startTravel(
     travel_to_city_id: toCityId,
     travel_arrives_at: arrivesAt,
   });
+  scheduleTravelArrivePush(userId, toCityId, arrivesAt);
   return { ok: true, arrivesAt, priceRub: route.priceRub };
 }
 
