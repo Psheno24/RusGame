@@ -10,6 +10,7 @@ import {
   type User,
 } from "../api";
 import type { NavBackHandler } from "../navBack";
+import type { PlaceNavState } from "../placeNav";
 
 type Nav = "services" | "garage";
 
@@ -17,6 +18,7 @@ type Props = {
   user: User;
   setUser: (u: User) => void;
   onToast: (msg: string, isErr?: boolean) => void;
+  onNavChange: (state: PlaceNavState) => void;
   registerBack: (handler: NavBackHandler | null) => void;
   onExitPlace: () => void;
 };
@@ -31,7 +33,7 @@ function condClass(pct: number): string {
   return "license-miss";
 }
 
-export function CarRepairPlace({ user, setUser, onToast, registerBack, onExitPlace }: Props) {
+export function CarRepairPlace({ user, setUser, onToast, onNavChange, registerBack, onExitPlace }: Props) {
   const [nav, setNav] = useState<Nav>("services");
   const [shop, setShop] = useState<CarRepairShopView | null>(null);
   const [serviceId, setServiceId] = useState<CarRepairServiceId | null>(null);
@@ -52,6 +54,20 @@ export function CarRepairPlace({ user, setUser, onToast, registerBack, onExitPla
         onToastRef.current(e instanceof Error ? e.message : "Ошибка", true),
       );
   }, []);
+
+  useEffect(() => {
+    const placeTitle = "Ремонт авто";
+    if (nav === "garage" && serviceId && shop) {
+      const service = shop.services.find((s) => s.id === serviceId);
+      onNavChange({
+        inSub: true,
+        title: service?.title ?? placeTitle,
+        backLabel: placeTitle,
+      });
+    } else {
+      onNavChange({ inSub: false, title: placeTitle, backLabel: "Разные места" });
+    }
+  }, [nav, serviceId, shop, onNavChange]);
 
   useEffect(() => {
     const handler: NavBackHandler = () => {

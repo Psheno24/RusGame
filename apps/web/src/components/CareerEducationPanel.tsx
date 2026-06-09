@@ -3,7 +3,6 @@ import { formatRub } from "../formatRub.js";
 import {
   careerPromote,
   careerShift,
-  educationStart,
   fetchCareerStatus,
   fetchEducationStatus,
   type CareerStatus,
@@ -14,7 +13,6 @@ import { CitySectionHeader } from "./ui/CitySectionHeader";
 import { TestOnlyNotice } from "./TestOnlyNotice";
 
 type Props = {
-  mode: "secondary_edu" | "higher_edu" | "freelance";
   user: User;
   setUser: (u: User) => void;
   onToast: (msg: string, isErr?: boolean) => void;
@@ -24,7 +22,6 @@ type Props = {
 };
 
 export function CareerEducationPanel({
-  mode,
   user,
   setUser,
   onToast,
@@ -60,55 +57,17 @@ export function CareerEducationPanel({
     }
   };
 
-  const title =
-    mode === "secondary_edu"
-      ? "Среднее образование"
-      : mode === "higher_edu"
-        ? "Высшее образование"
-        : "Карьера";
-
-  const eduPrograms =
-    mode === "secondary_edu"
-      ? edu?.options.filter((o) => o.key === "college" || o.key === "courses") ?? []
-      : mode === "higher_edu"
-        ? edu?.options.filter((o) => o.key === "university" || o.key === "masters") ?? []
-        : [];
+  const enrolled = Boolean(edu?.enrolled);
 
   return (
     <div className="card">
-      <CitySectionHeader title={title} onBack={onBack} backLabel={backLabel} />
+      <CitySectionHeader title="Карьера" onBack={onBack} backLabel={backLabel} />
       {testOnly ? <TestOnlyNotice /> : null}
-      {edu?.active && (
-        <p className="muted">
-          Идёт обучение ({edu.education}) — доступны только подработки
-          {edu.endsAt ? ` до ${new Date(edu.endsAt).toLocaleDateString("ru-RU")}` : ""}
-        </p>
+      {enrolled && (
+        <p className="muted">Идёт обучение — карьера недоступна, доступны только подработки.</p>
       )}
 
-      {(mode === "secondary_edu" || mode === "higher_edu") && (
-        <ul className="shop-list">
-          {eduPrograms.map((opt) => (
-            <li key={opt.key} className="shop-list-item">
-              <div>
-                <strong>{opt.title}</strong>
-                <p className="muted">
-                  {formatRub(opt.cost)} · {opt.days} дн.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={busy || edu?.active}
-                onClick={() => void run(() => educationStart(opt.key))}
-              >
-                Поступить
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {mode === "freelance" && career && (
+      {career && (
         <div className="job-detail">
           <dl className="phone-specs job-specs">
             <div>
@@ -136,7 +95,7 @@ export function CareerEducationPanel({
             <button
               type="button"
               className="btn btn-secondary"
-              disabled={busy || !career.canPromote || edu?.active}
+              disabled={busy || !career.canPromote || enrolled}
               onClick={() => void run(() => careerPromote())}
             >
               Повышение
@@ -144,7 +103,7 @@ export function CareerEducationPanel({
             <button
               type="button"
               className="btn btn-primary"
-              disabled={busy || career.level === "none" || edu?.active}
+              disabled={busy || career.level === "none" || enrolled}
               onClick={() => void run(() => careerShift())}
             >
               Рабочая смена

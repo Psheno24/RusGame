@@ -15,8 +15,10 @@ import type { NavBackHandler } from "../navBack";
 import {
   PLATES_DETAIL_LEAD,
   PLATES_LIST_LEAD,
+  PLATES_MENU_TITLE,
   PLATES_WHERE_HINT,
 } from "../plateCopy";
+import type { PlaceNavState } from "../placeNav";
 import { PlateShopPanel } from "./PlateShopPanel";
 import { VehiclePlate } from "./VehiclePlate";
 import { CarModelPreview, DEFAULT_CAR_BODY_COLOR, hasCar3dModel } from "./cars";
@@ -25,6 +27,7 @@ type Props = {
   user: User;
   setUser: (u: User) => void;
   onToast: (msg: string, isErr?: boolean) => void;
+  onNavChange?: (state: PlaceNavState) => void;
   registerBack: (handler: NavBackHandler | null) => void;
 };
 
@@ -59,7 +62,7 @@ function ShopCarBanner({ modelId, accent }: { modelId: string; accent: string })
   );
 }
 
-export function PlateShopSection({ setUser, onToast, registerBack }: Props) {
+export function PlateShopSection({ setUser, onToast, onNavChange, registerBack }: Props) {
   const onToastRef = useToastRef(onToast);
   const [view, setView] = useState<"list" | "detail">("list");
   const [playerCarId, setPlayerCarId] = useState<number | null>(null);
@@ -69,6 +72,23 @@ export function PlateShopSection({ setUser, onToast, registerBack }: Props) {
   const [busy, setBusy] = useState(false);
 
   const plateCar = playerCarId ? plateGarage.find((c) => c.playerCarId === playerCarId) : null;
+
+  useEffect(() => {
+    if (!onNavChange) return;
+    if (view === "detail" && plateInfo) {
+      onNavChange({
+        inSub: true,
+        title: `${plateInfo.brand} ${plateInfo.model}`,
+        backLabel: PLATES_MENU_TITLE,
+      });
+    } else {
+      onNavChange({
+        inSub: false,
+        title: PLATES_MENU_TITLE,
+        backLabel: "Полиция",
+      });
+    }
+  }, [view, plateInfo, onNavChange]);
 
   useEffect(() => {
     const handler: NavBackHandler = () => {

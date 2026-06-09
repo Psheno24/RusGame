@@ -176,6 +176,7 @@ export function JobsSection({
   registerBack,
   onJobsReload,
   onBack,
+  backLabel,
   listMode = "vacancies",
   workAccess,
   onGoHousing,
@@ -192,6 +193,7 @@ export function JobsSection({
   registerBack: (handler: (() => boolean) | null) => void;
   onJobsReload: () => Promise<void>;
   onBack?: () => void;
+  backLabel?: string;
   listMode?: "vacancies" | "none";
   workAccess?: WorkAccessInfo;
   onGoHousing?: () => void;
@@ -209,6 +211,10 @@ export function JobsSection({
 
   const stepBackInJobs = useCallback((): boolean => {
     if (selectedId) {
+      if (listMode === "none" && onBack) {
+        onBack();
+        return true;
+      }
       onSelectJob(null);
       return true;
     }
@@ -225,7 +231,7 @@ export function JobsSection({
       return true;
     }
     return false;
-  }, [selectedId, nav, onSelectJob, workAccess?.emergencyLoader, onBack]);
+  }, [selectedId, nav, onSelectJob, workAccess?.emergencyLoader, onBack, listMode]);
 
   const handleJobsBack = useCallback(() => {
     if (!stepBackInJobs()) onBack?.();
@@ -595,7 +601,11 @@ export function JobsSection({
       <>
         <div className="card">
           {onBack ? (
-            <CitySectionHeader title={selected.title} onBack={handleJobsBack} backLabel="Подработка" />
+            <CitySectionHeader
+              title={selected.title}
+              onBack={handleJobsBack}
+              backLabel={backLabel ?? (listMode === "none" ? "Моя работа" : "Подработка")}
+            />
           ) : (
             <h2>{selected.title}</h2>
           )}
@@ -773,7 +783,6 @@ export function JobsSection({
 
       {nav === "freelance" && (
         <CareerEducationPanel
-          mode="freelance"
           user={user}
           setUser={setUser}
           onToast={onToast}

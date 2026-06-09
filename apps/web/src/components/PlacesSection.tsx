@@ -9,9 +9,12 @@ import { CityGridButton } from "./ui/CityGridButton";
 import { PoliceLicenseShop } from "./PoliceLicenseShop";
 import { EducationPlace } from "./EducationPlace";
 
+import type { PlaceNavState } from "../placeNav";
+
 type Props = {
   placeId: PlaceId | null;
   onPlace: (id: PlaceId | null) => void;
+  onNavChange: (state: PlaceNavState) => void;
   registerBack: (handler: NavBackHandler | null) => void;
   user: User;
   setUser: (u: User) => void;
@@ -28,6 +31,7 @@ const STUB_PLACE_IDS = new Set<PlaceId>([
 export function PlacesSection({
   placeId,
   onPlace,
+  onNavChange,
   registerBack,
   user,
   setUser,
@@ -62,6 +66,7 @@ export function PlacesSection({
             user={user}
             setUser={setUser}
             onToast={onToast}
+            onNavChange={onNavChange}
             registerBack={registerBack}
             onExitPlace={() => onPlace(null)}
           />
@@ -76,6 +81,7 @@ export function PlacesSection({
             user={user}
             setUser={setUser}
             onToast={onToast}
+            onNavChange={onNavChange}
             registerBack={registerBack}
             onExitPlace={() => onPlace(null)}
           />
@@ -90,6 +96,7 @@ export function PlacesSection({
             user={user}
             setUser={setUser}
             onToast={onToast}
+            onNavChange={onNavChange}
             registerBack={registerBack}
             onExitPlace={() => onPlace(null)}
           />
@@ -104,6 +111,7 @@ export function PlacesSection({
             user={user}
             setUser={setUser}
             onToast={onToast}
+            onNavChange={onNavChange}
             registerBack={registerBack}
             onExitPlace={() => onPlace(null)}
           />

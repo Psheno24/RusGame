@@ -62,6 +62,7 @@ export function CityPage() {
   const [section, setSection] = useState<CitySection | null>(null);
   const [shopTab, setShopTab] = useState<ShopTab | null>(null);
   const [placeId, setPlaceId] = useState<PlaceId | null>(null);
+  const [placesNav, setPlacesNav] = useState({ inSub: false, title: "", backLabel: "" });
   const [phoneNav, setPhoneNav] = useState({ inSub: false, title: "Телефон", backLabel: "Магазин" });
   const [carNav, setCarNav] = useState({ inSub: false, title: "Авто", backLabel: "Магазин" });
   const [housingNav, setHousingNav] = useState({ inSub: false, title: "Недвижимость", backLabel: "Город" });
@@ -141,8 +142,15 @@ export function CityPage() {
   }, [shopTab]);
 
   useEffect(() => {
-    if (section !== "places") setPlaceId(null);
+    if (section !== "places") {
+      setPlaceId(null);
+      setPlacesNav({ inSub: false, title: "", backLabel: "" });
+    }
   }, [section]);
+
+  useEffect(() => {
+    setPlacesNav({ inSub: false, title: "", backLabel: "" });
+  }, [placeId]);
 
   useEffect(() => {
     if (section !== "jobs") setJobsSelectedId(null);
@@ -167,6 +175,7 @@ export function CityPage() {
     setSection(null);
     setShopTab(null);
     setPlaceId(null);
+    setPlacesNav({ inSub: false, title: "", backLabel: "" });
     setPhoneNav({ inSub: false, title: "Телефон", backLabel: "Магазин" });
     setCarNav({ inSub: false, title: "Авто", backLabel: "Магазин" });
     setHousingNav({ inSub: false, title: "Недвижимость", backLabel: "Город" });
@@ -200,11 +209,16 @@ export function CityPage() {
       title = housingNav.title;
       backLabel = housingNav.backLabel;
     } else if (section === "places" && placeId) {
-      title = placeById(placeId).title;
-      backLabel = "Разные места";
+      if (placesNav.inSub && placesNav.title) {
+        title = placesNav.title;
+        backLabel = placesNav.backLabel;
+      } else {
+        title = placeById(placeId).title;
+        backLabel = "Разные места";
+      }
     }
     return { title, backLabel };
-  }, [section, sectionMeta, shopTab, phoneNav, carNav, housingNav, placeId]);
+  }, [section, sectionMeta, shopTab, phoneNav, carNav, housingNav, placeId, placesNav]);
 
   if (traveling) {
     return <TravelingCard remainingMs={remaining} context="city" />;
@@ -279,6 +293,7 @@ export function CityPage() {
               <PlacesSection
                 placeId={placeId}
                 onPlace={setPlaceId}
+                onNavChange={setPlacesNav}
                 registerBack={registerSectionBack}
                 user={user}
                 setUser={setUser}

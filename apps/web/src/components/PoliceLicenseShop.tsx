@@ -8,6 +8,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { PlateShopSection } from "./PlateShopSection";
 import { testOnlyGridHint, testOnlyLocked } from "../testOnlyUi";
 import { CityGridButton } from "./ui/CityGridButton";
+import type { PlaceNavState } from "../placeNav";
 
 type LicenseRow = {
   category: string;
@@ -22,6 +23,7 @@ type Props = {
   user: User;
   setUser: (u: User) => void;
   onToast: (msg: string, isErr?: boolean) => void;
+  onNavChange: (state: PlaceNavState) => void;
   registerBack: (handler: NavBackHandler | null) => void;
   onExitPlace: () => void;
 };
@@ -30,7 +32,7 @@ function rub(n: number) {
   return `${formatRub(n)}`;
 }
 
-export function PoliceLicenseShop({ user, setUser, onToast, registerBack, onExitPlace }: Props) {
+export function PoliceLicenseShop({ user, setUser, onToast, onNavChange, registerBack, onExitPlace }: Props) {
   const isTest = Boolean(user.isTest);
   const onToastRef = useToastRef(onToast);
   const [nav, setNav] = useState<PoliceNav>("hub");
@@ -38,11 +40,32 @@ export function PoliceLicenseShop({ user, setUser, onToast, registerBack, onExit
   const [pending, setPending] = useState<LicenseRow | null>(null);
   const [busy, setBusy] = useState(false);
   const platesBackRef = useRef<NavBackHandler | null>(null);
+  const [platesNav, setPlatesNav] = useState<PlaceNavState>({
+    inSub: false,
+    title: PLATES_MENU_TITLE,
+    backLabel: "Полиция",
+  });
   const owned = new Set(user.player.driverLicenseCategories ?? []);
 
   const registerPlatesBack = useCallback((handler: NavBackHandler | null) => {
     platesBackRef.current = handler;
   }, []);
+
+  useEffect(() => {
+    if (nav === "hub") {
+      onNavChange({ inSub: false, title: "Полиция", backLabel: "Разные места" });
+    } else if (nav === "licenses") {
+      onNavChange({ inSub: true, title: "Водительские права", backLabel: "Полиция" });
+    } else if (nav === "fines") {
+      onNavChange({ inSub: true, title: "Штрафы", backLabel: "Полиция" });
+    } else if (nav === "plates") {
+      onNavChange({
+        inSub: true,
+        title: platesNav.title,
+        backLabel: platesNav.backLabel,
+      });
+    }
+  }, [nav, platesNav, onNavChange]);
 
   useEffect(() => {
     const handler: NavBackHandler = () => {
@@ -91,6 +114,7 @@ export function PoliceLicenseShop({ user, setUser, onToast, registerBack, onExit
         user={user}
         setUser={setUser}
         onToast={onToast}
+        onNavChange={setPlatesNav}
         registerBack={registerPlatesBack}
       />
     );
@@ -162,9 +186,7 @@ export function PoliceLicenseShop({ user, setUser, onToast, registerBack, onExit
       )}
 
       {nav === "fines" && (
-        <div className="card">
-          <p className="place-detail-lead">Оплата и история штрафов появятся в следующих обновлениях.</p>
-        </div>
+        <p className="place-detail-lead">Оплата и история штрафов появятся в следующих обновлениях.</p>
       )}
     </>
   );

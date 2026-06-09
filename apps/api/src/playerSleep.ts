@@ -2,6 +2,7 @@ import { getBalanceBible } from "./balanceBible.js";
 import { getPlayer, updatePlayer, type PlayerRow } from "./db.js";
 import { formatDuration } from "./formatDuration.js";
 import { isCityResident } from "./housing.js";
+import { deliveryBlocksWork } from "./playerDelivery.js";
 import { taxiBlocksWork } from "./playerTaxi.js";
 import { clampVital } from "./playerStats.js";
 import { canWorkJobNow } from "./workCooldown.js";
@@ -58,10 +59,16 @@ export type SleepStartResult =
   | { ok: true; message: string }
   | { ok: false; error: string };
 
-/** Нельзя лечь спать во время смены, поездки такси или ожидания на линии. */
+/** Нельзя отдыхать во время активных действий: поездка, работа, такси, доставка, учёба. */
 export function sleepStartBlockMessage(player: PlayerRow, now = Date.now()): string | null {
+  if (player.status === "traveling") {
+    return "Вы в пути";
+  }
   if (taxiBlocksWork(player)) {
     return "Сначала завершите поездку и сойдите с линии такси";
+  }
+  if (deliveryBlocksWork(player, now)) {
+    return "Сначала завершите доставку";
   }
   if (player.job_id) {
     const st = canWorkJobNow(player, player.job_id, now);
@@ -75,7 +82,6 @@ export function sleepStartBlockMessage(player: PlayerRow, now = Date.now()): str
 export function startSleep(userId: number, durationMs: number, now = Date.now()): SleepStartResult {
   let player = getPlayer(userId);
   if (!player) return { ok: false, error: "Игрок не найден" };
-  if (player.status === "traveling") return { ok: false, error: "Вы в пути" };
   if (isPlayerSleeping(player)) return { ok: false, error: "Вы уже спите" };
 
   const workErr = sleepStartBlockMessage(player, now);

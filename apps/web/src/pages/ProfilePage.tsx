@@ -7,11 +7,20 @@ import { ProfilePropertyCards } from "../components/ProfilePropertyCards";
 import { VitalsBar } from "../components/VitalsBar";
 import { useApp } from "../context";
 
-const EDUCATION_LABELS: Record<string, string> = {
+const EDUCATION_DIRECTION_LABELS: Record<string, string> = {
   none: "Без образования",
-  college: "Колледж",
-  university: "ВУЗ",
-  masters: "Магистратура",
+  it: "Информационные технологии",
+  construction: "Строительство",
+  medicine: "Медицина",
+  economics: "Экономика",
+  law: "Право",
+  engineering: "Инженерия",
+};
+
+const EDUCATION_TIER_LABELS: Record<string, string> = {
+  none: "",
+  secondary: " (СПО)",
+  higher: " (высшее)",
 };
 
 export function ProfilePage() {
@@ -35,7 +44,9 @@ export function ProfilePage() {
             <div className="profile-stat">
               <span className="profile-stat-label">Образование</span>
               <span className="profile-stat-value">
-                {EDUCATION_LABELS[p.education ?? "none"] ?? p.education}
+                {p.educationEnrolled
+                  ? "На обучении"
+                  : `${EDUCATION_DIRECTION_LABELS[p.education ?? "none"] ?? p.education}${EDUCATION_TIER_LABELS[p.educationTier ?? "none"] ?? ""}`}
               </span>
             </div>
           </div>

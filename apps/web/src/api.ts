@@ -67,6 +67,8 @@ export type Player = {
   housingStatusLabel: string;
   vitals: Vitals;
   education: string;
+  educationTier?: string;
+  educationEnrolled?: boolean;
   educationEndsAt?: number | null;
   daysPlayed?: number;
   careerLevel?: string;
@@ -779,21 +781,97 @@ export async function deliveryTakeOrder() {
   });
 }
 
-export type EducationOption = { key: string; title: string; cost: number; days: number };
+export type EducationInstitutionBrief = {
+  id: string;
+  title: string;
+  directionTitle: string;
+  costRub: number;
+  sessions: number;
+  requiresSecondary?: boolean;
+};
+
+export type EducationEnrollmentView = {
+  institutionId: string;
+  institutionTitle: string;
+  direction: string;
+  directionTitle: string;
+  tier: "secondary" | "higher";
+  sessionsDone: number;
+  sessionsTotal: number;
+  lastLessonAt: number | null;
+  lessonCooldownMs: number;
+  canAttendLesson: boolean;
+  paidRub: number;
+};
 
 export type EducationStatus = {
-  education: string;
-  active: boolean;
-  endsAt: number | null;
-  options: EducationOption[];
+  enrolled: boolean;
+  direction: string | null;
+  directionTitle: string | null;
+  tier: string;
+  tierTitle: string;
+  hasSecondary: boolean;
+  hasHigher: boolean;
+  enrollment: EducationEnrollmentView | null;
+  secondaryInstitutions: EducationInstitutionBrief[];
+  higherInstitutions: EducationInstitutionBrief[];
+  /** @deprecated */
+  active?: boolean;
+  education?: string;
+  endsAt?: number | null;
+  options?: Array<{ key: string; title: string; cost: number; days: number }>;
+};
+
+export type EducationInstitutionDetail = {
+  institution: {
+    id: string;
+    tier: "secondary" | "higher";
+    title: string;
+    direction: string;
+    directionTitle: string;
+    costRub: number;
+    sessions: number;
+    description: string;
+  };
+  enrollCostRub: number;
+  isReenroll: boolean;
+  resumeSessionsDone: number;
+  dropoutCooldownMs: number;
+  canEnroll: boolean;
+  enrollBlockReason: string | null;
 };
 
 export async function fetchEducationStatus() {
   return api<EducationStatus>("/api/education/status");
 }
 
+export async function fetchEducationInstitution(institutionId: string) {
+  return api<EducationInstitutionDetail>(`/api/education/institution/${institutionId}`);
+}
+
+export async function educationEnroll(institutionId: string) {
+  return api<{ message: string; user: User }>("/api/education/enroll", {
+    method: "POST",
+    body: JSON.stringify({ institutionId }),
+  });
+}
+
+export async function educationAttendLesson() {
+  return api<{ message: string; completed: boolean; user: User }>("/api/education/lesson", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export async function educationDropout() {
+  return api<{ message: string; user: User }>("/api/education/dropout", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
 export async function educationStart(program: string) {
-  return api<{ message: string; user: User }>("/api/education/start", {
+  return api<{ message: string; user: User }>("/api/education/enroll", {
     method: "POST",
     body: JSON.stringify({ program }),
   });

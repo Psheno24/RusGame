@@ -222,6 +222,8 @@ export function serializePlayer(p: import("./db.js").PlayerRow) {
     },
     sleeping: p.sleep_started_at != null,
     education: p.education ?? "none",
+    educationTier: p.education_tier ?? "none",
+    educationEnrolled: p.education_enrollment != null,
     educationEndsAt: p.education_ends_at,
     daysPlayed: p.days_played ?? 0,
     careerLevel: p.career_level ?? "none",

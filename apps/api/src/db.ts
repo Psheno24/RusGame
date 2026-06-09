@@ -60,7 +60,10 @@ export type PlayerRow = {
   health: number;
   reputation: number;
   education: string;
+  education_tier: string;
   education_ends_at: number | null;
+  education_enrollment: string | null;
+  education_dropout: string | null;
   days_played: number;
   career_level: string;
   delivery_state: string | null;
@@ -651,6 +654,17 @@ function migrate(database: Database.Database) {
     database.exec("ALTER TABLE player_cars ADD COLUMN fuel_level_l REAL");
   }
 
+  const colsEduV2 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!colsEduV2.some((c) => c.name === "education_tier")) {
+    database.exec("ALTER TABLE players ADD COLUMN education_tier TEXT NOT NULL DEFAULT 'none'");
+  }
+  if (!colsEduV2.some((c) => c.name === "education_enrollment")) {
+    database.exec("ALTER TABLE players ADD COLUMN education_enrollment TEXT");
+  }
+  if (!colsEduV2.some((c) => c.name === "education_dropout")) {
+    database.exec("ALTER TABLE players ADD COLUMN education_dropout TEXT");
+  }
+
   const colsNotifPrefs = database.prepare("PRAGMA table_info(notification_prefs)").all() as {
     name: string;
   }[];
@@ -750,7 +764,8 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
         last_car_maintenance_at = ?,
         sleep_started_at = ?, sleep_planned_ms = ?, sleep_start_energy = ?,
         energy = ?, hunger = ?, mood = ?, health = ?, reputation = ?, education = ?,
-        education_ends_at = ?, days_played = ?, career_level = ?
+        education_tier = ?, education_ends_at = ?, education_enrollment = ?, education_dropout = ?,
+        days_played = ?, career_level = ?
       WHERE user_id = ?`,
     )
     .run(
@@ -816,7 +831,10 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
       next.health ?? 100,
       next.reputation ?? DEFAULT_VITALS.reputation,
       next.education ?? "none",
+      next.education_tier ?? "none",
       next.education_ends_at ?? null,
+      next.education_enrollment ?? null,
+      next.education_dropout ?? null,
       next.days_played ?? 0,
       next.career_level ?? "none",
       userId,

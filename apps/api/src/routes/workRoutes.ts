@@ -14,7 +14,14 @@ import {
   taxiSelectCar,
 } from "../taxi.js";
 import { getDeliveryStatus, deliveryTakeOrder } from "../delivery.js";
-import { educationStatus, startEducation } from "../education.js";
+import {
+  attendLesson,
+  dropoutFromEducation,
+  educationStatus,
+  enrollInInstitution,
+  institutionDetail,
+  startEducation,
+} from "../education.js";
 import { careerStatus, doCareerShift, promoteCareer } from "../career.js";
 import { resolveUserId } from "./shared.js";
 
@@ -226,6 +233,59 @@ export function registerWorkRoutes(app: FastifyInstance): void {
     return { ok: true, ...educationStatus(player) };
   });
 
+  app.get<{ Params: { institutionId?: string } }>(
+    "/api/education/institution/:institutionId",
+    async (req, reply) => {
+      const userId = await resolveUserId(req);
+      if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+      const player = refreshPlayerState(userId);
+      if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+      const detail = institutionDetail(player, req.params.institutionId ?? "");
+      if ("error" in detail) return reply.code(404).send({ error: detail.error });
+      return { ok: true, ...detail };
+    },
+  );
+
+  app.post<{ Body: { institutionId?: string; program?: string } }>(
+    "/api/education/enroll",
+    async (req, reply) => {
+      const userId = await resolveUserId(req);
+      if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+      const player = refreshPlayerState(userId);
+      if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+      const institutionId = req.body?.institutionId?.trim();
+      const result = institutionId
+        ? enrollInInstitution(player, institutionId)
+        : startEducation(player, req.body?.program ?? "");
+      if (!result.ok) return reply.code(400).send({ error: result.error });
+      const user = await getPublicUser(userId);
+      return { message: result.message, user };
+    },
+  );
+
+  app.post("/api/education/lesson", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = refreshPlayerState(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const result = attendLesson(player);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, completed: result.completed ?? false, user };
+  });
+
+  app.post("/api/education/dropout", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = refreshPlayerState(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const result = dropoutFromEducation(player);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
+  });
+
+  /** @deprecated */
   app.post<{ Body: { program?: string } }>("/api/education/start", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });

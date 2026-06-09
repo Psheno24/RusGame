@@ -99,10 +99,15 @@ export function refuelCar(
   const maxAdd = Math.max(0, tankL - current);
   if (maxAdd <= 0) return { ok: false, error: "Бак уже полный" };
 
-  const wantLiters =
-    liters != null && liters > 0
-      ? Math.min(maxAdd, Math.round(liters * 10) / 10)
-      : Math.round(maxAdd * 10) / 10;
+  let wantLiters: number;
+  if (liters != null && liters > 0) {
+    const rounded = Math.round(liters);
+    if (rounded < 1) return { ok: false, error: "Минимум 1 литр" };
+    wantLiters = Math.min(Math.floor(maxAdd), rounded);
+    if (wantLiters < 1) return { ok: false, error: "Бак уже полный" };
+  } else {
+    wantLiters = Math.round(maxAdd * 10) / 10;
+  }
 
   const pricePerL = fuelPriceRub(fuelType);
   const costRub = Math.round(wantLiters * pricePerL);

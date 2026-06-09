@@ -76,6 +76,39 @@ describe("playerSleep energy", () => {
     assert.equal(sleepStartBlockMessage({ city_id: "ekb" } as import("./db.js").PlayerRow, now), null);
   });
 
+  it("sleepStartBlockMessage blocks travel and delivery", () => {
+    const now = 1_000_000;
+    const traveling = {
+      status: "traveling",
+      travel_arrives_at: now + 60_000,
+    } as import("./db.js").PlayerRow;
+    assert.match(sleepStartBlockMessage(traveling, now) ?? "", /в пути/i);
+
+    const onDelivery = {
+      delivery_state: JSON.stringify({
+        activeTrip: {
+          orderId: "d1",
+          startedAt: now - 1000,
+          endsAt: now + 120_000,
+          order: {
+            id: "d1",
+            distanceKm: 2,
+            transport: "walk",
+            modifier: "normal",
+            modifierTitle: "Обычный",
+            basePayoutRub: 300,
+            tripMinutes: 5,
+            offeredAt: now - 2000,
+          },
+        },
+        sessionIncomeRub: 0,
+        ordersCompleted: 0,
+        lastActivityAt: now,
+      }),
+    } as import("./db.js").PlayerRow;
+    assert.match(sleepStartBlockMessage(onDelivery, now) ?? "", /доставк/i);
+  });
+
   it("currentSleepEnergy grows with elapsed time", () => {
     const now = 1_000_000;
     const p = {

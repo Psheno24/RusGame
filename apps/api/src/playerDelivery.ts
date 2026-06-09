@@ -51,11 +51,17 @@ export function saveDeliveryState(userId: number, state: DeliveryState | null) {
     .run(state ? JSON.stringify(state) : null, userId);
 }
 
-export function hasActiveDeliveryTrip(player: Pick<PlayerRow, "delivery_state">): boolean {
+export function hasActiveDeliveryTrip(
+  player: Pick<PlayerRow, "delivery_state">,
+  now = Date.now(),
+): boolean {
   const s = parseDeliveryState(player);
-  return s?.activeTrip != null && s.activeTrip.endsAt > Date.now();
+  return s?.activeTrip != null && s.activeTrip.endsAt > now;
 }
 
-export function deliveryBlocksWork(player: Pick<PlayerRow, "delivery_state">): boolean {
-  return hasActiveDeliveryTrip(player);
+export function deliveryBlocksWork(
+  player: Pick<PlayerRow, "delivery_state">,
+  now = Date.now(),
+): boolean {
+  return hasActiveDeliveryTrip(player, now);
 }

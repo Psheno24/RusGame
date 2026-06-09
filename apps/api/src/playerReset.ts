@@ -97,7 +97,10 @@ export function resetPlayerAccount(targetUserId: number, now = Date.now()): bool
     health: 100,
     reputation: 0,
     education: "none",
+    education_tier: "none",
     education_ends_at: null,
+    education_enrollment: null,
+    education_dropout: null,
     days_played: 0,
     career_level: "none",
   });

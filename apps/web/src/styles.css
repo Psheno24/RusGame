@@ -1470,6 +1470,50 @@ body {
   margin: 8px 0 4px;
 }
 
+.gas-station-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gas-station-car-title {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.gas-station-fuel-preview {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.gas-station-fuel-line {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.gas-station-slider {
+  margin: 4px 0 0;
+}
+
+.gas-station-liters-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.car-accent-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
 .slider-with-number {
   display: flex;
   flex-direction: column;

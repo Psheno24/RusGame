@@ -10,7 +10,7 @@ import {
   clampVital,
   scaleWorkCosts,
 } from "./playerStats.js";
-import { isEducationActive } from "./education.js";
+import { hasHigherEducation, hasSecondaryEducation, isEnrolledInEducation } from "./education.js";
 
 const MS_HOUR = 60 * 60 * 1000;
 
@@ -45,7 +45,7 @@ export function canPromoteCareer(
   player: PlayerRow,
   now = Date.now(),
 ): { ok: true; level: ReturnType<typeof careerLevels>[number] } | { ok: false; error: string } {
-  if (isEducationActive(player, now)) {
+  if (isEnrolledInEducation(player)) {
     return { ok: false, error: "Во время обучения карьера недоступна" };
   }
   const next = nextCareerLevel(player);
@@ -53,12 +53,20 @@ export function canPromoteCareer(
 
   const eduRank: Record<string, number> = {
     none: 0,
+    secondary: 1,
+    college: 1,
     courses: 1,
-    college: 2,
-    university: 3,
-    masters: 4,
+    university: 2,
+    higher: 2,
+    masters: 3,
   };
-  const playerEdu = eduRank[player.education ?? "none"] ?? 0;
+  const playerTier = player.education_tier ?? "none";
+  const playerEdu =
+    playerTier === "higher" || hasHigherEducation(player)
+      ? 2
+      : playerTier === "secondary" || hasSecondaryEducation(player)
+        ? 1
+        : 0;
   const needEdu = eduRank[next.education] ?? 0;
   if (playerEdu < needEdu) {
     return { ok: false, error: `Нужно образование: ${next.education}` };
@@ -98,7 +106,7 @@ export function doCareerShift(
   player: PlayerRow,
   now = Date.now(),
 ): { ok: true; payout: number; message: string } | { ok: false; error: string } {
-  if (isEducationActive(player, now)) {
+  if (isEnrolledInEducation(player)) {
     return { ok: false, error: "Во время обучения доступны только подработки" };
   }
   const level = currentCareerLevel(player);

@@ -5,6 +5,7 @@ import {
   isEmergencyLoaderJobId,
   shouldOfferEmergencyLoader,
 } from "./emergencyLoader.js";
+import { educationBlockMessage, educationBlocksMainWork } from "./education.js";
 import { isCityResident } from "./housing.js";
 
 export function jobCityId(jobId: string): string | null {
@@ -59,7 +60,9 @@ export function jobAccessStatus(player: PlayerRow, jobId: string, now = Date.now
   const physicallyHere = player.city_id === workCityId;
   const residentHere = isCityResident(player, workCityId, now);
   let error: string | null = null;
-  if (!physicallyHere) {
+  if (educationBlocksMainWork(player, jobId)) {
+    error = educationBlockMessage();
+  } else if (!physicallyHere) {
     error = `Работа в ${city?.name ?? workCityId}: вы сейчас в другом городе`;
   } else if (!residentHere) {
     error = `Для работы нужно жить в ${city?.name ?? workCityId}`;
