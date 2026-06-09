@@ -27,7 +27,7 @@ import {
   type TaxiOrder,
   type TaxiState,
 } from "./playerTaxi.js";
-import { getBalanceBible, workEnergyCost } from "./balanceBible.js";
+import { workEnergyCost } from "./balanceBible.js";
 import { applyDrivingWear, resolveTaxiPlayerCarId } from "./carWear.js";
 import { consumeFuelLiters } from "./carFuel.js";
 import {
@@ -238,15 +238,11 @@ function completeActiveTrip(
   job: JobDef,
   state: TaxiState,
   now: number,
-): { state: TaxiState; payoutRub: number; message: string; moodDelta: number } {
+): { state: TaxiState; payoutRub: number; message: string } {
   const trip = state.activeTrip!;
   const order = trip.order;
   let payoutRub = order.payoutRub;
-  let moodDelta = 0;
   let payNote = "";
-
-  if (order.passengerRating >= 4.5) moodDelta += randInt(0, 2);
-  else if (order.passengerRating < 3.5) moodDelta -= randInt(1, 3);
 
   if (order.payment === "cash") {
     const { noPayChance, partialPayChance } = cashPaymentRiskChances(
@@ -256,11 +252,9 @@ function completeActiveTrip(
     if (Math.random() < noPayChance) {
       payoutRub = Math.floor(payoutRub * cashRiskConfig.parkCompensationFraction);
       payNote = " Пассажир не заплатил — таксопарк компенсировал часть.";
-      moodDelta -= 2;
     } else if (Math.random() < partialPayChance) {
       payoutRub = Math.floor(payoutRub * cashRiskConfig.cashPartialPayFraction);
       payNote = " Неполная оплата наличными.";
-      moodDelta -= 1;
     }
   }
 
@@ -272,7 +266,6 @@ function completeActiveTrip(
     rating = clampRating(rating - taxiConfig.ratingBadTripPenalty);
   }
 
-  const mood = clampVital("mood", (player.mood ?? 0) + moodDelta + getBalanceBible().mood.sideJobPenalty);
   const energyCost =
     scaleWorkCosts(player, { energy: workEnergyCost("taxi") })?.energy ?? 3;
   const carId = resolveTaxiPlayerCarId(player.user_id, state.carSource, state.carRefId);
@@ -285,7 +278,6 @@ function completeActiveTrip(
   const skillResult = recordSkillAction(player, "taxi_trips");
   const skillPatch = skillResult.patch;
   updatePlayer(player.user_id, {
-    mood,
     energy: clampVital("energy", (player.energy ?? 80) - energyCost),
     rubles: player.rubles + payoutRub,
     ...skillPatch,
@@ -316,7 +308,7 @@ function completeActiveTrip(
   }
 
   const msg = `Поездка ${order.tripMinutes} мин · +${formatRub(payoutRub)}${payNote}`;
-  return { state: next, payoutRub, message: msg, moodDelta };
+  return { state: next, payoutRub, message: msg };
 }
 
 /** Синхронизация: завершение поездки, обновление пула заказов. */

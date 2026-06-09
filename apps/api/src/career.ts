@@ -127,7 +127,6 @@ export function doCareerShift(
   updatePlayer(player.user_id, {
     rubles: player.rubles + payout,
     energy: clampVital("energy", (player.energy ?? 80) - energyCost),
-    mood: clampVital("mood", (player.mood ?? 0) + getBalanceBible().mood.sideJobPenalty),
     reputation: clampReputation((player.reputation ?? 0) + 3),
     last_work_at_by_job: JSON.stringify(lastWork),
   });

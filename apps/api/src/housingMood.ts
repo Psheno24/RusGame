@@ -34,14 +34,13 @@ export function housingMoodBonusForPlayer(player: PlayerRow, now = Date.now()): 
   return 0;
 }
 
-/** Настроение с учётом бонуса жилья, авто и города (для энергии и проверок). */
+/** Настроение: только город, активное жильё и лучший автомобиль (не меняется от действий). */
 export function effectiveMood(player: PlayerRow, now = Date.now()): number {
-  const base = player.mood ?? 0;
-  const bonus =
+  return clampBibleMood(
     cityTierMoodBonus(player.city_id) +
-    housingMoodBonusForPlayer(player, now) +
-    carMoodBonusForPlayer(player);
-  return clampBibleMood(base + bonus);
+      housingMoodBonusForPlayer(player, now) +
+      carMoodBonusForPlayer(player),
+  );
 }
 
 export function carMoodBonusForPlayer(player: PlayerRow): number {

@@ -1,11 +1,7 @@
 import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import type { SkillKey } from "./skills.js";
-import {
-  clampBibleMood,
-  getBalanceBible,
-  moodEnergyCostMultiplier,
-} from "./balanceBible.js";
+import { clampBibleMood, moodEnergyCostMultiplier } from "./balanceBible.js";
 import { effectiveMood } from "./housingMood.js";
 
 export type VitalKey = "energy" | "mood" | "health";
@@ -43,7 +39,7 @@ export function clampReputation(value: number): number {
 export function getPlayerVitals(player: PlayerRow) {
   return {
     energy: player.energy ?? DEFAULT_VITALS.energy,
-    mood: player.mood ?? DEFAULT_VITALS.mood,
+    mood: effectiveMood(player),
     health: player.health ?? DEFAULT_VITALS.health,
     reputation: player.reputation ?? DEFAULT_VITALS.reputation,
   };
@@ -73,16 +69,12 @@ export function applyStatChanges(
   if (costs?.energy != null) {
     patch.energy = clampVital("energy", v.energy - costs.energy);
   }
-  if (costs?.mood != null) {
-    patch.mood = clampVital("mood", v.mood - costs.mood);
-  }
   if (costs?.health != null) {
     patch.health = clampVital("health", v.health - costs.health);
   }
 
   const afterCosts = {
     energy: patch.energy ?? v.energy,
-    mood: patch.mood ?? v.mood,
     health: patch.health ?? v.health,
     reputation: v.reputation,
   };
@@ -95,9 +87,6 @@ export function applyStatChanges(
   }
   if (gains?.energy != null) {
     patch.energy = clampVital("energy", afterCosts.energy + gains.energy);
-  }
-  if (gains?.mood != null) {
-    patch.mood = clampVital("mood", afterCosts.mood + gains.mood);
   }
   if (gains?.health != null) {
     patch.health = clampVital("health", afterCosts.health + gains.health);
@@ -129,13 +118,3 @@ export function scaleWorkCosts(player: PlayerRow, costs?: StatCosts): StatCosts 
   return scaled;
 }
 
-export function applyPostWorkPassives(
-  player: PlayerRow,
-  afterWork: Partial<PlayerRow>,
-): Partial<PlayerRow> {
-  const patch: Partial<PlayerRow> = {};
-  const sidePenalty = getBalanceBible().mood.sideJobPenalty;
-  const mood = (afterWork.mood ?? player.mood ?? DEFAULT_VITALS.mood) + sidePenalty;
-  patch.mood = clampVital("mood", mood);
-  return patch;
-}

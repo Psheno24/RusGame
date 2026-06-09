@@ -13,7 +13,6 @@ export type BalanceBible = {
     max: number;
     default: number;
     cityTierBonus: Record<string, number>;
-    sideJobPenalty: number;
     energyCostMultiplier: {
       lowMax: number;
       lowMult: number;

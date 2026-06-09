@@ -181,7 +181,6 @@ function completeTrip(
     rubles: player.rubles + rolled.payoutRub,
     energy: clampVital("energy", (player.energy ?? 80) - energyCost),
     reputation: clampReputation((player.reputation ?? 0) + 2 + rolled.reputationDelta),
-    mood: clampVital("mood", (player.mood ?? 0) + getBalanceBible().mood.sideJobPenalty),
     ...skillResult.patch,
   };
   updatePlayer(player.user_id, patch);

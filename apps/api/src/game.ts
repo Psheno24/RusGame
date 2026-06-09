@@ -67,12 +67,7 @@ import { playerMeetsCarRequirement, taxiBlocksShift } from "./taxi.js";
 import { saveTaxiState } from "./playerTaxi.js";
 import { deliveryBlocksShift, clearDeliveryState } from "./delivery.js";
 import { workEnergyCost } from "./balanceBible.js";
-import {
-  applyPostWorkPassives,
-  canAffordCosts,
-  clampVital,
-  scaleWorkCosts,
-} from "./playerStats.js";
+import { canAffordCosts, clampVital, scaleWorkCosts } from "./playerStats.js";
 
 export { canWorkJobNow, formatCooldown } from "./workCooldown.js";
 import { randInt } from "./random.js";
@@ -496,8 +491,6 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
       (patch.energy ?? player.energy ?? 80) - energyCost,
     );
   }
-  Object.assign(patch, applyPostWorkPassives(player, patch));
-
   let skillGain: { key: SkillKey; amount: number } | undefined;
   const grantSkillProgress =
     !isLoader &&
