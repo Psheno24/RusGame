@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generates data/housingProperties.json from data/housingEstate.json
+ * Generates data/housingProperties.json from data/housingEstate.json + balanceBible prices.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -10,6 +10,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const estate = JSON.parse(readFileSync(join(root, "data/housingEstate.json"), "utf-8"));
 const bible = JSON.parse(readFileSync(join(root, "data/balanceBible.json"), "utf-8"));
 const bibleCityMult = bible.cityMultipliers ?? {};
+const typeBuyOmsk = bible.housingTypeBuyOmsk ?? {};
 
 const typeByKey = Object.fromEntries(estate.propertyTypes.map((t) => [t.key, t]));
 
@@ -54,9 +55,6 @@ function descriptionFor(type, listing, cityName) {
   return `${place}, район ${district}, ${cityName}. ${tier.charAt(0).toUpperCase() + tier.slice(1)} — престиж ${type.prestige}/100.`;
 }
 
-const omskBase = estate.cities.find((c) => c.id === "omsk");
-const omskPrices = omskBase.listings.map((l) => l.priceRub);
-
 const cityNames = {
   omsk: "Омск",
   volgograd: "Волгоград",
@@ -77,17 +75,23 @@ const cityNames = {
 };
 
 const byCity = {};
+let total = 0;
 
 for (const city of estate.cities) {
   const cityName = cityNames[city.id] ?? city.id;
   const properties = [];
 
-  city.listings.forEach((listing, idx) => {
+  for (const listing of city.listings) {
     const type = typeByKey[listing.typeKey];
     if (!type) throw new Error(`Unknown type ${listing.typeKey}`);
-    const basePrice = listing.priceRub ?? omskPrices[idx];
+
+    const omskBase = typeBuyOmsk[listing.typeKey];
+    if (omskBase == null) {
+      continue;
+    }
+
     const mult = bibleCityMult[city.id] ?? city.multiplier ?? 1;
-    const priceRub = Math.round(basePrice * mult);
+    const priceRub = Math.round(omskBase * mult);
     const econ = computeEconomy(priceRub, type);
     const title = listing.nameSuffix
       ? type.title.includes(listing.nameSuffix)
@@ -109,7 +113,8 @@ for (const city of estate.cities) {
       areaSqm: type.areaSqm,
       ...econ,
     });
-  });
+    total += 1;
+  }
 
   byCity[city.id] = properties;
 }
@@ -125,5 +130,5 @@ const out = {
 
 writeFileSync(join(root, "data/housingProperties.json"), JSON.stringify(out, null, 2) + "\n");
 console.log(
-  `Generated housingProperties.json: ${estate.cities.length} cities, ${estate.cities.length * 15} properties`,
+  `Generated housingProperties.json: ${estate.cities.length} cities, ${total} properties`,
 );
