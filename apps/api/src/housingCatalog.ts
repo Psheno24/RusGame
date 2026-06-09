@@ -24,8 +24,14 @@ export type HousingPropertyDef = {
   expenseRatePct: number;
 };
 
+type HousingPropertyTypeDef = {
+  key: string;
+  moodBonus: number;
+};
+
 type HousingPropertiesFile = {
   version?: number;
+  propertyTypes?: HousingPropertyTypeDef[];
   cityMultipliers?: Record<string, number>;
   byCity: Record<string, HousingPropertyDef[]>;
 };
@@ -57,4 +63,13 @@ export function listAllCitiesWithProperties(): string[] {
 
 export function getCityHousingMultiplier(cityId: string): number {
   return getCityEconomyMultiplier(cityId);
+}
+
+const moodBonusByTypeKey = new Map(
+  (catalog.propertyTypes ?? []).map((t) => [t.key, t.moodBonus] as const),
+);
+
+/** Бонус настроения по типу жилья из каталога (как в карточках недвижимости). */
+export function housingTypeMoodBonus(typeKey: string): number {
+  return moodBonusByTypeKey.get(typeKey) ?? 0;
 }

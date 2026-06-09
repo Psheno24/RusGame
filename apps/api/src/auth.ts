@@ -8,6 +8,7 @@ import { parseDriverLicenses } from "./playerCars.js";
 import { getHousingProperty, housingPropertyLabel } from "./housingCatalog.js";
 import { formatVehiclePlate, parsePlatePartsFromRow } from "./licensePlate.js";
 import { housingStatusForPlayer } from "./housing.js";
+import { effectiveMood } from "./housingMood.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 import { getPlayerSimTariffId, getSimTariffPlan } from "./simTariff.js";
 import { isVehicleRentalActive } from "./vehicleRental.js";
@@ -215,7 +216,7 @@ export function serializePlayer(p: import("./db.js").PlayerRow) {
     housingStatusLabel: housing.statusLabel,
     vitals: {
       energy: p.energy ?? 80,
-      mood: p.mood ?? 0,
+      mood: effectiveMood(p),
       health: p.health ?? 100,
       reputation: p.reputation ?? 0,
     },
