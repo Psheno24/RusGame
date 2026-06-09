@@ -2,9 +2,8 @@ import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import { updatePlayer } from "./db.js";
 import { appendPlayerFeed } from "./playerFeed.js";
-import { getBalanceBible, getCityEconomyMultiplier, scaledWorkEnergyCost } from "./balanceBible.js";
+import { getBalanceBible, getCityEconomyMultiplier, workEnergyCost } from "./balanceBible.js";
 import { getSkill, type SkillKey } from "./skills.js";
-import { effectiveMood } from "./housingMood.js";
 import {
   clampReputation,
   clampVital,
@@ -122,8 +121,7 @@ export function doCareerShift(
   const cityMult = getCityEconomyMultiplier(player.city_id);
   const payout = Math.round(level.payoutBase * cityMult);
   const energyCost =
-    scaleWorkCosts(player, { energy: scaledWorkEnergyCost("career", effectiveMood(player)) })
-      ?.energy ?? 15;
+    scaleWorkCosts(player, { energy: workEnergyCost("career") })?.energy ?? 15;
 
   lastWork[lastKey] = now;
   updatePlayer(player.user_id, {

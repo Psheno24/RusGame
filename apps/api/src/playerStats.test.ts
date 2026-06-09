@@ -107,4 +107,9 @@ describe("playerStats", () => {
     assert.equal(scaled?.energy, 12);
     assert.equal(scaled?.mood, 2);
   });
+
+  it("scaleWorkCosts applies mood multiplier once at low effective mood", () => {
+    const scaled = scaleWorkCosts(player({ mood: 0 }), { energy: 15 });
+    assert.equal(scaled?.energy, 38);
+  });
 });

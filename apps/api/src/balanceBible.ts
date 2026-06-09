@@ -158,6 +158,7 @@ export function workEnergyCost(templateKey: string): number {
   return getBalanceBible().energy.workCosts[templateKey] ?? 0;
 }
 
+/** Расход энергии с учётом настроения. Не комбинировать с `scaleWorkCosts` — там множитель уже применяется. */
 export function scaledWorkEnergyCost(templateKey: string, mood: number): number {
   const base = workEnergyCost(templateKey);
   return Math.max(1, Math.round(base * moodEnergyCostMultiplier(mood)));

@@ -66,10 +66,10 @@ import { scheduleShiftReadyPush } from "./pushNotifications.js";
 import { playerMeetsCarRequirement, taxiBlocksShift } from "./taxi.js";
 import { saveTaxiState } from "./playerTaxi.js";
 import { deliveryBlocksShift, clearDeliveryState } from "./delivery.js";
-import { scaledWorkEnergyCost } from "./balanceBible.js";
-import { effectiveMood } from "./housingMood.js";
+import { workEnergyCost } from "./balanceBible.js";
 import {
   applyPostWorkPassives,
+  canAffordCosts,
   clampVital,
   scaleWorkCosts,
 } from "./playerStats.js";
@@ -486,9 +486,11 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
 
   const templateKey = job.templateKey ?? "";
   const energyCost = scaleWorkCosts(player, {
-    energy: scaledWorkEnergyCost(templateKey, effectiveMood(player)),
+    energy: workEnergyCost(templateKey),
   })?.energy;
   if (energyCost && energyCost > 0) {
+    const energyErr = canAffordCosts(player, { energy: energyCost });
+    if (energyErr) return { ok: false, error: energyErr };
     patch.energy = clampVital(
       "energy",
       (patch.energy ?? player.energy ?? 80) - energyCost,

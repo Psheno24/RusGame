@@ -2,8 +2,7 @@ import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { appendPlayerFeed } from "./playerFeed.js";
-import { getBalanceBible, scaledWorkEnergyCost } from "./balanceBible.js";
-import { effectiveMood } from "./housingMood.js";
+import { getBalanceBible, workEnergyCost } from "./balanceBible.js";
 import {
   clampReputation,
   clampVital,
@@ -65,7 +64,7 @@ export function startEducation(
   }
 
   const energyCost = scaleWorkCosts(player, {
-    energy: scaledWorkEnergyCost("education", effectiveMood(player)),
+    energy: workEnergyCost("education"),
   })?.energy;
 
   const endsAt = now + cfg.days * MS_DAY;

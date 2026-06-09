@@ -2,10 +2,9 @@ import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { appendPlayerFeed } from "./playerFeed.js";
-import { getBalanceBible, getCityEconomyMultiplier, scaledWorkEnergyCost } from "./balanceBible.js";
+import { getBalanceBible, getCityEconomyMultiplier, workEnergyCost } from "./balanceBible.js";
 import { randInt } from "./random.js";
 import type { JobDef } from "./gameData.js";
-import { effectiveMood } from "./housingMood.js";
 import { recordSkillActionForTemplate, SKILL_LABELS } from "./skills.js";
 import {
   clampReputation,
@@ -166,7 +165,7 @@ function completeTrip(
   const totalMinutes = trip.order.tripMinutes + rolled.extraMinutes;
 
   const energyCost = scaleWorkCosts(player, {
-    energy: scaledWorkEnergyCost("delivery", effectiveMood(player)),
+    energy: workEnergyCost("delivery"),
   })?.energy ?? 2;
 
   if (trip.order.transport === "car") {
