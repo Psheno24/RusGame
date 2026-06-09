@@ -8,25 +8,17 @@ import {
   fetchCarCategories,
   fetchCarQuote,
   fetchCarSellQuote,
-  fetchPlateGarage,
-  fetchPlateShopCar,
   fetchShopCars,
   fetchUsedCarDetail,
   fetchUsedCarMarket,
   sellCar,
   fetchVehicleRentals,
-  plateRegister,
-  plateRollDigits,
-  plateRollLetters,
-  plateRollRegion,
   rentVehicle,
   tradeInCar,
   type CarCategory,
   type CarModel,
   type CarPurchaseQuote,
   type OwnedCar,
-  type PlateGarageCar,
-  type PlateShopCarInfo,
   type UsedCarDiagnosisRanges,
   type UsedCarListing,
   type UsedCarMarket,
@@ -37,8 +29,8 @@ import type { NavBackHandler } from "../navBack";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CityGridButton } from "./ui/CityGridButton";
 import { TimerIcon } from "./ui/TimerIcon";
-import { PlateShopPanel } from "./PlateShopPanel";
 import { VehiclePlate } from "./VehiclePlate";
+import { PLATE_LABEL, PLATES_WHERE_HINT } from "../plateCopy";
 import { testOnlyGridHint, testOnlyLocked } from "../testOnlyUi";
 import { CarColorPicker, CarModelPreview, DEFAULT_CAR_BODY_COLOR, hasCar3dModel } from "./cars";
 
@@ -52,8 +44,6 @@ type CarNav =
   | "usedList"
   | "usedDetail"
   | "rent"
-  | "plate"
-  | "plateDetail"
   | "tuning";
 
 type Pending =
@@ -196,10 +186,6 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
   const [cars, setCars] = useState<CarModel[]>([]);
   const [ownedCars, setOwnedCars] = useState<OwnedCar[]>([]);
   const [rentals, setRentals] = useState<VehicleRental[]>([]);
-  const [platePlayerCarId, setPlatePlayerCarId] = useState<number | null>(null);
-  const [plateGarage, setPlateGarage] = useState<PlateGarageCar[]>([]);
-  const [plateInfo, setPlateInfo] = useState<PlateShopCarInfo | null>(null);
-  const [plateSpin, setPlateSpin] = useState(false);
   const [tradeInIds, setTradeInIds] = useState<number[]>([]);
   const [tradeQuote, setTradeQuote] = useState<CarPurchaseQuote | null>(null);
   const [usedMarket, setUsedMarket] = useState<UsedCarMarket | null>(null);
@@ -212,7 +198,6 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
   const licenses = new Set(p.driverLicenseCategories ?? []);
   const selected = carId ? cars.find((c) => c.id === carId) : null;
   const category = categoryId ? categories.find((c) => c.id === categoryId) : null;
-  const plateCar = platePlayerCarId ? plateGarage.find((c) => c.playerCarId === platePlayerCarId) : null;
   const ownedInstance = selected ? ownedCars.find((oc) => oc.modelId === selected.id) : null;
   const usedSelected =
     usedDetail ?? (usedListingId ? usedMarket?.listings.find((l) => l.id === usedListingId) : null);
@@ -221,10 +206,6 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
     setNav(next);
     if (opts?.category !== undefined) setCategoryId(opts.category);
     if (opts?.car !== undefined) setCarId(opts.car);
-    if (next === "plate") {
-      setPlatePlayerCarId(null);
-      setPlateInfo(null);
-    }
     if (next !== "tradeIn") {
       setTradeInIds([]);
       setTradeQuote(null);
@@ -269,29 +250,17 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
     } else if (nav === "rent") {
       title = "Аренда";
       backLabel = "Авто";
-    } else if (nav === "plate") {
-      title = "Гос.номер";
-      backLabel = "Авто";
-    } else if (nav === "plateDetail" && plateCar) {
-      title = `${plateCar.brand} ${plateCar.model}`;
-      backLabel = "Гос.номер";
     } else if (nav === "tuning") {
       title = "Тюнинг";
       backLabel = "Авто";
     }
     onNavChange({ inSub: nav !== "hub", title, backLabel });
-  }, [nav, onNavChange, selected, category, plateCar, usedSelected]);
+  }, [nav, onNavChange, selected, category, usedSelected]);
 
   useEffect(() => {
     const handler: NavBackHandler = () => {
       if (nav === "tradeIn") {
         setNav("buyDetail");
-        return true;
-      }
-      if (nav === "plateDetail") {
-        setNav("plate");
-        setPlatePlayerCarId(null);
-        setPlateInfo(null);
         return true;
       }
       if (nav === "buyDetail") {
@@ -367,17 +336,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
         .then((r) => setRentals(r.rentals))
         .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true));
     }
-    if (nav === "plate") {
-      fetchPlateGarage()
-        .then((r) => setPlateGarage(r.cars))
-        .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true));
-    }
-    if (nav === "plateDetail" && platePlayerCarId) {
-      fetchPlateShopCar(platePlayerCarId)
-        .then(setPlateInfo)
-        .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true));
-    }
-  }, [nav, reloadCategory, platePlayerCarId]);
+  }, [nav, reloadCategory]);
 
   useEffect(() => {
     if (nav !== "tradeIn" || !carId) return;
@@ -385,38 +344,6 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
       .then(setTradeQuote)
       .catch(() => setTradeQuote(null));
   }, [nav, carId, tradeInIds]);
-
-  const reloadPlateGarage = useCallback(async () => {
-    const r = await fetchPlateGarage();
-    setPlateGarage(r.cars);
-  }, []);
-
-  const reloadPlateDetail = useCallback(async () => {
-    if (!platePlayerCarId) return;
-    setPlateInfo(await fetchPlateShopCar(platePlayerCarId));
-    await reloadPlateGarage();
-  }, [platePlayerCarId, reloadPlateGarage]);
-
-  const runPlate = async (fn: (id: number) => Promise<{ plateText: string; user: User }>) => {
-    if (!platePlayerCarId) return;
-    setPlateSpin(true);
-    try {
-      const r = await fn(platePlayerCarId);
-      setUser(r.user);
-      onToast(`Номер: ${r.plateText}`);
-      await reloadPlateDetail();
-    } catch (e) {
-      onToast(e instanceof Error ? e.message : "Ошибка", true);
-    } finally {
-      setTimeout(() => setPlateSpin(false), 400);
-    }
-  };
-
-  const openPlateCar = (playerCarId: number) => {
-    setPlatePlayerCarId(playerCarId);
-    setPlateInfo(null);
-    setNav("plateDetail");
-  };
 
   const onConfirm = async () => {
     if (!pending) return;
@@ -489,7 +416,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
     }
     if (pending.kind === "sell") {
       const plateNote = pending.plateText
-        ? ` Госномер ${pending.plateText} будет снят и снова станет доступен для выбивания другими игроками.`
+        ? ` Номерной знак ${pending.plateText} будет снят и снова станет доступен для выбивания другими игроками.`
         : "";
       return {
         title: "Продать автомобиль?",
@@ -508,7 +435,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
       .map((oc) => `${oc.brand} ${oc.model}: ${oc.plateText}`)
       .join("; ");
     const plateNote = tradedPlates
-      ? ` Снятые номера (${tradedPlates}) снова доступны для выбивания.`
+      ? ` Снятые номерные знаки (${tradedPlates}) снова доступны для выбивания.`
       : "";
     return {
       title: "Купить с трейд-ином?",
@@ -538,7 +465,6 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
         <div className="city-grid shop-categories phone-hub">
           <CityGridButton title="Купить авто" onClick={() => go("buyChoice")} />
           <CityGridButton title="Аренда" onClick={() => go("rent")} />
-          <CityGridButton title="Гос.номер" onClick={() => go("plate")} />
           <CityGridButton
             title="Тюнинг"
             hint={testOnlyGridHint(isTest, true)}
@@ -847,12 +773,17 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
                     <span className="license-ok">куплено</span>
                   </dd>
                 </div>
-                {ownedInstance?.plate && (
+                {ownedInstance?.plate ? (
                   <div>
-                    <dt>Гос.номер</dt>
+                    <dt>{PLATE_LABEL}</dt>
                     <dd className="car-detail-plate">
                       <VehiclePlate parts={ownedInstance.plate} size="md" />
                     </dd>
+                  </div>
+                ) : (
+                  <div>
+                    <dt>{PLATE_LABEL}</dt>
+                    <dd className="shop-owned">{PLATES_WHERE_HINT}</dd>
                   </div>
                 )}
               </>
@@ -1058,66 +989,6 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
             </li>
           ))}
         </ul>
-      )}
-
-      {nav === "plate" && (
-        <div className="phone-catalog">
-          {plateGarage.length === 0 ? (
-            <p className="shop-owned">Сначала купите автомобиль в разделе «Купить авто».</p>
-          ) : (
-            <ul className="phone-list">
-              {plateGarage.map((c) => (
-                <li key={c.playerCarId}>
-                  <button
-                    type="button"
-                    className="phone-list-item"
-                    onClick={() => openPlateCar(c.playerCarId)}
-                  >
-                    <ShopCarThumb modelId={c.modelId} accent={c.accent} />
-                    <span className="phone-list-info">
-                      <span className="phone-list-name">
-                        {c.brand} {c.model}
-                      </span>
-                      <span className="phone-list-price">
-                        {c.plateText ? "номер оформлен" : "без номера"}
-                      </span>
-                    </span>
-                    {c.plate ? (
-                      <VehiclePlate parts={c.plate} size="sm" className="plate-list-plate" />
-                    ) : (
-                      <span className="plate-list-empty">—</span>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {nav === "plateDetail" && !plateInfo && <p className="shop-stub">Загрузка…</p>}
-
-      {nav === "plateDetail" && plateInfo && (
-        <div className="phone-detail">
-          <ShopCarBanner
-            modelId={plateCar?.modelId ?? ""}
-            accent={plateInfo.accent}
-            large
-          />
-          <h3 className="phone-detail-title">
-            {plateInfo.brand} {plateInfo.model}
-          </h3>
-          <p className="shop-owned">Оформление и смена госномера</p>
-          <PlateShopPanel
-            info={plateInfo}
-            spinning={plateSpin}
-            busy={busy}
-            onRegister={() => void runPlate(plateRegister)}
-            onDigits={() => void runPlate(plateRollDigits)}
-            onLetters={() => void runPlate(plateRollLetters)}
-            onRegion={() => void runPlate(plateRollRegion)}
-          />
-        </div>
       )}
 
       {nav === "tuning" && (

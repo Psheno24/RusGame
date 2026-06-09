@@ -117,7 +117,7 @@ export function registerVehiclePlate(
   if (!player) return { ok: false, error: "Игрок не найден" };
   const row = getPlayerCarById(userId, playerCarId);
   if (!row) return { ok: false, error: "Автомобиль не найден" };
-  if (parsePlatePartsFromRow(row)) return { ok: false, error: "Госномер уже оформлен" };
+  if (parsePlatePartsFromRow(row)) return { ok: false, error: "Номерной знак уже оформлен" };
   if (player.rubles < PLATE_PRICES.register) {
     return { ok: false, error: `Нужно ${formatRub(PLATE_PRICES.register)}` };
   }
@@ -130,7 +130,7 @@ export function registerVehiclePlate(
   appendPlayerFeed(
     userId,
     "shop:plate",
-    `Оформили госномер ${result.plateText} на ${carName}`,
+    `Оформили номерной знак ${result.plateText} на ${carName}`,
     Date.now(),
   );
   return result;
@@ -145,7 +145,7 @@ export function changePlateDigits(
   const row = getPlayerCarById(userId, playerCarId);
   if (!row) return { ok: false, error: "Автомобиль не найден" };
   const current = parsePlatePartsFromRow(row);
-  if (!current) return { ok: false, error: "Сначала оформите госномер" };
+  if (!current) return { ok: false, error: "Сначала оформите номерной знак" };
   if (player.rubles < PLATE_PRICES.digits) {
     return { ok: false, error: `Нужно ${formatRub(PLATE_PRICES.digits)}` };
   }
@@ -163,7 +163,7 @@ export function changePlateLetters(
   const row = getPlayerCarById(userId, playerCarId);
   if (!row) return { ok: false, error: "Автомобиль не найден" };
   const current = parsePlatePartsFromRow(row);
-  if (!current) return { ok: false, error: "Сначала оформите госномер" };
+  if (!current) return { ok: false, error: "Сначала оформите номерной знак" };
   if (player.rubles < PLATE_PRICES.letters) {
     return { ok: false, error: `Нужно ${formatRub(PLATE_PRICES.letters)}` };
   }
@@ -181,7 +181,7 @@ export function changePlateRegion(
   const row = getPlayerCarById(userId, playerCarId);
   if (!row) return { ok: false, error: "Автомобиль не найден" };
   const current = parsePlatePartsFromRow(row);
-  if (!current) return { ok: false, error: "Сначала оформите госномер" };
+  if (!current) return { ok: false, error: "Сначала оформите номерной знак" };
   if (player.rubles < PLATE_PRICES.region) {
     return { ok: false, error: `Нужно ${formatRub(PLATE_PRICES.region)}` };
   }
