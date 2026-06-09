@@ -131,8 +131,7 @@ export type VehicleRentalDef = {
   id: string;
   label: string;
   hint: string;
-  priceRub: number;
-  hours: number;
+  pricePerHourRub: number;
   needsLicense: boolean;
   accent: string;
   /** Модель для такси; без поля аренда не подходит для работы таксистом. */

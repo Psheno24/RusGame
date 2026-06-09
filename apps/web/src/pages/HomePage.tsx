@@ -1,6 +1,6 @@
 import { formatRub } from "../formatRub.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   fetchHome,
   formatDuration,
@@ -45,6 +45,8 @@ export function HomePage() {
   const { showNotice } = useNotice();
   const homeNav = useHomeNav();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const housingPanelRef = useRef<HTMLDivElement>(null);
   const [home, setHome] = useState<HomeStatus | null>(null);
   const [housingLabel, setHousingLabel] = useState("");
   const [housingExtend, setHousingExtend] = useState<HousingExtendInfo | null>(null);
@@ -132,6 +134,12 @@ export function HomePage() {
       setBusy(false);
     }
   };
+
+  useEffect(() => {
+    if (searchParams.get("panel") !== "housing") return;
+    housingPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams, home]);
 
   if (!user || !p) return null;
 
@@ -320,7 +328,10 @@ export function HomePage() {
       ) : (
         <div className="card">
           {sleepBlocked && <p className="work-empty-hint">{sleepBlocked}</p>}
-          <div className={`home-action-row${showExtendBtn ? "" : " home-action-row--single"}`}>
+        <div
+          ref={housingPanelRef}
+          className={`home-action-row${showExtendBtn ? "" : " home-action-row--single"}`}
+        >
             <button
               type="button"
               className="btn btn-primary"

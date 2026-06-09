@@ -45,6 +45,7 @@ type CarNav =
   | "usedList"
   | "usedDetail"
   | "rent"
+  | "rentDetail"
   | "tuning";
 
 type Pending =
@@ -66,7 +67,17 @@ type Pending =
       catalogPriceRub: number;
       plateText: string | null;
     }
-  | { kind: "rent"; rentalId: string; label: string; priceRub: number };
+  | { kind: "rent"; rentalId: string; label: string; priceRub: number; hours: number };
+
+const RENTAL_ICONS: Record<string, string> = {
+  scooter: "🛴",
+  bike: "🚲",
+  moped: "🛵",
+  "car-economy": "🚗",
+};
+
+const RENT_MIN_HOURS = 1;
+const RENT_MAX_HOURS = 24;
 
 type Props = {
   user: User;
@@ -187,6 +198,8 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
   const [cars, setCars] = useState<CarModel[]>([]);
   const [ownedCars, setOwnedCars] = useState<OwnedCar[]>([]);
   const [rentals, setRentals] = useState<VehicleRental[]>([]);
+  const [rentalId, setRentalId] = useState<string | null>(null);
+  const [rentHours, setRentHours] = useState(RENT_MIN_HOURS);
   const [tradeInIds, setTradeInIds] = useState<number[]>([]);
   const [tradeQuote, setTradeQuote] = useState<CarPurchaseQuote | null>(null);
   const [usedMarket, setUsedMarket] = useState<UsedCarMarket | null>(null);
@@ -202,11 +215,19 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
   const ownedInstance = selected ? ownedCars.find((oc) => oc.modelId === selected.id) : null;
   const usedSelected =
     usedDetail ?? (usedListingId ? usedMarket?.listings.find((l) => l.id === usedListingId) : null);
+  const selectedRental = rentalId ? rentals.find((r) => r.id === rentalId) : null;
 
-  const go = (next: CarNav, opts?: { category?: string | null; car?: string | null }) => {
+  const go = (
+    next: CarNav,
+    opts?: { category?: string | null; car?: string | null; rental?: string | null },
+  ) => {
     setNav(next);
     if (opts?.category !== undefined) setCategoryId(opts.category);
     if (opts?.car !== undefined) setCarId(opts.car);
+    if (opts?.rental !== undefined) {
+      setRentalId(opts.rental);
+      if (opts.rental) setRentHours(RENT_MIN_HOURS);
+    }
     if (next !== "tradeIn") {
       setTradeInIds([]);
       setTradeQuote(null);
@@ -251,12 +272,15 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
     } else if (nav === "rent") {
       title = "Аренда";
       backLabel = "Авто";
+    } else if (nav === "rentDetail" && selectedRental) {
+      title = selectedRental.label;
+      backLabel = "Аренда";
     } else if (nav === "tuning") {
       title = "Тюнинг";
       backLabel = "Авто";
     }
     onNavChange({ inSub: nav !== "hub", title, backLabel });
-  }, [nav, onNavChange, selected, category, usedSelected]);
+  }, [nav, onNavChange, selected, category, usedSelected, selectedRental]);
 
   useEffect(() => {
     const handler: NavBackHandler = () => {
@@ -284,6 +308,11 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
       }
       if (nav === "buyChoice") {
         setNav("hub");
+        return true;
+      }
+      if (nav === "rentDetail") {
+        setNav("rent");
+        setRentalId(null);
         return true;
       }
       if (nav !== "hub") {
@@ -332,7 +361,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
         onToastRef.current(e instanceof Error ? e.message : "Ошибка", true),
       );
     }
-    if (nav === "rent") {
+    if (nav === "rent" || nav === "rentDetail") {
       fetchVehicleRentals()
         .then((r) => setRentals(r.rentals))
         .catch((e) => onToastRef.current(e instanceof Error ? e.message : "Ошибка", true));
@@ -377,9 +406,10 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
         go("buyList", { category: categoryId, car: null });
         await reloadCategory();
       } else {
-        const r = await rentVehicle(pending.rentalId);
+        const r = await rentVehicle(pending.rentalId, pending.hours);
         setUser(r.user);
         onToast(r.message ?? `Арендовано: ${r.label}`);
+        go("rent");
       }
       setPending(null);
     } catch (e) {
@@ -394,7 +424,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
     if (pending.kind === "rent") {
       return {
         title: "Арендовать?",
-        text: `${pending.label} за ${rub(pending.priceRub)}?`,
+        text: `${pending.label} на ${pending.hours} ч за ${rub(pending.priceRub)}?`,
         confirmLabel: "Арендовать",
         confirmClassName: "btn-primary",
       };
@@ -959,33 +989,76 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
       )}
 
       {nav === "rent" && (
-        <ul className="phone-list">
+        <div className="city-grid shop-categories phone-hub">
           {rentals.map((r) => (
-            <li key={r.id}>
-              <div className="phone-list-item" style={{ cursor: "default" }}>
-                <span className="phone-list-thumb" style={{ background: r.accent }} aria-hidden />
-                <span className="phone-list-info">
-                  <span className="phone-list-name">{r.label}</span>
-                  <span className="phone-list-price">
-                    {rub(r.priceRub)} · {r.hours} ч
-                  </span>
-                  <span className="city-grid-hint">{r.hint}</span>
-                </span>
-              </div>
-              <button
-                type="button"
-                className="btn btn-primary"
-                style={{ margin: "0.35rem 0 0.75rem" }}
-                disabled={busy || p.rubles < r.priceRub}
-                onClick={() =>
-                  setPending({ kind: "rent", rentalId: r.id, label: r.label, priceRub: r.priceRub })
-                }
-              >
-                Арендовать
-              </button>
-            </li>
+            <CityGridButton
+              key={r.id}
+              title={r.label}
+              icon={RENTAL_ICONS[r.id] ?? "🚲"}
+              hint={`${rub(r.pricePerHourRub)}/ч · ${r.hint}`}
+              onClick={() => go("rentDetail", { rental: r.id })}
+            />
           ))}
-        </ul>
+        </div>
+      )}
+
+      {nav === "rentDetail" && !selectedRental && <p className="shop-stub">Загрузка…</p>}
+
+      {nav === "rentDetail" && selectedRental && (
+        <div className="phone-detail">
+          <div
+            className="car-visual car-visual--lg"
+            style={{ background: selectedRental.accent }}
+            aria-hidden
+          />
+          <h3 className="phone-detail-title">{selectedRental.label}</h3>
+          <p className="shop-owned">{selectedRental.hint}</p>
+          <p className="shop-price">
+            Тариф: <strong>{rub(selectedRental.pricePerHourRub)}/ч</strong>
+          </p>
+          {selectedRental.needsLicense && !licenses.has("B") ? (
+            <p className="shop-owned">
+              Нужны права категории B — получите в <strong>полиции</strong>.
+            </p>
+          ) : (
+            <>
+              <label className="home-sleep-preview-live" htmlFor="rent-hours-slider">
+                Срок: <strong>{rentHours}</strong> ч
+              </label>
+              <input
+                id="rent-hours-slider"
+                type="range"
+                className="home-sleep-slider"
+                min={RENT_MIN_HOURS}
+                max={RENT_MAX_HOURS}
+                step={1}
+                value={rentHours}
+                onChange={(e) => setRentHours(Number(e.target.value))}
+              />
+              <p className="home-sleep-preview-live">
+                К оплате: <strong>{rub(selectedRental.pricePerHourRub * rentHours)}</strong>
+              </p>
+              <div className="phone-detail-buy car-detail-actions">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={busy || p.rubles < selectedRental.pricePerHourRub * rentHours}
+                  onClick={() =>
+                    setPending({
+                      kind: "rent",
+                      rentalId: selectedRental.id,
+                      label: selectedRental.label,
+                      hours: rentHours,
+                      priceRub: selectedRental.pricePerHourRub * rentHours,
+                    })
+                  }
+                >
+                  Арендовать на {rentHours} ч
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {nav === "tuning" && (

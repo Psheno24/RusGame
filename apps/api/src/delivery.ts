@@ -82,7 +82,8 @@ function generateOrder(player: PlayerRow, now: number): DeliveryOrder {
     100,
     Math.round(distanceKm * cfg.ratePerKm * modMult * cityMult),
   );
-  const tripMinutes = Math.max(1, Math.round(distanceKm * cfg.minPerKm));
+  const effectiveMinPerKm = cfg.minPerKm * randInt(90, 110) / 100;
+  const tripMinutes = Math.max(1, Math.round(distanceKm * effectiveMinPerKm));
 
   return {
     id: `d-${Date.now()}-${randInt(1000, 9999)}`,

@@ -62,7 +62,8 @@ export function tripMinutesFromKm(km: number, demandKey: string): number {
       : demandKey === "high"
         ? cfg.speedMinPerKm.normal
         : cfg.speedMinPerKm.normal;
-  return Math.max(3, pickup + Math.round(km * speed));
+  const travelMin = km * speed * randInt(90, 110) / 100;
+  return Math.max(3, pickup + Math.round(travelMin));
 }
 
 /** Выплата: км × тариф × спрос × город. */

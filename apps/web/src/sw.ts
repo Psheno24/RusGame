@@ -34,26 +34,34 @@ self.addEventListener("push", (event) => {
       icon: "/icon.svg",
       badge: "/icon.svg",
       tag: data.url ?? "default",
-      data: { url: data.url ?? "/work" },
+      data: { url: data.url ?? "/work?panel=job" },
     }),
   );
 });
 
+async function openNotificationTarget(rawUrl: string) {
+  const path = rawUrl.startsWith("http") ? new URL(rawUrl).pathname + new URL(rawUrl).search : rawUrl;
+  const target = new URL(path, self.location.origin).href;
+  const clientList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+
+  for (const client of clientList) {
+    if (!client.url.startsWith(self.location.origin) || !("focus" in client)) continue;
+    await client.focus();
+    if ("navigate" in client) {
+      await (client as WindowClient).navigate(target);
+    } else {
+      client.postMessage({ type: "notification-navigate", url: path });
+    }
+    return;
+  }
+
+  await self.clients.openWindow(target);
+}
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data?.url as string | undefined) ?? "/work";
-  const target = new URL(url, self.location.origin).href;
-  event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url.startsWith(self.location.origin) && "focus" in client) {
-          void client.focus();
-          return;
-        }
-      }
-      return self.clients.openWindow(target);
-    }),
-  );
+  const url = (event.notification.data?.url as string | undefined) ?? "/work?panel=job";
+  event.waitUntil(openNotificationTarget(url));
 });
 
 export {};

@@ -275,8 +275,7 @@ export type VehicleRental = {
   id: string;
   label: string;
   hint: string;
-  priceRub: number;
-  hours: number;
+  pricePerHourRub: number;
   needsLicense: boolean;
   accent: string;
 };
@@ -1249,12 +1248,12 @@ export async function fetchVehicleRentals() {
   return api<{ rentals: VehicleRental[] }>("/api/shop/vehicle-rentals");
 }
 
-export async function rentVehicle(rentalId: string) {
+export async function rentVehicle(rentalId: string, hours: number) {
   return api<{ label: string; expiresAt: number; message: string; user: User }>(
     "/api/shop/vehicle-rent",
     {
       method: "POST",
-      body: JSON.stringify({ rentalId }),
+      body: JSON.stringify({ rentalId, hours }),
     },
   );
 }

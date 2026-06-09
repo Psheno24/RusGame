@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import {
   fetchMap,
   formatDuration,
@@ -58,6 +58,7 @@ export function MapPage() {
   const { setUser, user } = useApp();
   const { showNotice } = useNotice();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const focusHomeOnMount = useRef(
     (location.state as { focusHome?: boolean } | null)?.focusHome === true,
   ).current;
@@ -153,6 +154,14 @@ export function MapPage() {
     setView("map");
     void pickCityRef.current(city);
   }, [cities, location.state]);
+
+  useEffect(() => {
+    if (searchParams.get("panel") !== "travel") return;
+    setView("map");
+    const here = cities.find((c) => c.id === currentId);
+    if (here) void pickCityRef.current(here);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams, cities, currentId]);
 
   const goTravel = async () => {
     if (!selected || jobShiftBlocked) return;

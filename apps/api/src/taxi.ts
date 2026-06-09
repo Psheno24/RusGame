@@ -44,7 +44,6 @@ import {
   taxiKmPayoutRub,
   tripMinutesFromKm,
   type TaxiCashRiskConfig,
-  type TaxiPayoutCurve,
 } from "./taxiPayout.js";
 
 type TaxiConfig = {
@@ -81,15 +80,6 @@ type TaxiConfig = {
 const taxiConfig = JSON.parse(
   readFileSync(join(DATA_DIR, "taxiConfig.json"), "utf-8"),
 ) as TaxiConfig;
-
-const payoutCurve: TaxiPayoutCurve = {
-  tripMinutesMin: taxiConfig.tripMinutesMin,
-  tripMinutesMax: taxiConfig.tripMinutesMax,
-  midTripMinutes: taxiConfig.midTripMinutes,
-  hourlyAtMinTrip: taxiConfig.hourlyAtMinTrip,
-  hourlyAtMidTrip: taxiConfig.hourlyAtMidTrip,
-  hourlyAtMaxTrip: taxiConfig.hourlyAtMaxTrip,
-};
 
 const cashRiskConfig: TaxiCashRiskConfig = {
   cashNoPayBaseChance: taxiConfig.cashNoPayBaseChance,

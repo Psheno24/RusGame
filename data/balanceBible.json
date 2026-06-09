@@ -191,11 +191,11 @@
   },
   "delivery": {
     "transport": {
-      "walk": { "ratePerKm": 700, "minKm": 1, "maxKm": 5, "minPerKm": 8 },
-      "bike": { "ratePerKm": 650, "minKm": 1, "maxKm": 8, "minPerKm": 6 },
-      "scooter": { "ratePerKm": 650, "minKm": 2, "maxKm": 8, "minPerKm": 5 },
-      "moped": { "ratePerKm": 600, "minKm": 3, "maxKm": 15, "minPerKm": 3 },
-      "car": { "ratePerKm": 550, "minKm": 5, "maxKm": 30, "minPerKm": 2 }
+      "walk": { "ratePerKm": 200, "minKm": 1, "maxKm": 5, "minPerKm": 8.5 },
+      "bike": { "ratePerKm": 235, "minKm": 1, "maxKm": 8, "minPerKm": 6.5 },
+      "scooter": { "ratePerKm": 245, "minKm": 2, "maxKm": 8, "minPerKm": 5 },
+      "moped": { "ratePerKm": 210, "minKm": 3, "maxKm": 15, "minPerKm": 3.5 },
+      "car": { "ratePerKm": 165, "minKm": 5, "maxKm": 30, "minPerKm": 2.5 }
     },
     "modifiers": {
       "short": 0.8,

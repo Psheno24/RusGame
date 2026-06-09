@@ -1092,12 +1092,16 @@ export async function registerRoutes(app: FastifyInstance) {
     return { user };
   });
 
-  app.post<{ Body: { rentalId?: string } }>("/api/shop/vehicle-rent", async (req, reply) => {
+  app.post<{ Body: { rentalId?: string; hours?: number } }>("/api/shop/vehicle-rent", async (req, reply) => {
     const userId = await resolveUserId(req);
     if (!userId) return reply.code(401).send({ error: "Не авторизован" });
     const rentalId = req.body?.rentalId ?? "";
+    const hours = req.body?.hours;
     if (!rentalId) return reply.code(400).send({ error: "Укажите rentalId" });
-    const result = rentVehicle(userId, rentalId);
+    if (hours == null || !Number.isFinite(hours)) {
+      return reply.code(400).send({ error: "Укажите срок аренды в часах" });
+    }
+    const result = rentVehicle(userId, rentalId, Math.round(hours));
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
     return { label: result.label, expiresAt: result.expiresAt, message: result.message, user };

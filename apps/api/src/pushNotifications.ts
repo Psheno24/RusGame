@@ -223,20 +223,20 @@ function buildPushPayload(kind: PushScheduleKind, payloadJson: string): PushPayl
       return {
         title: "Можно выйти на смену",
         body: `(${jobTitle})`,
-        url: "/work",
+        url: "/work?panel=job",
       };
     }
     case "taxi_trip_end":
       return {
         title: "Выберите новый заказ",
         body: "или закончите смену (Такси)",
-        url: "/work",
+        url: "/work?panel=job",
       };
     case "delivery_trip_end":
       return {
         title: "Можно взять новый заказ",
         body: "(Доставка)",
-        url: "/work",
+        url: "/work?panel=job",
       };
     case "housing_payment": {
       const daysLeft = data.daysLeft ?? 1;
@@ -244,7 +244,7 @@ function buildPushPayload(kind: PushScheduleKind, payloadJson: string): PushPayl
       return {
         title: housing.title,
         body: housing.body,
-        url: "/home",
+        url: "/home?panel=housing",
       };
     }
     case "travel_arrive": {
@@ -252,7 +252,7 @@ function buildPushPayload(kind: PushScheduleKind, payloadJson: string): PushPayl
       return {
         title: "Вы добрались",
         body: `до ${cityName}`,
-        url: "/map",
+        url: "/map?panel=travel",
       };
     }
     default:

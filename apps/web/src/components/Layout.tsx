@@ -6,6 +6,7 @@ import { cityDisplayName } from "../cityNames";
 import { useHomeNav } from "../homeNav";
 import { useWorkNav } from "../workNav";
 import { formatRub } from "../formatRub.js";
+import { useNotificationNavigate } from "../notificationNavigate";
 
 const PAGE_TITLES: { path: string; title: string }[] = [
   { path: "/home", title: "Мой дом" },
@@ -142,6 +143,7 @@ function pageTitle(pathname: string): string | null {
 
 export function Layout() {
   const { user } = useApp();
+  useNotificationNavigate();
   const p = user?.player;
   const location = useLocation();
   const cityNav = useCityNav();

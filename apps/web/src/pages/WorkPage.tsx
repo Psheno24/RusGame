@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { type JobView } from "../api";
 import { fetchCityCached, invalidateCityCache } from "../cityDataCache";
 import { useIntervalTick } from "../hooks/useIntervalTick";
@@ -20,6 +20,7 @@ export function WorkPage() {
   const { showNotice } = useNotice();
   const workNav = useWorkNav();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { register: registerSectionBack } = useNavBackSlot();
   const [cityTimezone, setCityTimezone] = useState("Europe/Moscow");
   const [cityJobs, setCityJobs] = useState<JobView[]>([]);
@@ -57,6 +58,12 @@ export function WorkPage() {
   useEffect(() => {
     loadRef.current().catch((e) => showNotice(e instanceof Error ? e.message : "Ошибка", "error"));
   }, [showNotice]);
+
+  useEffect(() => {
+    if (searchParams.get("panel") !== "job") return;
+    setWorkHub("work");
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const tick = useIntervalTick(traveling || Boolean(employedId));
 
