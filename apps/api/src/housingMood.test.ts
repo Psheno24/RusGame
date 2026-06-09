@@ -93,4 +93,9 @@ describe("housingMood", () => {
     const p = player({ city_id: "moscow" });
     assert.equal(effectiveMood(p), 10);
   });
+
+  it("stored player.mood does not affect effective mood", () => {
+    const p = player({ mood: -50 });
+    assert.equal(effectiveMood(p), -30);
+  });
 });

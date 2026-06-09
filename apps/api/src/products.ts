@@ -50,7 +50,6 @@ export function buyProduct(userId: number, productId: string): BuyProductResult 
 
   const parts: string[] = [`Куплено: ${def.title}`];
   if (def.gains?.energy) parts.push(`+${def.gains.energy} энергия`);
-  if (def.gains?.mood) parts.push(`+${def.gains.mood} настроение`);
   if (def.gains?.health) parts.push(`+${def.gains.health} здоровье`);
 
   return { ok: true, message: parts.join(" · "), productId };

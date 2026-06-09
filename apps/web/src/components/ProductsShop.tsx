@@ -12,7 +12,6 @@ type Props = {
 function gainsLabel(p: ProductPreview): string {
   const parts: string[] = [];
   if (p.gains?.energy) parts.push(`+${p.gains.energy} энергия`);
-  if (p.gains?.mood) parts.push(`+${p.gains.mood} настроение`);
   if (p.gains?.health) parts.push(`+${p.gains.health} здоровье`);
   return parts.join(" · ");
 }

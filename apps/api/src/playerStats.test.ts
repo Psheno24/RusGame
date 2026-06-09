@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  applyPostWorkPassives,
   applyStatChanges,
   canAffordCosts,
   scaleWorkCosts,
@@ -86,26 +85,20 @@ describe("playerStats", () => {
     assert.equal(workPayoutMultiplier(player({ energy: 5, mood: 10 })), 1);
   });
 
-  it("applyPostWorkPassives applies side job mood penalty", () => {
-    const patch = applyPostWorkPassives(player({ mood: 70 }), {});
-    assert.equal(patch.mood, 55);
-  });
-
   it("canAffordCosts checks energy", () => {
     assert.ok(canAffordCosts(player({ energy: 1 }), { energy: 50 }));
     assert.equal(canAffordCosts(player({ energy: 80 }), { energy: 50 }), null);
   });
 
-  it("applyStatChanges spends vitals", () => {
+  it("applyStatChanges spends vitals and ignores mood gains", () => {
     const patch = applyStatChanges(player({ energy: 80, mood: 0 }), { energy: 20 }, { mood: 10 });
     assert.equal(patch.energy, 60);
-    assert.equal(patch.mood, 10);
+    assert.equal(patch.mood, undefined);
   });
 
-  it("scaleWorkCosts scales energy by mood", () => {
-    const scaled = scaleWorkCosts(player({ mood: 50 }), { energy: 12, mood: 2 });
-    assert.equal(scaled?.energy, 12);
-    assert.equal(scaled?.mood, 2);
+  it("scaleWorkCosts scales energy by computed mood", () => {
+    const scaled = scaleWorkCosts(player(), { energy: 12 });
+    assert.equal(scaled?.energy, 30);
   });
 
   it("scaleWorkCosts applies mood multiplier once at low effective mood", () => {
