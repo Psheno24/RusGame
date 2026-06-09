@@ -212,8 +212,14 @@ export function getPropertyDetail(
           ]
         : wearSpecs,
       status: plateText
-        ? [{ label: "Госномер", value: plateText }]
-        : [{ label: "Госномер", value: "не зарегистрирован" }],
+        ? [{ label: "Номерной знак", value: plateText }]
+        : [
+            {
+              label: "Номерной знак",
+              value: "не оформлен",
+              hint: "Сервисы → Полиция → Номерные знаки",
+            },
+          ],
       plate,
       plateText,
       canSell: true,
@@ -442,7 +448,9 @@ export function getPropertySellQuote(
       receiveRub: q.amountRub,
       losses: [
         `Автомобиль «${q.carName}» будет продан`,
-        detail.plateText ? `Госномер ${detail.plateText} перестанет быть вашим` : "Госномер будет снят",
+        detail.plateText
+          ? `Номерной знак ${detail.plateText} перестанет быть вашим`
+          : "Номерной знак будет снят",
         formatMarketLossLossLine(q.catalogPriceRub, q.amountRub),
       ],
     };

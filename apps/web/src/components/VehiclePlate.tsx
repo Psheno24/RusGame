@@ -35,7 +35,7 @@ export function VehiclePlate({
   const parts = resolved ?? (spinning || !plateText ? PLACEHOLDER : null);
   if (!parts) return null;
 
-  const label = resolved ? vehiclePlateAriaLabel(resolved) : "Госномер";
+  const label = resolved ? vehiclePlateAriaLabel(resolved) : "Номерной знак";
   const rootClass = [
     "gost-plate",
     `gost-plate--${size}`,

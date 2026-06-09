@@ -1,4 +1,5 @@
 import { formatRub } from "./formatRub.js";
+import { PLATES_POLICE_MENU_HINT } from "./plateCopy";
 
 export type PlaceId =
   | "flea_market"
@@ -22,7 +23,7 @@ export const CITY_PLACES: {
   { id: "gas_station", title: "АЗС", hint: `АИ-92 от ${formatRub(70)}/л` },
   { id: "education", title: "Образование", testOnly: true },
   { id: "phone_repair", title: "Ремонт телефона", testOnly: true },
-  { id: "police", title: "Полиция" },
+  { id: "police", title: "Полиция", hint: PLATES_POLICE_MENU_HINT },
   { id: "ambulance", title: "Скорая", testOnly: true },
   { id: "court", title: "Суд", testOnly: true },
 ];

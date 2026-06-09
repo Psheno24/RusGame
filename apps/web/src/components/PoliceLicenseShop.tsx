@@ -1,9 +1,11 @@
 import { formatRub } from "../formatRub.js";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { buyPoliceLicense, fetchPoliceLicenses, type User } from "../api";
 import { useToastRef } from "../hooks/useToastRef";
 import type { NavBackHandler } from "../navBack";
+import { PLATES_MENU_TITLE, PLATES_POLICE_MENU_HINT } from "../plateCopy";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { PlateShopSection } from "./PlateShopSection";
 import { testOnlyGridHint, testOnlyLocked } from "../testOnlyUi";
 import { CityGridButton } from "./ui/CityGridButton";
 
@@ -14,7 +16,7 @@ type LicenseRow = {
   priceRub: number;
 };
 
-type PoliceNav = "hub" | "licenses" | "fines";
+type PoliceNav = "hub" | "licenses" | "plates" | "fines";
 
 type Props = {
   user: User;
@@ -35,10 +37,20 @@ export function PoliceLicenseShop({ user, setUser, onToast, registerBack, onExit
   const [licenses, setLicenses] = useState<LicenseRow[]>([]);
   const [pending, setPending] = useState<LicenseRow | null>(null);
   const [busy, setBusy] = useState(false);
+  const platesBackRef = useRef<NavBackHandler | null>(null);
   const owned = new Set(user.player.driverLicenseCategories ?? []);
+
+  const registerPlatesBack = useCallback((handler: NavBackHandler | null) => {
+    platesBackRef.current = handler;
+  }, []);
 
   useEffect(() => {
     const handler: NavBackHandler = () => {
+      if (nav === "plates") {
+        if (platesBackRef.current?.()) return true;
+        setNav("hub");
+        return true;
+      }
       if (nav !== "hub") {
         setNav("hub");
         return true;
@@ -73,6 +85,17 @@ export function PoliceLicenseShop({ user, setUser, onToast, registerBack, onExit
     }
   };
 
+  if (nav === "plates") {
+    return (
+      <PlateShopSection
+        user={user}
+        setUser={setUser}
+        onToast={onToast}
+        registerBack={registerPlatesBack}
+      />
+    );
+  }
+
   return (
     <>
       {pending && (
@@ -89,6 +112,11 @@ export function PoliceLicenseShop({ user, setUser, onToast, registerBack, onExit
       {nav === "hub" && (
         <div className="city-grid shop-categories phone-hub police-hub">
           <CityGridButton title="Водительские права" onClick={() => setNav("licenses")} />
+          <CityGridButton
+            title={PLATES_MENU_TITLE}
+            hint={PLATES_POLICE_MENU_HINT}
+            onClick={() => setNav("plates")}
+          />
           <CityGridButton
             title="Штрафы"
             hint={testOnlyGridHint(isTest, true)}
