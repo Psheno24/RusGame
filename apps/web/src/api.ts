@@ -763,6 +763,7 @@ export type DeliveryStatus = {
   sessionIncomeRub: number;
   ordersCompleted: number;
   canTakeOrder: boolean;
+  takeOrderBlockedReason?: string | null;
   completedMessage?: string;
   completedPayout?: number;
 };
