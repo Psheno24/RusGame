@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { appendPlayerFeed } from "./playerFeed.js";
+import { formatPayoutFeedText } from "./payoutFeed.js";
 import { scheduleShiftReadyPush } from "./pushNotifications.js";
 import { DATA_DIR } from "./config.js";
 import { randInt } from "./random.js";
@@ -243,6 +244,7 @@ function completeActiveTrip(
   const order = trip.order;
   let payoutRub = order.payoutRub;
   let payNote = "";
+  const payoutNotes: string[] = [];
 
   if (order.payment === "cash") {
     const { noPayChance, partialPayChance } = cashPaymentRiskChances(
@@ -251,10 +253,14 @@ function completeActiveTrip(
     );
     if (Math.random() < noPayChance) {
       payoutRub = Math.floor(payoutRub * cashRiskConfig.parkCompensationFraction);
-      payNote = " Пассажир не заплатил — таксопарк компенсировал часть.";
+      const line = "Пассажир не заплатил — таксопарк компенсировал часть";
+      payoutNotes.push(line);
+      payNote = ` ${line}.`;
     } else if (Math.random() < partialPayChance) {
       payoutRub = Math.floor(payoutRub * cashRiskConfig.cashPartialPayFraction);
-      payNote = " Неполная оплата наличными.";
+      const line = "Неполная оплата наличными";
+      payoutNotes.push(line);
+      payNote = ` ${line}.`;
     }
   }
 
@@ -282,6 +288,13 @@ function completeActiveTrip(
     rubles: player.rubles + payoutRub,
     ...skillPatch,
   });
+  appendPlayerFeed(
+    player.user_id,
+    "work:taxi",
+    formatPayoutFeedText(payoutRub, payoutNotes),
+    now,
+  );
+
   if (skillResult.granted) {
     const label = SKILL_LABELS[skillResult.granted.key];
     appendPlayerFeed(
@@ -365,7 +378,6 @@ export function advanceTaxiState(
     s = result.state;
     completedMessage = result.message;
     completedPayout = result.payoutRub;
-    appendPlayerFeed(player.user_id, "work:taxi", `Заказ: ${result.message}`, now);
   }
 
   if (s.onLine && !s.activeTrip) {

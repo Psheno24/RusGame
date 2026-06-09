@@ -6,6 +6,7 @@ import type { AssetQuote } from "./carShop.js";
 import { getPhoneShopPriceRub } from "./shopCatalog.js";
 import { getSkill, SKILL_LABELS, recordSkillActionForTemplate, type SkillKey } from "./skills.js";
 import { appendPlayerFeed } from "./playerFeed.js";
+import { formatPayoutFeedText, timePayoutFeedReason } from "./payoutFeed.js";
 import {
   enrichJobWorkState,
   getCityLocalTime,
@@ -526,11 +527,10 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
   }
 
   const feedType = job.kind === "duration" ? "work:shift" : "work:side";
-  const feedText =
-    job.kind === "duration"
-      ? `Смена «${job.title}» (${shiftHours} ч): +${formatRub(payout)}`
-      : `Работа «${job.title}»: +${formatRub(payout)}`;
-  appendPlayerFeed(userId, feedType, feedText, now);
+  const payoutReasons: string[] = [];
+  const timeReason = timePayoutFeedReason(multiplier, schedule.localTime.periodLabel);
+  if (timeReason) payoutReasons.push(timeReason);
+  appendPlayerFeed(userId, feedType, formatPayoutFeedText(payout, payoutReasons), now);
 
   scheduleShiftReadyPush(userId, job.id, job.title, now + scaleCooldownMs(cooldownMs, userId));
 
