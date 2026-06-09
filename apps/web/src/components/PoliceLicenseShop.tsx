@@ -4,6 +4,7 @@ import { buyPoliceLicense, fetchPoliceLicenses, type User } from "../api";
 import { useToastRef } from "../hooks/useToastRef";
 import type { NavBackHandler } from "../navBack";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { testOnlyGridHint, testOnlyLocked } from "../testOnlyUi";
 import { CityGridButton } from "./ui/CityGridButton";
 
 type LicenseRow = {
@@ -28,6 +29,7 @@ function rub(n: number) {
 }
 
 export function PoliceLicenseShop({ user, setUser, onToast, registerBack, onExitPlace }: Props) {
+  const isTest = Boolean(user.isTest);
   const onToastRef = useToastRef(onToast);
   const [nav, setNav] = useState<PoliceNav>("hub");
   const [licenses, setLicenses] = useState<LicenseRow[]>([]);
@@ -87,7 +89,14 @@ export function PoliceLicenseShop({ user, setUser, onToast, registerBack, onExit
       {nav === "hub" && (
         <div className="city-grid shop-categories phone-hub police-hub">
           <CityGridButton title="Водительские права" onClick={() => setNav("licenses")} />
-          <CityGridButton title="Штрафы" hint="Скоро" disabled />
+          <CityGridButton
+            title="Штрафы"
+            hint={testOnlyGridHint(isTest, true)}
+            disabled={testOnlyLocked(isTest, true)}
+            onClick={() => {
+              if (isTest) setNav("fines");
+            }}
+          />
         </div>
       )}
 
