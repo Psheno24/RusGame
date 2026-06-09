@@ -98,6 +98,22 @@
     "cottage": { "buy": 25000000, "rent": 200000 },
     "mansion": { "buy": 50000000, "rent": 400000 }
   },
+  "housingTypeBuyOmsk": {
+    "communal_room": 900000,
+    "studio": 2500000,
+    "one_room": 4000000,
+    "one_room_plus": 5250000,
+    "two_room": 6500000,
+    "three_room": 9000000,
+    "business": 11000000,
+    "view": 15000000,
+    "dacha": 8000000,
+    "country_house": 12000000,
+    "cottage": 25000000,
+    "penthouse": 37500000,
+    "mansion": 50000000,
+    "residence": 80000000
+  },
   "housingTypeMap": {
     "dorm_room": "dorm",
     "communal_room": "room",
@@ -112,7 +128,8 @@
     "dacha": "house",
     "country_house": "house",
     "cottage": "cottage",
-    "mansion": "mansion"
+    "mansion": "mansion",
+    "residence": "mansion"
   },
   "sublet": {
     "incomePctMin": 0.004,
