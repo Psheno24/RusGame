@@ -27,10 +27,9 @@ import {
   type TaxiOrder,
   type TaxiState,
 } from "./playerTaxi.js";
-import { getBalanceBible, scaledWorkEnergyCost } from "./balanceBible.js";
+import { getBalanceBible, workEnergyCost } from "./balanceBible.js";
 import { applyDrivingWear, resolveTaxiPlayerCarId } from "./carWear.js";
 import { consumeFuelLiters } from "./carFuel.js";
-import { effectiveMood } from "./housingMood.js";
 import {
   clampVital,
   scaleWorkCosts,
@@ -275,8 +274,7 @@ function completeActiveTrip(
 
   const mood = clampVital("mood", (player.mood ?? 0) + moodDelta + getBalanceBible().mood.sideJobPenalty);
   const energyCost =
-    scaleWorkCosts(player, { energy: scaledWorkEnergyCost("taxi", effectiveMood(player)) })
-      ?.energy ?? 3;
+    scaleWorkCosts(player, { energy: workEnergyCost("taxi") })?.energy ?? 3;
   const carId = resolveTaxiPlayerCarId(player.user_id, state.carSource, state.carRefId);
   if (carId != null) {
     applyDrivingWear(player.user_id, carId, order.distanceKm ?? order.tripMinutes / 3);
