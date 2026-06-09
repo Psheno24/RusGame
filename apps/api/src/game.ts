@@ -23,8 +23,8 @@ import {
   formatShiftMinutesRu,
   isNightGuardJob,
   jobNominalCooldownMs,
-  NIGHT_GUARD_MAX_SHIFT_HOURS,
   nightGuardStaminaEligible,
+  scaleNightGuardPayoutRange,
 } from "./jobShift.js";
 import {
   findCityJob,
@@ -179,11 +179,20 @@ function calculateNightGuardPayout(
   localTime: CityLocalTime,
   shiftHours: number,
 ): { payout: number; multiplier: number } {
-  const mid = Math.floor(((job.payoutMin ?? 0) + (job.payoutMax ?? 0)) / 2);
+  const scaled = scaleNightGuardPayoutRange(
+    job.payoutMin ?? 0,
+    job.payoutMax ?? 0,
+    shiftHours,
+  );
+  const mid = Math.floor((scaled.min + scaled.max) / 2);
+  const base = randInt(
+    scaled.min > 0 ? scaled.min : mid,
+    scaled.max > 0 ? scaled.max : mid,
+  );
   const timeMult = getPayoutMultiplier(localTime.hour, job.payoutPeriods);
   const vitalMult = workPayoutMultiplier(player);
   const multiplier = timeMult * vitalMult;
-  return { payout: Math.floor(mid * multiplier), multiplier };
+  return { payout: Math.floor(base * multiplier), multiplier };
 }
 
 function calculateDurationJobPayout(

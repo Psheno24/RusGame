@@ -46,11 +46,22 @@ export function scaleNightGuardPayoutRange(
   payoutMax: number,
   shiftHours: number,
 ): { min: number; max: number } {
-  const proportion = Math.min(1, shiftHours / NIGHT_GUARD_MAX_SHIFT_HOURS);
+  const proportion = Math.min(1, Math.max(0, shiftHours) / NIGHT_GUARD_MAX_SHIFT_HOURS);
   return {
     min: Math.floor(payoutMin * proportion),
     max: Math.floor(payoutMax * proportion),
   };
+}
+
+/** Зарплата за смену при выходе в указанное локальное время (пропорционально до конца смены). */
+export function nightGuardPayoutForLocal(
+  payoutMin: number,
+  payoutMax: number,
+  local: Pick<CityLocalTime, "hour" | "minute">,
+  shiftEndHour = NIGHT_GUARD_SHIFT_END,
+): { min: number; max: number } {
+  const shiftHours = computeNightGuardShiftMinutes(local.hour, local.minute, shiftEndHour) / 60;
+  return scaleNightGuardPayoutRange(payoutMin, payoutMax, shiftHours);
 }
 
 /** Диапазон зарплаты в карточке работы: минимум при выходе в 7:59, максимум при выходе в 22:00. */

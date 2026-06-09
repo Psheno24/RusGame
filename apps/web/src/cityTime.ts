@@ -1,3 +1,5 @@
+import { nightGuardDisplayPayoutRange, nightGuardPayoutForLocal } from "./jobShift";
+
 export type TimeOfDayPeriod = "morning" | "day" | "evening" | "night";
 
 export type CityLocalTime = {
@@ -100,15 +102,45 @@ export function formatJobListScheduleNote(job: {
   return null;
 }
 
+function applyLiveNightGuardPayout<
+  T extends {
+    templateKey?: string;
+    payoutMin: number;
+    payoutMax: number;
+    nightGuardFullPayoutMin?: number | null;
+    nightGuardFullPayoutMax?: number | null;
+    shiftEndsAtHour?: number | null;
+    scheduleAllowed: boolean;
+  },
+>(timezone: string, job: T, now = Date.now()): T {
+  if (job.templateKey !== "night_guard") return job;
+  const fullMin = job.nightGuardFullPayoutMin ?? job.payoutMin;
+  const fullMax = job.nightGuardFullPayoutMax ?? job.payoutMax;
+  const endHour = job.shiftEndsAtHour ?? 8;
+  const localTime = getCityLocalTime(timezone, now);
+  if (job.scheduleAllowed) {
+    const current = nightGuardPayoutForLocal(fullMin, fullMax, localTime, endHour);
+    return { ...job, payoutMin: current.min, payoutMax: current.max };
+  }
+  const display = nightGuardDisplayPayoutRange(fullMin, fullMax, endHour);
+  return { ...job, payoutMin: display.min, payoutMax: display.max };
+}
+
 /** Recompute schedule flags from city timezone (clock ticks between API reloads). */
 export function applyLiveJobSchedule<T extends {
+  templateKey?: string;
   schedule?: JobSchedule;
   scheduleAllowed: boolean;
   scheduleHint: string | null;
+  payoutMin: number;
+  payoutMax: number;
+  nightGuardFullPayoutMin?: number | null;
+  nightGuardFullPayoutMax?: number | null;
+  shiftEndsAtHour?: number | null;
 }>(timezone: string, job: T, now = Date.now()): T {
   const localTime = getCityLocalTime(timezone, now);
   const scheduleAllowed = isWorkScheduleAllowed(localTime, job.schedule);
-  return {
+  const withSchedule = {
     ...job,
     scheduleAllowed,
     scheduleHint:
@@ -118,4 +150,5 @@ export function applyLiveJobSchedule<T extends {
           ? job.scheduleHint
           : null,
   };
+  return applyLiveNightGuardPayout(timezone, withSchedule, now);
 }
