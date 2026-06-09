@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { SKILL_LABELS, SKILL_ORDER } from "../api";
 import { cityDisplayName } from "../cityNames";
+import { ProfilePwaInstallCard } from "../components/ProfilePwaInstallCard";
 import { TestAdminPanel } from "../components/TestAdminPanel";
 import { ProfilePropertyCards } from "../components/ProfilePropertyCards";
 import { VitalsBar } from "../components/VitalsBar";
@@ -32,6 +33,8 @@ export function ProfilePage() {
   return (
     <div className="profile-page">
       <div className="profile-page-content">
+        <ProfilePwaInstallCard />
+
         <div className="card">
           <h2>{p.displayName}</h2>
           <div className="profile-stats">

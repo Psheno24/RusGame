@@ -2814,6 +2814,21 @@ body {
   flex: 1 1 auto;
 }
 
+.profile-pwa-install-card {
+  margin-bottom: 12px;
+}
+
+.profile-pwa-install-btn {
+  width: 100%;
+}
+
+.profile-pwa-install-hint {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .profile-page-footer {
   flex-shrink: 0;
   margin-top: auto;
