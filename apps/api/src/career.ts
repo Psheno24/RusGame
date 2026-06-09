@@ -2,6 +2,7 @@ import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import { updatePlayer } from "./db.js";
 import { appendPlayerFeed } from "./playerFeed.js";
+import { formatPayoutFeedText } from "./payoutFeed.js";
 import { getBalanceBible, getCityEconomyMultiplier, workEnergyCost } from "./balanceBible.js";
 import { getSkill, type SkillKey } from "./skills.js";
 import {
@@ -130,12 +131,7 @@ export function doCareerShift(
     reputation: clampReputation((player.reputation ?? 0) + 3),
     last_work_at_by_job: JSON.stringify(lastWork),
   });
-  appendPlayerFeed(
-    player.user_id,
-    "career:shift",
-    `${level.title}: +${formatRub(payout)}`,
-    now,
-  );
+  appendPlayerFeed(player.user_id, "career:shift", formatPayoutFeedText(payout), now);
   return { ok: true, payout, message: `${level.title}: +${formatRub(payout)}` };
 }
 

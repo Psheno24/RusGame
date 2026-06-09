@@ -2,6 +2,7 @@ import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { appendPlayerFeed } from "./playerFeed.js";
+import { formatPayoutFeedText } from "./payoutFeed.js";
 import { getBalanceBible, getCityEconomyMultiplier, workEnergyCost } from "./balanceBible.js";
 import { randInt } from "./random.js";
 import type { JobDef } from "./gameData.js";
@@ -99,6 +100,7 @@ function rollEvents(basePayout: number): {
   extraMinutes: number;
   reputationDelta: number;
   notes: string[];
+  payoutNotes: string[];
 } {
   const events = getBalanceBible().delivery.events as Record<
     string,
@@ -116,19 +118,26 @@ function rollEvents(basePayout: number): {
   let extraMinutes = 0;
   let reputationDelta = 0;
   const notes: string[] = [];
+  const payoutNotes: string[] = [];
 
   if (Math.random() < events.tips.chance) {
     const tip = randInt(events.tips.bonusMin!, events.tips.bonusMax!);
     payoutRub += tip;
-    notes.push(`+${formatRub(tip)} чаевые`);
+    const line = `+${formatRub(tip)} чаевые`;
+    notes.push(line);
+    payoutNotes.push(line);
   }
   if (Math.random() < events.regularClient.chance) {
     payoutRub = Math.round(payoutRub * events.regularClient.payMult!);
-    notes.push("Постоянный клиент ×1.5");
+    const line = "Постоянный клиент ×1.5";
+    notes.push(line);
+    payoutNotes.push(line);
   }
   if (Math.random() < events.fastDelivery.chance) {
     payoutRub = Math.round(payoutRub * events.fastDelivery.payMult!);
-    notes.push("Быстрая доставка +25%");
+    const line = "Быстрая доставка +25%";
+    notes.push(line);
+    payoutNotes.push(line);
   }
   if (Math.random() < events.restaurantDelay.chance) {
     extraMinutes += randInt(events.restaurantDelay.extraMinMin!, events.restaurantDelay.extraMinMax!);
@@ -140,19 +149,25 @@ function rollEvents(basePayout: number): {
   }
   if (Math.random() < events.damagedPackaging.chance) {
     payoutRub = Math.round(payoutRub * events.damagedPackaging.payMult!);
-    notes.push("Испорчена упаковка −20%");
+    const line = "Испорчена упаковка −20%";
+    notes.push(line);
+    payoutNotes.push(line);
   }
   if (Math.random() < events.complaint.chance) {
     payoutRub = Math.round(payoutRub * events.complaint.payMult!);
     reputationDelta += events.complaint.reputationDelta ?? 0;
-    notes.push("Жалоба −50%");
+    const line = "Жалоба −50%";
+    notes.push(line);
+    payoutNotes.push(line);
   }
   if (Math.random() < events.cancel.chance) {
     payoutRub = Math.round(payoutRub * events.cancel.payMult!);
-    notes.push("Отмена (30% оплаты)");
+    const line = "Отмена (30% оплаты)";
+    notes.push(line);
+    payoutNotes.push(line);
   }
 
-  return { payoutRub, extraMinutes, reputationDelta, notes };
+  return { payoutRub, extraMinutes, reputationDelta, notes, payoutNotes };
 }
 
 function completeTrip(
@@ -184,6 +199,13 @@ function completeTrip(
     ...skillResult.patch,
   };
   updatePlayer(player.user_id, patch);
+
+  appendPlayerFeed(
+    player.user_id,
+    "work:delivery",
+    formatPayoutFeedText(rolled.payoutRub, rolled.payoutNotes),
+    now,
+  );
 
   if (skillResult.granted) {
     appendPlayerFeed(
