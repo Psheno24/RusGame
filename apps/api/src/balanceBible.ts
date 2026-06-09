@@ -162,3 +162,9 @@ export function scaledWorkEnergyCost(templateKey: string, mood: number): number 
   const base = workEnergyCost(templateKey);
   return Math.max(1, Math.round(base * moodEnergyCostMultiplier(mood)));
 }
+
+export function educationEnrollmentReputationGain(): number {
+  const raw = getBalanceBible().education as Record<string, unknown>;
+  const v = raw.reputationGain;
+  return typeof v === "number" ? v : 10;
+}

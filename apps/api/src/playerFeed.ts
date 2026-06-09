@@ -21,7 +21,9 @@ export type PlayerFeedType =
   | "job:quit"
   | "work:delivery"
   | "education:start"
+  | "education:lesson"
   | "education:complete"
+  | "education:dropout"
   | "career:promote"
   | "career:shift";
 

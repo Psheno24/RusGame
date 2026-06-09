@@ -2,7 +2,7 @@ import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { appendPlayerFeed } from "./playerFeed.js";
-import { getBalanceBible, workEnergyCost } from "./balanceBible.js";
+import { educationEnrollmentReputationGain, workEnergyCost } from "./balanceBible.js";
 import {
   EDUCATION_DIRECTION_LABELS,
   EDUCATION_TIER_LABELS,
@@ -197,9 +197,7 @@ export function enrollInInstitution(
     energy: energyCost
       ? clampVital("energy", (player.energy ?? 80) - energyCost)
       : player.energy,
-    reputation: clampReputation(
-      (player.reputation ?? 0) + (getBalanceBible().education.reputationGain ?? 10),
-    ),
+    reputation: clampReputation((player.reputation ?? 0) + educationEnrollmentReputationGain()),
   });
 
   const resume = resumeSessionsDone > 0 ? ` (продолжение с ${resumeSessionsDone}/${institution.sessions})` : "";
