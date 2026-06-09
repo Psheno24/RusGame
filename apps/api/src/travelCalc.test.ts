@@ -4,28 +4,47 @@ import { computeTravelRoute, getTravelOptions } from "./travelCalc.js";
 import { mapGraphDistance, MAX_MAP_GRAPH_DISTANCE } from "./mapGraph.js";
 
 describe("travelCalc", () => {
-  it("calibrates known train routes", () => {
-    const omskKazan = computeTravelRoute("omsk", "kazan", "train")!;
-    assert.equal(omskKazan.priceRub, 2800);
-    assert.equal(omskKazan.durationMs, 10_800_000);
-
-    const kazanEkb = computeTravelRoute("kazan", "ekb", "train")!;
-    assert.equal(kazanEkb.priceRub, 2400);
-    assert.ok(Math.abs(kazanEkb.durationMs - 9_000_000) < 100);
+  it("counts cells on known routes", () => {
+    assert.equal(mapGraphDistance("omsk", "moscow"), 6);
+    assert.equal(mapGraphDistance("omsk", "krasnodar"), 10);
+    assert.equal(mapGraphDistance("nn", "perm"), 2);
+    assert.equal(mapGraphDistance("omsk", "kazan"), 4);
+    assert.equal(mapGraphDistance("kazan", "ekb"), 2);
   });
 
-  it("longest map route matches Krasnodar–Krasnoyarsk anchors", () => {
+  it("prices train by cells (1 cell = 1 h = 5 000 ₽)", () => {
+    const omskMoscow = computeTravelRoute("omsk", "moscow", "train")!;
+    assert.equal(omskMoscow.priceRub, 30_000);
+    assert.equal(omskMoscow.durationMs, 6 * 60 * 60 * 1000);
+
+    const nnPerm = computeTravelRoute("nn", "perm", "train")!;
+    assert.equal(nnPerm.priceRub, 10_000);
+    assert.equal(nnPerm.durationMs, 2 * 60 * 60 * 1000);
+
+    const omskKrasnodar = computeTravelRoute("omsk", "krasnodar", "train")!;
+    assert.equal(omskKrasnodar.priceRub, 50_000);
+    assert.equal(omskKrasnodar.durationMs, 10 * 60 * 60 * 1000);
+  });
+
+  it("prices plane by cells (1 cell = 30 min = 10 000 ₽)", () => {
+    const omskMoscow = computeTravelRoute("omsk", "moscow", "plane")!;
+    assert.ok(omskMoscow);
+    assert.equal(omskMoscow.priceRub, 60_000);
+    assert.equal(omskMoscow.durationMs, 3 * 60 * 60 * 1000);
+  });
+
+  it("longest map route is Krasnodar–Krasnoyarsk", () => {
     const d = mapGraphDistance("krasnodar", "krasnoyarsk")!;
-    assert.ok(Math.abs(d - MAX_MAP_GRAPH_DISTANCE) < 1);
+    assert.equal(d, MAX_MAP_GRAPH_DISTANCE);
 
     const train = computeTravelRoute("krasnodar", "krasnoyarsk", "train")!;
-    assert.ok(Math.abs(train.priceRub - 10_000) <= 20);
-    assert.equal(train.durationMs, 8.5 * 60 * 60 * 1000);
+    assert.equal(train.priceRub, d * 5_000);
+    assert.equal(train.durationMs, d * 60 * 60 * 1000);
 
     const plane = computeTravelRoute("krasnodar", "krasnoyarsk", "plane")!;
     assert.ok(plane);
-    assert.equal(plane.durationMs, (5 * 60 + 40) * 60 * 1000);
-    assert.equal(plane.priceRub, 15_500);
+    assert.equal(plane.priceRub, d * 10_000);
+    assert.equal(plane.durationMs, d * 30 * 60 * 1000);
   });
 
   it("offers plane on long routes only", () => {

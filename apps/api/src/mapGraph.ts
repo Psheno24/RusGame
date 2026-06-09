@@ -1,6 +1,6 @@
 /**
  * Граф городов на схеме карты (совпадает с apps/web/src/mapMetroLayout.ts).
- * Расстояние — сумма длин рёбер кратчайшего пути.
+ * Расстояние — число клеток (рёбер) на кратчайшем пути.
  */
 
 const X_WEST = 56;
@@ -36,17 +36,14 @@ const ROUTE_CHAINS: string[][] = [
   ["kazan", "samara"],
 ];
 
-function buildAdjacency(): Map<string, Map<string, number>> {
-  const adj = new Map<string, Map<string, number>>();
+function buildAdjacency(): Map<string, Set<string>> {
+  const adj = new Map<string, Set<string>>();
   const link = (a: string, b: string) => {
-    const ca = NODE_COORDS[a];
-    const cb = NODE_COORDS[b];
-    if (!ca || !cb) return;
-    const w = Math.hypot(ca[0] - cb[0], ca[1] - cb[1]);
-    if (!adj.has(a)) adj.set(a, new Map());
-    if (!adj.has(b)) adj.set(b, new Map());
-    adj.get(a)!.set(b, w);
-    adj.get(b)!.set(a, w);
+    if (!NODE_COORDS[a] || !NODE_COORDS[b]) return;
+    if (!adj.has(a)) adj.set(a, new Set());
+    if (!adj.has(b)) adj.set(b, new Set());
+    adj.get(a)!.add(b);
+    adj.get(b)!.add(a);
   };
   for (const chain of ROUTE_CHAINS) {
     for (let i = 0; i < chain.length - 1; i++) link(chain[i]!, chain[i + 1]!);
@@ -56,7 +53,7 @@ function buildAdjacency(): Map<string, Map<string, number>> {
 
 const ADJ = buildAdjacency();
 
-/** Кратчайший путь по схеме (единицы — пиксели viewBox). */
+/** Кратчайший путь по схеме в клетках (число рёбер). */
 export function mapGraphDistance(fromId: string, toId: string): number | null {
   if (fromId === toId) return 0;
   if (!ADJ.has(fromId) || !ADJ.has(toId)) return null;
@@ -66,16 +63,16 @@ export function mapGraphDistance(fromId: string, toId: string): number | null {
   while (queue.length > 0) {
     const u = queue.shift()!;
     if (u === toId) return dist.get(u)!;
-    for (const [v, w] of ADJ.get(u) ?? []) {
+    for (const v of ADJ.get(u) ?? []) {
       if (dist.has(v)) continue;
-      dist.set(v, dist.get(u)! + w);
+      dist.set(v, dist.get(u)! + 1);
       queue.push(v);
     }
   }
   return null;
 }
 
-/** Максимальное расстояние на карте (Краснодар — Красноярск). */
+/** Максимальное число клеток на карте (Краснодар — Красноярск). */
 export const MAX_MAP_GRAPH_DISTANCE = (() => {
   let max = 0;
   const ids = Object.keys(NODE_COORDS);

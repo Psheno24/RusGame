@@ -1,12 +1,11 @@
 /**
- * Стоимость и время в пути по расстоянию на схеме карты.
- * Калибровка по реальным ЖД/авиа (2025–2026): Омск–Казань, Казань–Екб,
- * Краснодар–Красноярск (~4.5 суток поезд, плацкарт ~10 000 ₽; прямой рейс ~5 ч 40 м, от ~14 000 ₽).
+ * Стоимость и время в пути по числу клеток на схеме карты.
+ * Поезд: 1 клетка = 1 ч = 5 000 ₽. Самолёт (если доступен): 1 клетка = 30 мин = 10 000 ₽.
  */
 
 import type { City } from "./gameData.js";
 import { getCity } from "./gameData.js";
-import { isOnMapGraph, mapGraphDistance, MAX_MAP_GRAPH_DISTANCE } from "./mapGraph.js";
+import { isOnMapGraph, mapGraphDistance } from "./mapGraph.js";
 
 export type TravelMode = "train" | "plane";
 
@@ -17,49 +16,40 @@ export type TravelRoute = {
   graphDistance: number;
 };
 
-/** Порог по схеме: короче — только поезд (как в жизни без прямых рейсов). */
-const PLANE_MIN_GRAPH_DIST = 200;
+const TRAIN_PRICE_PER_CELL_RUB = 5_000;
+const TRAIN_MS_PER_CELL = 60 * 60 * 1000;
+const PLANE_PRICE_PER_CELL_RUB = 10_000;
+const PLANE_MS_PER_CELL = 30 * 60 * 1000;
 
-/** Реальные ориентиры для самого длинного маршрута. */
-const MAX_TRAIN_PRICE_RUB = 10_000;
-const MAX_TRAIN_DURATION_MS = 8.5 * 60 * 60 * 1000;
-const MAX_PLANE_PRICE_RUB = 15_500;
-const MAX_PLANE_DURATION_MS = (5 * 60 + 40) * 60 * 1000;
+/** Минимальная длина маршрута для прямого рейса (клетки). */
+const PLANE_MIN_CELLS = 4;
+const PLANE_LONG_CELLS = 7;
+const PLANE_TIER3_CELLS = 4;
 
-const TRAIN_SHORT_BREAK = 180;
-
-function trainPriceRub(graphDist: number): number {
-  if (graphDist >= MAX_MAP_GRAPH_DISTANCE - 0.01) return MAX_TRAIN_PRICE_RUB;
-  if (graphDist <= TRAIN_SHORT_BREAK) return Math.round(1200 + graphDist * 11.11);
-  return Math.round(-1088 + graphDist * 18);
+function trainPriceRub(cells: number): number {
+  return cells * TRAIN_PRICE_PER_CELL_RUB;
 }
 
-function trainDurationMs(graphDist: number): number {
-  if (graphDist >= MAX_MAP_GRAPH_DISTANCE - 0.01) return MAX_TRAIN_DURATION_MS;
-  if (graphDist <= TRAIN_SHORT_BREAK) return Math.round(graphDist * 83_333);
-  return Math.round(graphDist * 50_000);
+function trainDurationMs(cells: number): number {
+  return cells * TRAIN_MS_PER_CELL;
 }
 
-function planePriceRub(graphDist: number): number {
-  if (graphDist >= MAX_MAP_GRAPH_DISTANCE - 0.01) return MAX_PLANE_PRICE_RUB;
-  const t = Math.min(1, graphDist / MAX_MAP_GRAPH_DISTANCE);
-  return Math.round(3_500 + t * (MAX_PLANE_PRICE_RUB - 3_500));
+function planePriceRub(cells: number): number {
+  return cells * PLANE_PRICE_PER_CELL_RUB;
 }
 
-function planeDurationMs(graphDist: number): number {
-  if (graphDist >= MAX_MAP_GRAPH_DISTANCE - 0.01) return MAX_PLANE_DURATION_MS;
-  const t = Math.min(1, graphDist / MAX_MAP_GRAPH_DISTANCE);
-  return Math.round((2 + t * 3.67) * 60 * 60 * 1000);
+function planeDurationMs(cells: number): number {
+  return cells * PLANE_MS_PER_CELL;
 }
 
-function planeAvailable(from: City, to: City, graphDist: number): boolean {
-  if (graphDist < PLANE_MIN_GRAPH_DIST) return false;
+function planeAvailable(from: City, to: City, cells: number): boolean {
+  if (cells < PLANE_MIN_CELLS) return false;
   const maxTier = Math.max(from.tier, to.tier);
   const minTier = Math.min(from.tier, to.tier);
   if (maxTier >= 4) return true;
-  if (graphDist >= 280) return true;
-  if (maxTier >= 3 && graphDist >= 160) return true;
-  return minTier >= 2 && maxTier >= 3 && graphDist >= PLANE_MIN_GRAPH_DIST;
+  if (cells >= PLANE_LONG_CELLS) return true;
+  if (maxTier >= 3 && cells >= PLANE_TIER3_CELLS) return true;
+  return minTier >= 2 && maxTier >= 3 && cells >= PLANE_MIN_CELLS;
 }
 
 export function getMapTravelDistance(fromId: string, toId: string): number | null {
