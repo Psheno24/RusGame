@@ -27,13 +27,22 @@ import {
   type TaxiOrder,
   type TaxiState,
 } from "./playerTaxi.js";
-import { clampVital } from "./playerStats.js";
+import { getBalanceBible, scaledWorkEnergyCost } from "./balanceBible.js";
+import { applyDrivingWear, resolveTaxiPlayerCarId } from "./carWear.js";
+import { consumeFuelLiters } from "./carFuel.js";
+import { effectiveMood } from "./housingMood.js";
+import {
+  clampVital,
+  scaleWorkCosts,
+} from "./playerStats.js";
 import { jobCityId, validateJobWorkAccess } from "./jobLocation.js";
 import { isVehicleRentalActive } from "./vehicleRental.js";
 import {
   cashPaymentRiskChances,
-  rollTripMinutes,
-  tripPayoutRub,
+  rollDemandMult,
+  rollTripKm,
+  taxiKmPayoutRub,
+  tripMinutesFromKm,
   type TaxiCashRiskConfig,
   type TaxiPayoutCurve,
 } from "./taxiPayout.js";
@@ -160,7 +169,9 @@ export function listTaxiCarOptions(player: PlayerRow, now = Date.now()): TaxiCar
 function generateOrder(player: PlayerRow, orderTariff: string): TaxiOrder {
   const cityMult = getCitySalaryMultiplier(player.city_id);
   const tariffDef = taxiConfig.tariffs[orderTariff] ?? taxiConfig.tariffs.economy!;
-  const tripMinutes = rollTripMinutes(payoutCurve);
+  const distanceKm = rollTripKm();
+  const demand = rollDemandMult();
+  const tripMinutes = tripMinutesFromKm(distanceKm, demand.key);
   const passengerRating =
     Math.random() < 0.65
       ? randInt(42, 50) / 10
@@ -168,15 +179,12 @@ function generateOrder(player: PlayerRow, orderTariff: string): TaxiOrder {
         ? randInt(35, 41) / 10
         : randInt(30, 34) / 10;
   const payment: "card" | "cash" = Math.random() < 0.38 ? "cash" : "card";
-  const omskRub = tripPayoutRub(tripMinutes, payoutCurve);
   const skillMult = skillPayoutMultiplier(player, "taxi");
-  const payoutRub = Math.max(
-    150,
-    Math.round(omskRub * cityMult * tariffDef.orderMult * skillMult),
-  );
+  const payoutRub = taxiKmPayoutRub(distanceKm, orderTariff, demand.mult, cityMult, skillMult);
 
   return {
     id: `o-${Date.now()}-${randInt(1000, 9999)}`,
+    distanceKm,
     tripMinutes,
     passengerRating,
     payment,
@@ -266,11 +274,22 @@ function completeActiveTrip(
     rating = clampRating(rating - taxiConfig.ratingBadTripPenalty);
   }
 
-  const mood = clampVital("mood", (player.mood ?? 70) + moodDelta);
+  const mood = clampVital("mood", (player.mood ?? 0) + moodDelta + getBalanceBible().mood.sideJobPenalty);
+  const energyCost =
+    scaleWorkCosts(player, { energy: scaledWorkEnergyCost("taxi", effectiveMood(player)) })
+      ?.energy ?? 3;
+  const carId = resolveTaxiPlayerCarId(player.user_id, state.carSource, state.carRefId);
+  if (carId != null) {
+    applyDrivingWear(player.user_id, carId, order.distanceKm ?? order.tripMinutes / 3);
+    if (!consumeFuelLiters(player.user_id, carId, order.distanceKm ?? order.tripMinutes / 3)) {
+      payNote += " Бак пуст — доехали на остатках.";
+    }
+  }
   const skillResult = recordSkillAction(player, "taxi_trips");
   const skillPatch = skillResult.patch;
   updatePlayer(player.user_id, {
     mood,
+    energy: clampVital("energy", (player.energy ?? 80) - energyCost),
     rubles: player.rubles + payoutRub,
     ...skillPatch,
   });

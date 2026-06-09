@@ -53,26 +53,9 @@ export function isCarClassAvailableInCity(cityId: string, carClass: string): boo
   return classIndex(carClass) <= classIndex(maxClass);
 }
 
-function marketTierT(cityId: string): number {
-  const level = getCityCarMarketLevel(cityId);
-  return (level - 1) / 6;
-}
-
-function lerp(min: number, max: number, t: number): number {
-  return min + (max - min) * t;
-}
-
-/** Множитель цены в городе (1.0 = базовая цена, как в Москве). */
-export function getCarCityPriceMultiplier(cityId: string, car: CarModel): number {
-  const t = marketTierT(cityId);
-  const cls = car.carClass ?? "economy";
-  if (market.cheapClasses.includes(cls)) {
-    return lerp(market.cheapPriceMultiplier.min, market.cheapPriceMultiplier.max, t);
-  }
-  if (market.expensiveClasses.includes(cls)) {
-    return lerp(market.expensivePriceMultiplier.min, market.expensivePriceMultiplier.max, t);
-  }
-  return lerp(market.midPriceMultiplier.min, market.midPriceMultiplier.max, t);
+/** Цены на авто одинаковые во всех городах; множители — только у недвижимости. */
+export function getCarCityPriceMultiplier(_cityId: string, _car: CarModel): number {
+  return 1;
 }
 
 export function getCarBasePriceRub(car: CarModel): number {

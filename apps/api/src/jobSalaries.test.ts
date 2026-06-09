@@ -81,15 +81,14 @@ describe("jobSalaries", () => {
     assert.equal(getCitySalaryMultiplier("moscow"), 4);
   });
 
-  it("moscow courier payout is 32000 base range", () => {
+  it("delivery job uses per-order line kind", () => {
     const job = getCityJobs("moscow").find((j) => j.templateKey === "delivery");
     assert.ok(job);
-    assert.equal(job!.payoutMin, 30_400);
-    assert.equal(job!.payoutMax, 33_600);
+    assert.equal(job!.kind, "delivery_line");
   });
 
   it("skill at reference gives ~1.0 multiplier", () => {
-    const mult = skillPayoutMultiplier(player({ stamina: 25, driving: 0, charisma: 0, discipline: 0 }), "delivery");
+    const mult = skillPayoutMultiplier(player({ stamina: 100, driving: 0, charisma: 0, discipline: 0 }), "delivery");
     assert.ok(mult >= 0.95 && mult <= 1.05);
   });
 

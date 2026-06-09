@@ -8,7 +8,13 @@ import { appendPlayerFeed } from "./playerFeed.js";
 import { DATA_DIR } from "./config.js";
 import { getCity } from "./gameData.js";
 import {
-  getCityHousingMultiplier,
+  getCityEconomyMultiplier,
+  housingBuyPriceRub,
+  housingRentPriceRub,
+  subletMonthlyIncomeRub,
+  getBalanceBible,
+} from "./balanceBible.js";
+import {
   getHousingPropertiesForCity,
   getHousingProperty,
   housingPropertyLabel,
@@ -50,7 +56,9 @@ const SUBLET_MONTH_MS = config.rentDays * MS_DAY;
 function weeklyNetForProperty(cityId: string, propertyId: string): number {
   const prop = getHousingProperty(cityId, propertyId);
   if (!prop) return 0;
-  return prop.weeklyNetIncomeRub ?? Math.round(prop.monthlyNetIncomeRub / 4);
+  const price = prop.priceRub > 0 ? prop.priceRub : housingBuyPriceRub(cityId, prop.typeKey) ?? 0;
+  if (price <= 0) return prop.weeklyNetIncomeRub ?? 0;
+  return Math.round(subletMonthlyIncomeRub(price) / 4);
 }
 
 function subletPeriodPatch(periodStart: number, periodEnd: number, incomeRub: number) {
@@ -99,15 +107,19 @@ function creditWeeklySubletPayouts(row: OwnedHousingRow, userId: number, now: nu
 
 export function getHousingPrices(cityId: string) {
   const city = getCity(cityId);
-  const tier = String(city?.tier ?? 2);
-  const prices = config.byTier[tier] ?? config.byTier["2"]!;
-  const mult = getCityHousingMultiplier(cityId);
+  const mult = getCityEconomyMultiplier(cityId);
+  const dormMonthly = Math.round(15000 * mult);
+  const dormRub = Math.round(dormMonthly / 30);
+  const rentRub = housingRentPriceRub(cityId, "communal_room") ?? Math.round(20000 * mult);
   const cheapest = getHousingPropertiesForCity(cityId)[0];
+  const buyRub =
+    (cheapest ? housingBuyPriceRub(cityId, cheapest.typeKey) : null) ??
+    Math.round(900000 * mult);
   return {
-    tier: city?.tier ?? 2,
-    dormRub: Math.round(prices.dormRub * mult),
-    rentRub: Math.round(prices.rentRub * mult),
-    buyRub: cheapest?.priceRub ?? Math.round(prices.buyRub * mult),
+    tier: city?.tier ?? 1,
+    dormRub,
+    rentRub,
+    buyRub,
     dormHours: config.dormHours,
     rentDays: config.rentDays,
     cityMultiplier: mult,
@@ -146,7 +158,7 @@ function processOwnedSubletTick(row: OwnedHousingRow, userId: number, now: numbe
   }
 
   if (row.sublet_until != null && row.sublet_until <= now) {
-    if (Math.random() < 0.8) {
+    if (Math.random() < getBalanceBible().sublet.renewChance) {
       const periodEnd = now + SUBLET_MONTH_MS;
       const income = subletIncomeForOwned(row, SUBLET_MONTH_MS);
       updateOwnedHousing(row.id, subletPeriodPatch(now, periodEnd, income));

@@ -1,6 +1,12 @@
 import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import type { SkillKey } from "./skills.js";
+import {
+  clampBibleMood,
+  getBalanceBible,
+  moodEnergyCostMultiplier,
+} from "./balanceBible.js";
+import { effectiveMood } from "./housingMood.js";
 
 export type VitalKey = "energy" | "mood" | "health";
 
@@ -20,12 +26,13 @@ export const REPUTATION_MAX = 1000;
 export const REPUTATION_MIN = -1000;
 export const DEFAULT_VITALS = {
   energy: 80,
-  mood: 70,
+  mood: 0,
   health: 100,
   reputation: 0,
 };
 
 export function clampVital(key: VitalKey, value: number): number {
+  if (key === "mood") return clampBibleMood(value);
   return Math.max(0, Math.min(VITAL_MAX[key], Math.round(value)));
 }
 
@@ -42,11 +49,14 @@ export function getPlayerVitals(player: PlayerRow) {
   };
 }
 
-/** Пока экономика показателей не настроена — проверяем только деньги. */
 export function canAffordCosts(player: PlayerRow, costs?: StatCosts): string | null {
   if (!costs) return null;
   if (costs.rubles != null && player.rubles < costs.rubles) {
     return `Не хватает денег (нужно ${formatRub(costs.rubles)})`;
+  }
+  const v = getPlayerVitals(player);
+  if (costs.energy != null && v.energy < costs.energy) {
+    return `Недостаточно энергии (нужно ${costs.energy})`;
   }
   return null;
 }
@@ -60,6 +70,15 @@ export function applyStatChanges(
   const patch: Partial<PlayerRow> = {};
 
   if (costs?.rubles != null) patch.rubles = player.rubles - costs.rubles;
+  if (costs?.energy != null) {
+    patch.energy = clampVital("energy", v.energy - costs.energy);
+  }
+  if (costs?.mood != null) {
+    patch.mood = clampVital("mood", v.mood - costs.mood);
+  }
+  if (costs?.health != null) {
+    patch.health = clampVital("health", v.health - costs.health);
+  }
 
   const afterCosts = {
     energy: patch.energy ?? v.energy,
@@ -95,18 +114,28 @@ export function applyStatChanges(
   return patch;
 }
 
-/** Пока без штрафов за показатели. */
 export function workPayoutMultiplier(_player: PlayerRow): number {
   return 1;
 }
 
-export function scaleWorkCosts(_player: PlayerRow, costs?: StatCosts): StatCosts | undefined {
-  return costs;
+export function scaleWorkCosts(player: PlayerRow, costs?: StatCosts): StatCosts | undefined {
+  if (!costs) return costs;
+  const mood = effectiveMood(player);
+  const mult = moodEnergyCostMultiplier(mood);
+  const scaled = { ...costs };
+  if (scaled.energy != null) {
+    scaled.energy = Math.max(1, Math.round(scaled.energy * mult));
+  }
+  return scaled;
 }
 
 export function applyPostWorkPassives(
-  _player: PlayerRow,
-  _afterWork: Partial<PlayerRow>,
+  player: PlayerRow,
+  afterWork: Partial<PlayerRow>,
 ): Partial<PlayerRow> {
-  return {};
+  const patch: Partial<PlayerRow> = {};
+  const sidePenalty = getBalanceBible().mood.sideJobPenalty;
+  const mood = (afterWork.mood ?? player.mood ?? DEFAULT_VITALS.mood) + sidePenalty;
+  patch.mood = clampVital("mood", mood);
+  return patch;
 }

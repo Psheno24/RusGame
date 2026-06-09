@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PlayerRow } from "./db.js";
 import { getPlayer, updatePlayer } from "./db.js";
+import { getBalanceBible } from "./balanceBible.js";
 import { getCar } from "./gameData.js";
 import { appendPlayerFeed } from "./playerFeed.js";
 import {
@@ -14,18 +15,16 @@ import {
   type PlayerCarRow,
 } from "./playerCars.js";
 import { formatMileageKm } from "./usedCarMarket.js";
-import { getCarShopPriceRub } from "./shopCatalog.js";
 
 const DATA_DIR = join(import.meta.dirname, "../../../data");
 
 type CarRepairConfig = {
-  repairRatePctByClass: Record<string, [number, number]>;
-  tireRateMultiplier: number;
   services: Record<
     string,
     { title: string; hint: string; nodes: (keyof PlayerCarCondition)[] }
   >;
   nodeLabels: Record<string, string>;
+  bibleNodeMap: Record<string, string>;
 };
 
 const config = JSON.parse(
@@ -65,12 +64,29 @@ export type CarRepairShopView = {
   cars: CarRepairCarView[];
 };
 
-function repairRatePct(carClass: string): number {
-  const band = config.repairRatePctByClass[carClass] ?? config.repairRatePctByClass.economy;
-  return (band[0] + band[1]) / 2;
+function bibleRepairBaseRub(bibleKey: string, carModelId: string): number {
+  const bible = getBalanceBible();
+  const base = bible.repairGrantaBase[bibleKey] ?? 0;
+  const mult = bible.repairModelMult[carModelId] ?? 1;
+  return Math.round(base * mult);
 }
 
-/** СТО и шиномонтаж есть в каждом городе; цены — по каталогу авто в этом городе. */
+export function repairNodeCostRub(
+  _cityId: string,
+  carModelId: string,
+  node: keyof PlayerCarCondition,
+  currentPct: number,
+  _serviceId: CarRepairServiceId,
+  targetPct = 100,
+): number | null {
+  if (currentPct >= targetPct) return 0;
+  const bibleKey = config.bibleNodeMap[node];
+  if (!bibleKey) return null;
+  const partPrice = bibleRepairBaseRub(bibleKey, carModelId);
+  const lostPct = Math.max(0, targetPct - currentPct);
+  return Math.max(100, Math.round(partPrice * (lostPct / 100)));
+}
+
 export function servicesInCity(_cityId: string): CarRepairServiceView[] {
   const tire = config.services.tire;
   const sto = config.services.sto;
@@ -82,26 +98,6 @@ export function servicesInCity(_cityId: string): CarRepairServiceView[] {
 
 function nodesForService(serviceId: CarRepairServiceId): (keyof PlayerCarCondition)[] {
   return config.services[serviceId]?.nodes ?? [];
-}
-
-export function repairNodeCostRub(
-  cityId: string,
-  carModelId: string,
-  node: keyof PlayerCarCondition,
-  currentPct: number,
-  serviceId: CarRepairServiceId,
-  targetPct = 100,
-): number | null {
-  if (currentPct >= targetPct) return 0;
-  const car = getCar(carModelId);
-  if (!car) return null;
-  const newPriceRub = getCarShopPriceRub(carModelId, cityId);
-  if (newPriceRub == null) return null;
-  const cls = car.carClass ?? "economy";
-  let rate = repairRatePct(cls);
-  if (serviceId === "tire") rate *= config.tireRateMultiplier;
-  const delta = Math.max(0, targetPct - currentPct);
-  return Math.max(100, Math.round(newPriceRub * rate * (delta / 100)));
 }
 
 function buildCarView(

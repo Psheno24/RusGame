@@ -3,6 +3,7 @@ import { getDb } from "./db.js";
 
 export type TaxiOrder = {
   id: string;
+  distanceKm: number;
   tripMinutes: number;
   passengerRating: number;
   payment: "card" | "cash";
@@ -96,6 +97,7 @@ function normalizeOrder(raw: unknown): TaxiOrder | null {
   if (payoutRub == null) return null;
   return {
     id: String(o.id ?? `o-${Date.now()}`),
+    distanceKm: Number(o.distanceKm) || Number(o.tripMinutes) / 3 || 5,
     tripMinutes: Number(o.tripMinutes) || 10,
     passengerRating: Number(o.passengerRating) || 4,
     payment: o.payment === "cash" ? "cash" : "card",

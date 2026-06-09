@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const estate = JSON.parse(readFileSync(join(root, "data/housingEstate.json"), "utf-8"));
+const bible = JSON.parse(readFileSync(join(root, "data/balanceBible.json"), "utf-8"));
+const bibleCityMult = bible.cityMultipliers ?? {};
 
 const typeByKey = Object.fromEntries(estate.propertyTypes.map((t) => [t.key, t]));
 
@@ -84,7 +86,8 @@ for (const city of estate.cities) {
     const type = typeByKey[listing.typeKey];
     if (!type) throw new Error(`Unknown type ${listing.typeKey}`);
     const basePrice = listing.priceRub ?? omskPrices[idx];
-    const priceRub = Math.round(basePrice * city.multiplier);
+    const mult = bibleCityMult[city.id] ?? city.multiplier ?? 1;
+    const priceRub = Math.round(basePrice * mult);
     const econ = computeEconomy(priceRub, type);
     const title = listing.nameSuffix
       ? type.title.includes(listing.nameSuffix)
@@ -114,7 +117,9 @@ for (const city of estate.cities) {
 const out = {
   version: 2,
   propertyTypes: estate.propertyTypes,
-  cityMultipliers: Object.fromEntries(estate.cities.map((c) => [c.id, c.multiplier])),
+  cityMultipliers: Object.fromEntries(
+    estate.cities.map((c) => [c.id, bibleCityMult[c.id] ?? c.multiplier ?? 1]),
+  ),
   byCity,
 };
 

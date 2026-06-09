@@ -60,6 +60,10 @@ export type PlayerRow = {
   health: number;
   reputation: number;
   education: string;
+  education_ends_at: number | null;
+  days_played: number;
+  career_level: string;
+  delivery_state: string | null;
   taxi_state: string | null;
   last_car_maintenance_at: number | null;
   sleep_started_at: number | null;
@@ -631,6 +635,19 @@ function migrate(database: Database.Database) {
       .prepare("INSERT INTO app_migrations (key, applied_at) VALUES (?, ?)")
       .run("reputation_start_zero", Date.now());
   }
+
+  const colsBible = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!colsBible.some((c) => c.name === "delivery_state")) {
+    database.exec("ALTER TABLE players ADD COLUMN delivery_state TEXT");
+    database.exec("ALTER TABLE players ADD COLUMN days_played INTEGER NOT NULL DEFAULT 0");
+    database.exec("ALTER TABLE players ADD COLUMN career_level TEXT NOT NULL DEFAULT 'none'");
+    database.exec("ALTER TABLE players ADD COLUMN education_ends_at INTEGER");
+  }
+
+  const colsFuel = database.prepare("PRAGMA table_info(player_cars)").all() as { name: string }[];
+  if (!colsFuel.some((c) => c.name === "fuel_level_l")) {
+    database.exec("ALTER TABLE player_cars ADD COLUMN fuel_level_l REAL");
+  }
 }
 
 export function getUserByLogin(login: string): UserRow | undefined {
@@ -677,7 +694,7 @@ export function createPlayer(
         user_id, display_name, rubles, city_id,
         housing_type, housing_city_id, housing_expires_at,
         energy, hunger, mood, health, reputation, education
-      ) VALUES (?, ?, ?, 'omsk', 'dorm', 'omsk', ?, 80, 80, 70, 100, 0, 'none')`,
+      ) VALUES (?, ?, ?, 'omsk', 'dorm', 'omsk', ?, 80, 80, 0, 100, 0, 'none')`,
     )
     .run(userId, displayName, rubles, expires);
 }
@@ -711,9 +728,11 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
         housing_last_owned_id = ?, housing_last_property_id = ?, housing_stack = ?,
         housing_pending_owned_id = ?,
         taxi_state = ?,
+        delivery_state = ?,
         last_car_maintenance_at = ?,
         sleep_started_at = ?, sleep_planned_ms = ?, sleep_start_energy = ?,
-        energy = ?, hunger = ?, mood = ?, health = ?, reputation = ?, education = ?
+        energy = ?, hunger = ?, mood = ?, health = ?, reputation = ?, education = ?,
+        education_ends_at = ?, days_played = ?, career_level = ?
       WHERE user_id = ?`,
     )
     .run(
@@ -768,16 +787,20 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
       next.housing_stack ?? null,
       next.housing_pending_owned_id ?? null,
       next.taxi_state ?? null,
+      next.delivery_state ?? null,
       next.last_car_maintenance_at ?? null,
       next.sleep_started_at ?? null,
       next.sleep_planned_ms ?? null,
       next.sleep_start_energy ?? null,
       next.energy ?? 80,
       next.hunger ?? 80,
-      next.mood ?? 70,
+      next.mood ?? 0,
       next.health ?? 100,
       next.reputation ?? DEFAULT_VITALS.reputation,
       next.education ?? "none",
+      next.education_ends_at ?? null,
+      next.days_played ?? 0,
+      next.career_level ?? "none",
       userId,
     );
 }

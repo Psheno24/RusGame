@@ -67,6 +67,9 @@ export type Player = {
   housingStatusLabel: string;
   vitals: Vitals;
   education: string;
+  educationEndsAt?: number | null;
+  daysPlayed?: number;
+  careerLevel?: string;
   sleeping?: boolean;
 };
 
@@ -531,7 +534,7 @@ export type JobView = {
   workCityName?: string | null;
   physicallyHere?: boolean;
   residentHere?: boolean;
-  kind: "duration" | "cooldown" | "taxi_line";
+  kind: "duration" | "cooldown" | "taxi_line" | "delivery_line";
   shiftHoursMin: number | null;
   shiftHoursMax: number | null;
   shiftHours: number | null;
@@ -735,6 +738,99 @@ export async function taxiDeclineOrder(orderId: string) {
   return api<{ message: string; user: User }>("/api/taxi/decline", {
     method: "POST",
     body: JSON.stringify({ orderId }),
+  });
+}
+
+export type DeliveryOrderView = {
+  id: string;
+  distanceKm: number;
+  transport: string;
+  modifier: string;
+  modifierTitle: string;
+  basePayoutRub: number;
+  tripMinutes: number;
+};
+
+export type DeliveryStatus = {
+  transport: string;
+  activeTrip: {
+    orderId: string;
+    startedAt: number;
+    endsAt: number;
+    remainingMs: number;
+    order: DeliveryOrderView;
+  } | null;
+  sessionIncomeRub: number;
+  ordersCompleted: number;
+  canTakeOrder: boolean;
+  completedMessage?: string;
+  completedPayout?: number;
+};
+
+export async function fetchDeliveryStatus() {
+  return api<{ status: DeliveryStatus; user?: User }>("/api/delivery/status");
+}
+
+export async function deliveryTakeOrder() {
+  return api<{ message: string; order: DeliveryOrderView; user: User }>("/api/delivery/take-order", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export type EducationOption = { key: string; title: string; cost: number; days: number };
+
+export type EducationStatus = {
+  education: string;
+  active: boolean;
+  endsAt: number | null;
+  options: EducationOption[];
+};
+
+export async function fetchEducationStatus() {
+  return api<EducationStatus>("/api/education/status");
+}
+
+export async function educationStart(program: string) {
+  return api<{ message: string; user: User }>("/api/education/start", {
+    method: "POST",
+    body: JSON.stringify({ program }),
+  });
+}
+
+export type CareerLevel = {
+  key: string;
+  title: string;
+  rank: number;
+  payoutBase: number;
+  skillMin: number;
+  reputationMin: number;
+  daysMin: number;
+  education: string;
+};
+
+export type CareerStatus = {
+  level: string;
+  levelTitle: string;
+  nextLevel: string | null;
+  nextLevelTitle: string | null;
+  canPromote: boolean;
+  promoteError: string | null;
+  payoutBase: number | null;
+  levels: CareerLevel[];
+};
+
+export async function fetchCareerStatus() {
+  return api<CareerStatus>("/api/career/status");
+}
+
+export async function careerPromote() {
+  return api<{ message: string; user: User }>("/api/career/promote", { method: "POST" });
+}
+
+export async function careerShift() {
+  return api<{ message: string; payout: number; user: User }>("/api/career/shift", {
+    method: "POST",
   });
 }
 
@@ -970,6 +1066,44 @@ export type CarRepairShopView = {
 export async function fetchCarRepairShop(service?: CarRepairServiceId) {
   const q = service ? `?service=${encodeURIComponent(service)}` : "";
   return api<CarRepairShopView>(`/api/places/car-repair${q}`);
+}
+
+export type FuelType = "ai92" | "ai95" | "premium";
+
+export type GasStationCarView = {
+  playerCarId: number;
+  brand: string;
+  model: string;
+  accent: string;
+  fuelLevelL: number;
+  tankL: number;
+  fuelPct: number;
+  litersToFull: number;
+  recommendedFuel: FuelType;
+  fillCostRub: Record<FuelType, number>;
+};
+
+export type GasStationView = {
+  fuelPrices: Record<FuelType, number>;
+  cars: GasStationCarView[];
+};
+
+export function fetchGasStation() {
+  return api<GasStationView>("/api/places/gas-station");
+}
+
+export function refuelAtGasStation(body: {
+  playerCarId: number;
+  fuelType: FuelType;
+  liters?: number;
+}) {
+  return api<{
+    liters: number;
+    costRub: number;
+    fuelLevelL: number;
+    carName: string;
+    user: User;
+  }>("/api/places/gas-station", { method: "POST", body: JSON.stringify(body) });
 }
 
 export async function repairCarNode(

@@ -77,13 +77,8 @@ export function applyCitySalaryToTemplate(
   const scaled = scalePayout(base, cityId);
   const variance = Math.round((scaled * config.payoutVariancePct) / 100);
 
-  if (template.kind === "taxi_line") {
-    return {
-      ...template,
-      taxiTargetIncomeRub: scaled,
-      payoutMin: Math.round(scaled * 0.6),
-      payoutMax: Math.round(scaled * 1.4),
-    };
+  if (template.kind === "taxi_line" || template.kind === "delivery_line") {
+    return template;
   }
 
   if (template.kind === "cooldown") {

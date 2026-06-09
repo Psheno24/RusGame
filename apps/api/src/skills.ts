@@ -1,6 +1,7 @@
 import type { PlayerRow } from "./db.js";
 
-export const SKILL_MAX = 100;
+/** Без верхнего лимита (GAME_BALANCE_BIBLE_V1). */
+export const SKILL_MAX = Number.MAX_SAFE_INTEGER;
 export const SKILL_PROGRESS_EVERY = 10;
 
 export type SkillKey = "driving" | "stamina" | "charisma" | "discipline";
@@ -29,7 +30,7 @@ export const JOB_SKILL_BY_TEMPLATE: Record<
 };
 
 export function clampSkill(value: number): number {
-  return Math.max(0, Math.min(SKILL_MAX, Math.floor(value)));
+  return Math.max(0, Math.floor(value));
 }
 
 export function getSkill(
@@ -91,10 +92,6 @@ export function recordSkillAction(
   }
 
   const current = getSkill(player, mapping.skill);
-  if (current >= SKILL_MAX) {
-    return { patch };
-  }
-
   patch[mapping.skill] = clampSkill(current + 1);
   return { patch, granted: { key: mapping.skill, amount: 1 } };
 }

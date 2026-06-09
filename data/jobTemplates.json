@@ -1,8 +1,7 @@
 {
   "delivery": {
     "title": "Курьер доставки",
-    "kind": "cooldown",
-    "shiftHours": 2,
+    "kind": "delivery_line",
     "requiresPhone": true,
     "requiresSimTariff": "unlimited",
     "skill": "stamina"

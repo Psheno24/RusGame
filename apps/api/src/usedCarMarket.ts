@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { getBalanceBible } from "./balanceBible.js";
+import { DEFAULT_TIMEZONE, getCityLocalTime } from "./cityTime.js";
 import { getDb } from "./db.js";
 import {
   getCarCityPriceRub,
@@ -15,13 +17,10 @@ export type UsedCarCondition = PlayerCarCondition;
 const DATA_DIR = join(import.meta.dirname, "../../../data");
 
 type UsedCarMarketConfig = {
-  refreshIntervalMs: number;
   usedMaxClassOffset: number;
   listingCountByCity: Record<string, [number, number]>;
   listingCountByMarketLevel: Record<string, [number, number]>;
-  mileageKmRanges: [number, number, number][];
   mileageWearMultiplier: [number, number, number][];
-  priceTierWeights: { tier: string; weight: number; minPct: number; maxPct: number }[];
   diagnoseCostPct: { min: number; max: number };
   diagnoseAccuracy: {
     tightChance: number;
@@ -31,9 +30,29 @@ type UsedCarMarketConfig = {
   };
 };
 
+type UsedMarketBible = {
+  refreshHours: number[];
+  mileageKmMin: number;
+  mileageKmMax: number;
+  conditionMin: number;
+  conditionMax: number;
+  marketCoeffMin: number;
+  marketCoeffMax: number;
+  lotChances: {
+    honest: number;
+    hiddenWear: number;
+    seriousDefect: number;
+    bargain: number;
+  };
+};
+
 const config = JSON.parse(
   readFileSync(join(DATA_DIR, "usedCarMarket.json"), "utf-8"),
 ) as UsedCarMarketConfig;
+
+function usedBible(): UsedMarketBible {
+  return getBalanceBible().usedMarket as UsedMarketBible;
+}
 
 const CLASS_ORDER = [
   "economy",
@@ -45,6 +64,8 @@ const CLASS_ORDER = [
   "hypercar",
 ] as const;
 
+type LotKind = keyof UsedMarketBible["lotChances"];
+
 export type UsedCarListing = {
   id: string;
   carModelId: string;
@@ -54,7 +75,6 @@ export type UsedCarListing = {
   overallVisible: number;
   priceRub: number;
   newPriceRub: number;
-  /** Фиксируется при генерации рынка; старые записи без поля — детерминированный fallback. */
   diagnoseCostRub?: number;
 };
 
@@ -93,8 +113,9 @@ export function isCarClassOnUsedMarket(cityId: string, carClass: string): boolea
   return classIndex(carClass) <= classIndex(maxUsed);
 }
 
+/** @deprecated Используйте слоты 08:00 / 16:00 / 00:00 (МСК). */
 export function getUsedMarketRefreshIntervalMs(): number {
-  return config.refreshIntervalMs;
+  return 8 * 60 * 60 * 1000;
 }
 
 export function getMileageWearMultiplier(mileageKm: number): number {
@@ -151,7 +172,6 @@ function hashListingId(listingId: string): number {
   return h >>> 0;
 }
 
-/** Стабильная стоимость диагностики для объявления (не меняется между запросами). */
 export function listingDiagnoseCostRub(listing: UsedCarListing): number {
   if (listing.diagnoseCostRub != null && listing.diagnoseCostRub > 0) {
     return listing.diagnoseCostRub;
@@ -168,23 +188,75 @@ function hashCitySlot(cityId: string, slot: number): number {
   return h;
 }
 
-function currentRefreshSlot(now: number): number {
-  return Math.floor(now / config.refreshIntervalMs);
+function moscowDateString(now: number): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: DEFAULT_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(now));
 }
 
-function nextRefreshAt(now: number): number {
-  return (currentRefreshSlot(now) + 1) * config.refreshIntervalMs;
+function slotHourForLocalHour(hour: number): number {
+  const hours = [...usedBible().refreshHours].sort((a, b) => a - b);
+  let slot = hours[0] ?? 0;
+  for (const h of hours) {
+    if (hour >= h) slot = h;
+  }
+  return slot;
+}
+
+/** Начало текущего слота обновления (08:00 / 16:00 / 00:00 МСК). */
+export function currentRefreshSlotStart(now = Date.now(), timezone = DEFAULT_TIMEZONE): number {
+  const local = getCityLocalTime(timezone, now);
+  const slotHour = slotHourForLocalHour(local.hour);
+  const dateStr = moscowDateString(now);
+  const iso = `${dateStr}T${String(slotHour).padStart(2, "0")}:00:00+03:00`;
+  return Date.parse(iso);
+}
+
+function nextRefreshAt(now = Date.now(), timezone = DEFAULT_TIMEZONE): number {
+  const local = getCityLocalTime(timezone, now);
+  const dateStr = moscowDateString(now);
+  if (local.hour < 8) {
+    return Date.parse(`${dateStr}T08:00:00+03:00`);
+  }
+  if (local.hour < 16) {
+    return Date.parse(`${dateStr}T16:00:00+03:00`);
+  }
+  const tomorrow = new Date(now + 24 * 60 * 60 * 1000);
+  const nextDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(tomorrow);
+  return Date.parse(`${nextDate}T00:00:00+03:00`);
 }
 
 function rollMileageKm(rng: () => number): number {
-  const tiers = config.mileageKmRanges.map(([from, to, weight]) => ({ from, to, weight }));
-  const tier = pickWeighted(rng, tiers);
-  return randInt(rng, tier.from, tier.to);
+  const { mileageKmMin, mileageKmMax } = usedBible();
+  return randInt(rng, mileageKmMin, mileageKmMax);
 }
 
-function rollCondition(rng: () => number, mileageKm: number): UsedCarCondition {
-  const wearBias = Math.min(35, Math.floor(mileageKm / 12000));
-  const part = () => Math.max(5, Math.min(98, randInt(rng, 25, 95) - randInt(rng, 0, wearBias)));
+function rollLotKind(rng: () => number): LotKind {
+  const chances = usedBible().lotChances;
+  const picked = pickWeighted(rng, [
+    { kind: "honest" as const, weight: chances.honest },
+    { kind: "hiddenWear" as const, weight: chances.hiddenWear },
+    { kind: "seriousDefect" as const, weight: chances.seriousDefect },
+    { kind: "bargain" as const, weight: chances.bargain },
+  ]);
+  return picked.kind;
+}
+
+function rollBaseCondition(rng: () => number, mileageKm: number): UsedCarCondition {
+  const { conditionMin, conditionMax } = usedBible();
+  const factor = randFloat(rng, conditionMin, conditionMax);
+  const basePct = Math.round(factor * 100);
+  const wearBias = Math.min(25, Math.floor(mileageKm / 15000));
+  const part = () =>
+    Math.max(5, Math.min(100, basePct - randInt(rng, 0, wearBias) + randInt(rng, -8, 8)));
   return {
     engine: part(),
     transmission: part(),
@@ -196,15 +268,47 @@ function rollCondition(rng: () => number, mileageKm: number): UsedCarCondition {
   };
 }
 
-function visibleOverall(condition: UsedCarCondition, rng: () => number): number {
-  const realAvg = Math.round(
-    (condition.body + condition.interior + condition.tires + condition.alignment) / 4,
-  );
-  const optimism = randInt(rng, -8, 18);
-  return Math.max(10, Math.min(99, realAvg + optimism));
+function applyLotKind(
+  kind: LotKind,
+  condition: UsedCarCondition,
+  rng: () => number,
+): UsedCarCondition {
+  if (kind === "seriousDefect") {
+    const keys = Object.keys(condition) as (keyof UsedCarCondition)[];
+    const bad = keys[randInt(rng, 0, keys.length - 1)]!;
+    return { ...condition, [bad]: randInt(rng, 5, 25) };
+  }
+  if (kind === "hiddenWear") {
+    const delta = randInt(rng, 8, 22);
+    const out = { ...condition };
+    for (const k of Object.keys(out) as (keyof UsedCarCondition)[]) {
+      out[k] = Math.max(5, out[k] - delta);
+    }
+    return out;
+  }
+  return condition;
 }
 
-function conditionPriceFactor(condition: UsedCarCondition, mileageKm: number): number {
+function visibleOverall(condition: UsedCarCondition, kind: LotKind, rng: () => number): number {
+  const realAvg = Math.round(
+    (condition.engine +
+      condition.transmission +
+      condition.tires +
+      condition.alignment +
+      condition.body +
+      condition.electronics +
+      condition.interior) /
+      7,
+  );
+  if (kind === "honest") return Math.max(10, Math.min(99, realAvg + randInt(rng, -3, 3)));
+  if (kind === "hiddenWear") return Math.max(10, Math.min(99, realAvg + randInt(rng, 10, 25)));
+  if (kind === "seriousDefect") {
+    return Math.max(10, Math.min(99, realAvg + randInt(rng, 5, 20)));
+  }
+  return Math.max(10, Math.min(99, realAvg + randInt(rng, -5, 8)));
+}
+
+function conditionPriceFactor(condition: UsedCarCondition): number {
   const avg =
     (condition.engine +
       condition.transmission +
@@ -214,20 +318,20 @@ function conditionPriceFactor(condition: UsedCarCondition, mileageKm: number): n
       condition.electronics +
       condition.interior) /
     7;
-  const mileagePenalty = Math.min(0.22, mileageKm / 2_500_000);
-  return 0.55 + (avg / 100) * 0.38 - mileagePenalty;
+  return avg / 100;
 }
 
 function rollPriceRub(
   rng: () => number,
   newPriceRub: number,
   condition: UsedCarCondition,
-  mileageKm: number,
+  kind: LotKind,
 ): number {
-  const tier = pickWeighted(rng, config.priceTierWeights);
-  const tierPct = randFloat(rng, tier.minPct, tier.maxPct);
-  const condFactor = conditionPriceFactor(condition, mileageKm);
-  return Math.max(50_000, Math.round(newPriceRub * tierPct * condFactor));
+  const { marketCoeffMin, marketCoeffMax } = usedBible();
+  let coeff = randFloat(rng, marketCoeffMin, marketCoeffMax);
+  if (kind === "bargain") coeff = Math.min(coeff, randFloat(rng, marketCoeffMin, 0.95));
+  const condFactor = conditionPriceFactor(condition);
+  return Math.max(50_000, Math.round(newPriceRub * condFactor * coeff));
 }
 
 function eligibleCarsForCity(cityId: string): CarModel[] {
@@ -235,12 +339,11 @@ function eligibleCarsForCity(cityId: string): CarModel[] {
 }
 
 export function generateCityListings(cityId: string, refreshedAt: number): UsedCarListing[] {
-  const slot = Math.floor(refreshedAt / config.refreshIntervalMs);
-  const rng = mulberry32(hashCitySlot(cityId, slot));
+  const rng = mulberry32(hashCitySlot(cityId, refreshedAt));
   const pool = eligibleCarsForCity(cityId);
   if (pool.length === 0) return [];
 
-  const count = listingCountForCity(cityId, slot);
+  const count = listingCountForCity(cityId, refreshedAt);
   const listings: UsedCarListing[] = [];
   const usedModels = new Set<string>();
 
@@ -257,9 +360,11 @@ export function generateCityListings(cityId: string, refreshedAt: number): UsedC
     usedModels.add(car.id);
 
     const mileageKm = rollMileageKm(rng);
-    const condition = rollCondition(rng, mileageKm);
+    const lotKind = rollLotKind(rng);
+    let condition = rollBaseCondition(rng, mileageKm);
+    condition = applyLotKind(lotKind, condition, rng);
     const newPriceRub = getCarCityPriceRub(cityId, car);
-    const priceRub = rollPriceRub(rng, newPriceRub, condition, mileageKm);
+    const priceRub = rollPriceRub(rng, newPriceRub, condition, lotKind);
     const diagnoseCost = diagnoseCostRub(priceRub, rng);
 
     listings.push({
@@ -267,7 +372,7 @@ export function generateCityListings(cityId: string, refreshedAt: number): UsedC
       carModelId: car.id,
       mileageKm,
       condition,
-      overallVisible: visibleOverall(condition, rng),
+      overallVisible: visibleOverall(condition, lotKind, rng),
       priceRub,
       newPriceRub,
       diagnoseCostRub: diagnoseCost,
@@ -307,7 +412,7 @@ export function ensureCityUsedMarket(cityId: string, now = Date.now()): {
   nextRefreshAt: number;
   listings: UsedCarListing[];
 } {
-  const slotStart = currentRefreshSlot(now) * config.refreshIntervalMs;
+  const slotStart = currentRefreshSlotStart(now);
   const row = loadCityRow(cityId);
   if (row && row.refreshed_at >= slotStart) {
     return {

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DATA_DIR } from "./config.js";
+import { getCityEconomyMultiplier } from "./balanceBible.js";
 
 export type HousingPropertyDef = {
   id: string;
@@ -55,5 +56,5 @@ export function listAllCitiesWithProperties(): string[] {
 }
 
 export function getCityHousingMultiplier(cityId: string): number {
-  return catalog.cityMultipliers?.[cityId] ?? 1;
+  return getCityEconomyMultiplier(cityId);
 }

@@ -5,6 +5,10 @@ import { syncPlayerSimTariffBilling } from "./simTariff.js";
 import { syncPlayerCarMaintenance } from "./carMaintenance.js";
 import { syncPlayerSleep } from "./playerSleep.js";
 import { syncTaxiForPlayer } from "./taxi.js";
+import { getDeliveryStatus } from "./delivery.js";
+import { findCityJob } from "./gameData.js";
+import { jobCityId } from "./jobLocation.js";
+import { syncEducation } from "./education.js";
 import { syncPlayerVehicleRental } from "./vehicleRental.js";
 import { syncEmergencyLoaderEmployment } from "./emergencyLoader.js";
 
@@ -19,6 +23,13 @@ export function refreshPlayerState(userId: number, now = Date.now()) {
   syncPlayerSimTariffBilling(userId, now);
   syncPlayerCarMaintenance(userId, now);
   syncTaxiForPlayer(player, now);
+  player = syncEducation(player, now);
+  if (player.job_id) {
+    const job = findCityJob(jobCityId(player.job_id) ?? player.city_id, player.job_id);
+    if (job?.kind === "delivery_line") {
+      getDeliveryStatus(player, job, now);
+    }
+  }
   syncEmergencyLoaderEmployment(userId, now);
   return getPlayer(userId) ?? player;
 }

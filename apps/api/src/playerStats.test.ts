@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { PlayerRow } from "./db.js";
 import {
   applyPostWorkPassives,
   applyStatChanges,
@@ -8,12 +7,13 @@ import {
   scaleWorkCosts,
   workPayoutMultiplier,
 } from "./playerStats.js";
+import type { PlayerRow } from "./db.js";
 
-function player(partial: Partial<PlayerRow>): PlayerRow {
+function player(partial: Partial<PlayerRow> = {}): PlayerRow {
   return {
     user_id: 1,
-    display_name: "Test",
-    rubles: 5000,
+    display_name: "t",
+    rubles: 1000,
     city_id: "omsk",
     status: "idle",
     travel_to_city_id: null,
@@ -38,21 +38,21 @@ function player(partial: Partial<PlayerRow>): PlayerRow {
     phone_device_id: null,
     phone_acquired_at: null,
     car_owned: 0,
+    car_model_id: null,
     car_acquired_at: null,
     plate_text: null,
-    drivers_license: 0,
-    driver_licenses: null,
-    housing_type: null,
-    housing_city_id: null,
-    housing_expires_at: null,
-    housing_owned_at: null,
-    car_model_id: null,
     plate_l1: null,
     plate_digits: null,
     plate_l2: null,
     plate_region: null,
     vehicle_rental_id: null,
     vehicle_rental_expires_at: null,
+    drivers_license: 0,
+    driver_licenses: null,
+    housing_type: "dorm",
+    housing_city_id: "omsk",
+    housing_expires_at: Date.now() + 86400000,
+    housing_owned_at: null,
     housing_property_id: null,
     housing_owned_id: null,
     housing_last_type: null,
@@ -64,10 +64,14 @@ function player(partial: Partial<PlayerRow>): PlayerRow {
     housing_pending_owned_id: null,
     energy: 80,
     hunger: 80,
-    mood: 70,
+    mood: 0,
     health: 100,
     reputation: 0,
     education: "none",
+    education_ends_at: null,
+    days_played: 0,
+    career_level: "none",
+    delivery_state: null,
     taxi_state: null,
     last_car_maintenance_at: null,
     sleep_started_at: null,
@@ -82,24 +86,25 @@ describe("playerStats", () => {
     assert.equal(workPayoutMultiplier(player({ energy: 5, mood: 10 })), 1);
   });
 
-  it("applyPostWorkPassives does nothing", () => {
-    const patch = applyPostWorkPassives(player({ energy: 5, health: 100 }), { energy: 3 });
-    assert.deepEqual(patch, {});
+  it("applyPostWorkPassives applies side job mood penalty", () => {
+    const patch = applyPostWorkPassives(player({ mood: 70 }), {});
+    assert.equal(patch.mood, 55);
   });
 
-  it("canAffordCosts ignores vital costs", () => {
-    assert.equal(canAffordCosts(player({ energy: 1 }), { energy: 50 }), null);
-    assert.ok(canAffordCosts(player({ rubles: 10 }), { rubles: 100 }));
+  it("canAffordCosts checks energy", () => {
+    assert.ok(canAffordCosts(player({ energy: 1 }), { energy: 50 }));
+    assert.equal(canAffordCosts(player({ energy: 80 }), { energy: 50 }), null);
   });
 
-  it("applyStatChanges does not spend vitals", () => {
-    const patch = applyStatChanges(player({ energy: 80, mood: 70 }), { energy: 20, mood: 10 }, undefined);
-    assert.equal(patch.energy, undefined);
-    assert.equal(patch.mood, undefined);
+  it("applyStatChanges spends vitals", () => {
+    const patch = applyStatChanges(player({ energy: 80, mood: 0 }), { energy: 20 }, { mood: 10 });
+    assert.equal(patch.energy, 60);
+    assert.equal(patch.mood, 10);
   });
 
-  it("scaleWorkCosts passes through", () => {
-    const scaled = scaleWorkCosts(player({}), { energy: 12, mood: 2 });
-    assert.deepEqual(scaled, { energy: 12, mood: 2 });
+  it("scaleWorkCosts scales energy by mood", () => {
+    const scaled = scaleWorkCosts(player({ mood: 50 }), { energy: 12, mood: 2 });
+    assert.equal(scaled?.energy, 12);
+    assert.equal(scaled?.mood, 2);
   });
 });

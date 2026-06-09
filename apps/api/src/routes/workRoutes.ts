@@ -13,6 +13,9 @@ import {
   taxiGoOnline,
   taxiSelectCar,
 } from "../taxi.js";
+import { getDeliveryStatus, deliveryTakeOrder } from "../delivery.js";
+import { educationStatus, startEducation } from "../education.js";
+import { careerStatus, doCareerShift, promoteCareer } from "../career.js";
 import { resolveUserId } from "./shared.js";
 
 export function registerWorkRoutes(app: FastifyInstance): void {
@@ -184,5 +187,84 @@ export function registerWorkRoutes(app: FastifyInstance): void {
     if (!result.ok) return reply.code(400).send({ error: result.error });
     const user = await getPublicUser(userId);
     return { message: result.message, user };
+  });
+
+  app.get("/api/delivery/status", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = refreshPlayerState(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const job = player.job_id ? findCityJob(jobCityId(player.job_id) ?? player.city_id, player.job_id) : null;
+    if (!job || job.kind !== "delivery_line") {
+      return reply.code(400).send({ error: "Вы не устроены курьером" });
+    }
+    const status = getDeliveryStatus(player, job);
+    const user = status.completedPayout != null ? await getPublicUser(userId) : undefined;
+    return { ok: true, status, user };
+  });
+
+  app.post("/api/delivery/take-order", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = refreshPlayerState(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const job = player.job_id ? findCityJob(jobCityId(player.job_id) ?? player.city_id, player.job_id) : null;
+    if (!job || job.kind !== "delivery_line") {
+      return reply.code(400).send({ error: "Вы не устроены курьером" });
+    }
+    const result = deliveryTakeOrder(player, job);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, order: result.order, user };
+  });
+
+  app.get("/api/education/status", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = refreshPlayerState(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    return { ok: true, ...educationStatus(player) };
+  });
+
+  app.post<{ Body: { program?: string } }>("/api/education/start", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = refreshPlayerState(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const key = req.body?.program ?? "";
+    const result = startEducation(player, key);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
+  });
+
+  app.get("/api/career/status", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = refreshPlayerState(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    return { ok: true, ...careerStatus(player) };
+  });
+
+  app.post("/api/career/promote", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = refreshPlayerState(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const result = promoteCareer(player);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, user };
+  });
+
+  app.post("/api/career/shift", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    if (!userId) return reply.code(401).send({ error: "Не авторизован" });
+    const player = refreshPlayerState(userId);
+    if (!player) return reply.code(404).send({ error: "Игрок не найден" });
+    const result = doCareerShift(player);
+    if (!result.ok) return reply.code(400).send({ error: result.error });
+    const user = await getPublicUser(userId);
+    return { message: result.message, payout: result.payout, user };
   });
 }

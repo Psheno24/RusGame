@@ -3,37 +3,37 @@
     "omsk": 1,
     "volgograd": 1.05,
     "voronezh": 1.1,
-    "perm": 1.15,
-    "krasnoyarsk": 1.2,
+    "perm": 1.2,
     "ufa": 1.25,
-    "rostov": 1.3,
     "samara": 1.35,
     "chelyabinsk": 1.4,
-    "nn": 1.5,
-    "krasnodar": 1.65,
-    "novosibirsk": 1.8,
+    "krasnoyarsk": 1.45,
+    "rostov": 1.6,
+    "krasnodar": 1.7,
+    "nn": 1.8,
+    "novosibirsk": 1.9,
     "ekb": 2,
-    "kazan": 2.3,
+    "kazan": 2.2,
     "spb": 3,
     "moscow": 4
   },
   "omskBasePayouts": {
-    "delivery": 8000,
-    "taxi": 5000,
+    "delivery": 0,
+    "taxi": 0,
     "cashier": 12000,
-    "night_guard": 25000,
+    "night_guard": 30000,
     "loader": 500
   },
   "skillWeights": {
     "delivery": { "stamina": 1 },
-    "taxi": { "driving": 0.6, "charisma": 0.2, "stamina": 0.2 },
+    "taxi": { "driving": 1 },
     "cashier": { "charisma": 1 },
-    "night_guard": { "discipline": 0.8, "health": 0.2 }
+    "night_guard": { "discipline": 1 }
   },
   "skillMultiplier": {
     "min": 0.7,
     "max": 1.5,
-    "referenceLevel": 25
+    "referenceLevel": 100
   },
-  "payoutVariancePct": 5
+  "payoutVariancePct": 0
 }

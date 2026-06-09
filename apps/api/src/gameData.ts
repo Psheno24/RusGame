@@ -27,7 +27,7 @@ export type PayoutPeriod = {
   multiplier: number;
 };
 
-export type JobKind = "duration" | "cooldown" | "taxi_line";
+export type JobKind = "duration" | "cooldown" | "taxi_line" | "delivery_line";
 
 export type JobTemplate = {
   title: string;
@@ -149,7 +149,7 @@ const cars: CarModel[] = carsRaw.map((c) => ({
   comfort: c.comfort ?? 20,
   reliability: c.reliability ?? 50,
   prestige: c.prestige ?? 10,
-  fuelConsumption: c.fuelConsumption ?? 50,
+  fuelConsumption: c.fuelConsumption ?? (c as { fuelConsumptionL100?: number }).fuelConsumptionL100 ?? 50,
 }));
 const carCategories = JSON.parse(
   readFileSync(join(DATA_DIR, "carCategories.json"), "utf-8"),

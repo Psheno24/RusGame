@@ -5,21 +5,27 @@ import {
   subletIncomeForProperty,
   subletRepayAmount,
 } from "./housing.js";
+import { getHousingProperty } from "./housingCatalog.js";
 import type { OwnedHousingRow } from "./playerOwnedHousing.js";
 
 describe("housing sublet", () => {
-  it("studio in Omsk: net income from catalog (price/60, weekly/4)", () => {
+  it("studio in Omsk: bible sublet income 0.4–0.6% monthly", () => {
     const oneDay = 24 * 60 * 60 * 1000;
     const month = 30 * oneDay;
+    const prop = getHousingProperty("omsk", "omsk_studio");
+    assert.ok(prop);
+    const minMonth = Math.round(prop!.priceRub * 0.004);
+    const maxMonth = Math.round(prop!.priceRub * 0.006);
     const income = subletIncomeForProperty("omsk", "omsk_studio", month);
-    assert.equal(income, 7_500);
-    assert.equal(subletIncomeForProperty("omsk", "omsk_studio", oneDay), 250);
+    assert.ok(income >= Math.round(minMonth * 0.85));
+    assert.ok(income <= Math.round(maxMonth * 1.15));
+    assert.ok(subletIncomeForProperty("omsk", "omsk_studio", oneDay) > 0);
   });
 
-  it("penthouse in Omsk: net income from catalog", () => {
+  it("penthouse in Omsk: positive bible sublet income", () => {
     const month = 30 * 24 * 60 * 60 * 1000;
     const income = subletIncomeForProperty("omsk", "omsk_penthouse", month);
-    assert.equal(income, 294_643);
+    assert.ok(income > 50_000);
   });
 
   it("repay is unpaid contracted sublet amount", () => {
@@ -58,6 +64,6 @@ describe("housing sublet", () => {
       sublet_retry_at: null,
       sublet_retry_chance: null,
     };
-    assert.equal(subletIncomeForOwned(row, month), 7_500);
+    assert.ok(subletIncomeForOwned(row, month) > 0);
   });
 });

@@ -66,6 +66,14 @@ import { scheduleShiftReadyPush } from "./pushNotifications.js";
 import { finalShiftPayout, skillPayoutMultiplier } from "./jobSalaries.js";
 import { playerMeetsCarRequirement, taxiBlocksShift } from "./taxi.js";
 import { saveTaxiState } from "./playerTaxi.js";
+import { deliveryBlocksShift, clearDeliveryState } from "./delivery.js";
+import { scaledWorkEnergyCost } from "./balanceBible.js";
+import { effectiveMood } from "./housingMood.js";
+import {
+  applyPostWorkPassives,
+  clampVital,
+  scaleWorkCosts,
+} from "./playerStats.js";
 
 export { canWorkJobNow, formatCooldown } from "./workCooldown.js";
 import { randInt } from "./random.js";
@@ -178,12 +186,10 @@ function calculateNightGuardPayout(
   shiftHours: number,
 ): { payout: number; multiplier: number } {
   const mid = Math.floor(((job.payoutMin ?? 0) + (job.payoutMax ?? 0)) / 2);
-  const proportion = Math.min(1, shiftHours / NIGHT_GUARD_MAX_SHIFT_HOURS);
   const timeMult = getPayoutMultiplier(localTime.hour, job.payoutPeriods);
-  const skillMult = skillPayoutMultiplier(player, job.templateKey);
   const vitalMult = workPayoutMultiplier(player);
-  const multiplier = timeMult * skillMult * vitalMult;
-  const payout = finalShiftPayout(player, job.templateKey, player.city_id, mid, proportion);
+  const multiplier = timeMult * vitalMult;
+  const payout = finalShiftPayout(player, job.templateKey, player.city_id, mid, 1);
   return { payout: Math.floor(payout * timeMult * vitalMult), multiplier };
 }
 
@@ -274,6 +280,12 @@ export function applyJob(
         error: "Сначала завершите поездку и сойдите с линии такси",
       };
     }
+    if (deliveryBlocksShift(player)) {
+      return {
+        ok: false,
+        error: "Сначала завершите доставку",
+      };
+    }
     const st = canWorkJobNow(player, player.job_id, now);
     if (!st.ok) {
       return {
@@ -299,6 +311,7 @@ export function applyJob(
     const prevCity = jobCityId(prevJobId);
     const prevJob = prevCity ? findCityJob(prevCity, prevJobId) : null;
     if (prevJob?.kind === "taxi_line") saveTaxiState(userId, null);
+    if (prevJob?.kind === "delivery_line") clearDeliveryState(userId);
   }
   appendPlayerFeed(userId, "job:apply", `Устроились: ${job.title}`, now);
   return { ok: true, message: `Вы устроились: ${job.title}` };
@@ -329,6 +342,9 @@ export function quitJob(
       error: "Сначала завершите поездку и сойдите с линии такси",
     };
   }
+  if (deliveryBlocksShift(player)) {
+    return { ok: false, error: "Сначала завершите доставку" };
+  }
 
   const st = canWorkJobNow(player, jobId, now);
   if (!st.ok) {
@@ -341,6 +357,7 @@ export function quitJob(
 
   updatePlayer(userId, { job_id: null });
   if (job.kind === "taxi_line") saveTaxiState(userId, null);
+  if (job.kind === "delivery_line") clearDeliveryState(userId);
   appendPlayerFeed(userId, "job:quit", `Уволились: ${job.title}`, now);
   return { ok: true, message: `Вы уволились: ${job.title}` };
 }
@@ -383,6 +400,10 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
 
   if (job.kind === "taxi_line") {
     return { ok: false, error: "Таксист работает на линии — используйте раздел заказов" };
+  }
+
+  if (job.kind === "delivery_line") {
+    return { ok: false, error: "Курьер получает заказы отдельно — нажмите «Получить заказ»" };
   }
 
   if (!isLoader) {
@@ -465,6 +486,18 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
   if (job.kind === "cooldown") {
     patch.reputation = clampReputation((player.reputation ?? 0) + 2);
   }
+
+  const templateKey = job.templateKey ?? "";
+  const energyCost = scaleWorkCosts(player, {
+    energy: scaledWorkEnergyCost(templateKey, effectiveMood(player)),
+  })?.energy;
+  if (energyCost && energyCost > 0) {
+    patch.energy = clampVital(
+      "energy",
+      (patch.energy ?? player.energy ?? 80) - energyCost,
+    );
+  }
+  Object.assign(patch, applyPostWorkPassives(player, patch));
 
   let skillGain: { key: SkillKey; amount: number } | undefined;
   const grantSkillProgress =

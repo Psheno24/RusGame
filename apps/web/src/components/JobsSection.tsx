@@ -22,6 +22,8 @@ import { JobRequirementsList } from "./JobRequirementsList";
 import { CitySectionHeader } from "./ui/CitySectionHeader";
 import { TimerIcon } from "./ui/TimerIcon";
 import { TaxiEmployedJobView } from "./TaxiEmployedJobView";
+import { DeliveryEmployedJobView } from "./DeliveryEmployedJobView";
+import { CareerEducationPanel } from "./CareerEducationPanel";
 import { EmergencyLoaderBriefPanel } from "./EmergencyLoaderBriefPanel";
 
 type JobCard = JobView;
@@ -84,7 +86,7 @@ const JOB_ICONS: Record<string, string> = {
 };
 
 function formatShiftPayoutLabel(job: JobCard): string {
-  if (job.kind === "taxi_line") return "Доход неопределён";
+  if (job.kind === "taxi_line" || job.kind === "delivery_line") return "Доход неопределён";
   if (job.kind === "duration" && job.payoutPerHourMin != null) {
     return formatRubPerHour(job.payoutPerHourMin, job.payoutPerHourMax ?? job.payoutPerHourMin);
   }
@@ -97,7 +99,7 @@ function formatShiftPayoutLabel(job: JobCard): string {
 }
 
 function formatListPayoutLabel(job: JobCard): string {
-  if (job.kind === "taxi_line") return "Доход неопределён";
+  if (job.kind === "taxi_line" || job.kind === "delivery_line") return "Доход неопределён";
   return formatJobPayoutRange(job.payoutMin, job.payoutMax);
 }
 
@@ -505,11 +507,43 @@ export function JobsSection({
     const quitRemainingMs = employmentBlocked && employed ? employedCooldown.remainingMs : undefined;
 
     const isTaxiEmployed = employed && selected.templateKey === "taxi" && selected.kind === "taxi_line";
+    const isDeliveryEmployed =
+      employed && selected.templateKey === "delivery" && selected.kind === "delivery_line";
 
     const showScheduleBlock =
       selected.schedule?.mode &&
       selected.schedule.mode !== "any" &&
       selected.templateKey !== "night_guard";
+
+    if (isDeliveryEmployed) {
+      return (
+        <>
+          <DeliveryEmployedJobView
+            selected={selected}
+            user={user}
+            setUser={setUser}
+            onToast={onToast}
+            onBack={onBack}
+            busy={busy}
+            canQuitBase={canQuit}
+            employmentBlocked={employmentBlocked}
+            quitRemainingMs={quitRemainingMs}
+            onRequestQuit={() => requestQuit(selected)}
+            jobRequirements={jobRequirements}
+          />
+          {pendingCopy && (
+            <ConfirmDialog
+              title={pendingCopy.title}
+              text={pendingCopy.text}
+              confirmLabel={pendingCopy.confirmLabel}
+              confirmClassName={pendingCopy.confirmClassName}
+              onCancel={() => setPending(null)}
+              onConfirm={() => void runPending()}
+            />
+          )}
+        </>
+      );
+    }
 
     if (isTaxiEmployed) {
       return (
@@ -751,14 +785,13 @@ export function JobsSection({
       )}
 
       {careerTitle && (
-        <div className="card">
-          {onBack ? (
-            <CitySectionHeader title={careerTitle} onBack={handleJobsBack} backLabel="Карьера" />
-          ) : (
-            <h2>{careerTitle}</h2>
-          )}
-          <p className="shop-stub">Скоро</p>
-        </div>
+        <CareerEducationPanel
+          mode={nav as "secondary_edu" | "higher_edu" | "freelance"}
+          user={user}
+          setUser={setUser}
+          onToast={onToast}
+          onBack={handleJobsBack}
+        />
       )}
     </div>
   );

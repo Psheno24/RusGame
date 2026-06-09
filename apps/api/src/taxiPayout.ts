@@ -1,6 +1,7 @@
 import { randInt } from "./random.js";
+import { getBalanceBible } from "./balanceBible.js";
 
-/** Кривая почасового дохода такси (база — Омск, тариф «Эконом»). */
+/** Кривая почасового дохода такси (legacy, для совместимости тестов). */
 export type TaxiPayoutCurve = {
   tripMinutesMin: number;
   tripMinutesMax: number;
@@ -13,20 +14,75 @@ export type TaxiPayoutCurve = {
 export type TaxiCashRiskConfig = {
   cashNoPayBaseChance: number;
   cashPartialPayBaseChance: number;
-  /** Доп. шанс за каждую «звезду» ниже 4.5 (редко, но растёт у плохих пассажиров). */
   cashNoPayPerRatingBelow45: number;
   cashPartialPayPerRatingBelow45: number;
   cashPartialPayFraction: number;
   parkCompensationFraction: number;
 };
 
-/** Почасовая ставка: 8k при 5 мин, 5k при 30 мин, 4k при 45 мин (линейно по сегментам). */
+type TaxiBible = {
+  tariffPerKm: Record<string, number>;
+  distanceBands: { minKm: number; maxKm: number; weight: number }[];
+  demand: { key: string; mult: number; weight: number }[];
+  pickupMinMin: number;
+  pickupMaxMin: number;
+  speedMinPerKm: { free: number; normal: number; peak: number };
+};
+
+function taxiBible(): TaxiBible {
+  return getBalanceBible().taxi as TaxiBible;
+}
+
+function pickWeighted<T extends { weight: number }>(items: T[]): T {
+  const total = items.reduce((s, i) => s + i.weight, 0);
+  let r = Math.random() * total;
+  for (const item of items) {
+    r -= item.weight;
+    if (r <= 0) return item;
+  }
+  return items[items.length - 1]!;
+}
+
+export function rollTripKm(): number {
+  const band = pickWeighted(taxiBible().distanceBands);
+  return randInt(band.minKm * 10, band.maxKm * 10) / 10;
+}
+
+export function rollDemandMult(): { key: string; mult: number } {
+  const d = pickWeighted(taxiBible().demand);
+  return { key: d.key, mult: d.mult };
+}
+
+export function tripMinutesFromKm(km: number, demandKey: string): number {
+  const cfg = taxiBible();
+  const pickup = randInt(cfg.pickupMinMin, cfg.pickupMaxMin);
+  const speed =
+    demandKey === "peak" || demandKey === "surge"
+      ? cfg.speedMinPerKm.peak
+      : demandKey === "high"
+        ? cfg.speedMinPerKm.normal
+        : cfg.speedMinPerKm.normal;
+  return Math.max(3, pickup + Math.round(km * speed));
+}
+
+/** Выплата: км × тариф × спрос × город. */
+export function taxiKmPayoutRub(
+  km: number,
+  tariff: string,
+  demandMult: number,
+  cityMult: number,
+  skillMult = 1,
+): number {
+  const rate = taxiBible().tariffPerKm[tariff] ?? taxiBible().tariffPerKm.economy ?? 220;
+  return Math.max(150, Math.round(km * rate * demandMult * cityMult * skillMult));
+}
+
+/** @deprecated legacy hourly curve */
 export function tripHourlyRateRub(tripMinutes: number, curve: TaxiPayoutCurve): number {
   const min = curve.tripMinutesMin;
   const max = curve.tripMinutesMax;
   const mid = curve.midTripMinutes;
   const m = Math.max(min, Math.min(max, tripMinutes));
-
   if (m <= mid) {
     const t = mid === min ? 1 : (m - min) / (mid - min);
     return curve.hourlyAtMinTrip + (curve.hourlyAtMidTrip - curve.hourlyAtMinTrip) * t;
@@ -35,17 +91,17 @@ export function tripHourlyRateRub(tripMinutes: number, curve: TaxiPayoutCurve): 
   return curve.hourlyAtMidTrip + (curve.hourlyAtMaxTrip - curve.hourlyAtMidTrip) * t;
 }
 
-/** Выплата за поездку: почасовая ставка × длительность. */
+/** @deprecated */
 export function tripPayoutRub(tripMinutes: number, curve: TaxiPayoutCurve): number {
   const rate = tripHourlyRateRub(tripMinutes, curve);
   return Math.max(1, Math.round((rate * tripMinutes) / 60));
 }
 
+/** @deprecated */
 export function rollTripMinutes(curve: TaxiPayoutCurve): number {
   return randInt(curve.tripMinutesMin, curve.tripMinutesMax);
 }
 
-/** Шансы проблем с наличными: только от рейтинга пассажира, базово очень низкие. */
 export function cashPaymentRiskChances(
   passengerRating: number,
   cfg: TaxiCashRiskConfig,

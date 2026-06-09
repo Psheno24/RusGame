@@ -1,0 +1,249 @@
+{
+  "skills": {
+    "progressEvery": 10,
+    "ranks": [
+      { "key": "novice", "title": "Новичок", "min": 0, "max": 99 },
+      { "key": "experienced", "title": "Опытный", "min": 100, "max": 299 },
+      { "key": "professional", "title": "Профессионал", "min": 300, "max": 599 },
+      { "key": "expert", "title": "Эксперт", "min": 600, "max": 999 },
+      { "key": "master", "title": "Мастер", "min": 1000, "max": null }
+    ]
+  },
+  "reputation": { "min": -1000, "max": 1000, "shiftGain": 2 },
+  "mood": {
+    "min": -100,
+    "max": 100,
+    "default": 0,
+    "cityTierBonus": { "1": -20, "2": -10, "3": 0, "4": 10, "5": 20 },
+    "sideJobPenalty": -15,
+    "energyCostMultiplier": {
+      "lowMax": -1,
+      "lowMult": 2.5,
+      "midMax": 34,
+      "midMult": 1,
+      "highMult": 0.5
+    }
+  },
+  "housingMoodBonus": {
+    "dorm": 0,
+    "room": 5,
+    "studio": 10,
+    "one_room": 20,
+    "two_room": 30,
+    "three_room": 40,
+    "house": 55,
+    "cottage": 70,
+    "mansion": 90
+  },
+  "carMoodBonus": {
+    "lada-granta": 2,
+    "lada-vesta": 4,
+    "hyundai-solaris": 5,
+    "kia-rio": 5,
+    "vw-polo": 7,
+    "toyota-corolla": 10,
+    "toyota-camry": 15,
+    "kia-k5": 18,
+    "bmw-5-series": 25,
+    "mercedes-e-class": 30,
+    "bmw-7-series": 40,
+    "mercedes-s-class": 50,
+    "mercedes-maybach": 70
+  },
+  "energy": {
+    "max": 100,
+    "workCosts": {
+      "delivery": 2,
+      "taxi": 3,
+      "cashier": 15,
+      "night_guard": 25,
+      "education": 20,
+      "career": 15
+    },
+    "sleepFullMs": 14400000
+  },
+  "cityTiers": {
+    "1": ["omsk", "volgograd", "voronezh"],
+    "2": ["perm", "ufa", "samara", "chelyabinsk", "krasnoyarsk"],
+    "3": ["rostov", "krasnodar", "nn", "novosibirsk", "ekb", "kazan"],
+    "4": ["spb"],
+    "5": ["moscow"]
+  },
+  "cityMultipliers": {
+    "omsk": 1,
+    "volgograd": 1.05,
+    "voronezh": 1.1,
+    "perm": 1.2,
+    "ufa": 1.25,
+    "samara": 1.35,
+    "chelyabinsk": 1.4,
+    "krasnoyarsk": 1.45,
+    "rostov": 1.6,
+    "krasnodar": 1.7,
+    "nn": 1.8,
+    "novosibirsk": 1.9,
+    "ekb": 2,
+    "kazan": 2.2,
+    "spb": 3,
+    "moscow": 4
+  },
+  "housingOmskBase": {
+    "dormRentMonthly": 15000,
+    "room": { "buy": 900000, "rent": 20000 },
+    "studio": { "buy": 2500000, "rent": 30000 },
+    "one_room": { "buy": 4000000, "rent": 40000 },
+    "two_room": { "buy": 6500000, "rent": 60000 },
+    "three_room": { "buy": 9000000, "rent": 80000 },
+    "house": { "buy": 12000000, "rent": 120000 },
+    "cottage": { "buy": 25000000, "rent": 200000 },
+    "mansion": { "buy": 50000000, "rent": 400000 }
+  },
+  "housingTypeMap": {
+    "dorm_room": "dorm",
+    "communal_room": "room",
+    "studio": "studio",
+    "one_room": "one_room",
+    "one_room_plus": "one_room",
+    "two_room": "two_room",
+    "three_room": "three_room",
+    "business": "three_room",
+    "view": "three_room",
+    "penthouse": "mansion",
+    "dacha": "house",
+    "country_house": "house",
+    "cottage": "cottage",
+    "mansion": "mansion"
+  },
+  "sublet": {
+    "incomePctMin": 0.004,
+    "incomePctMax": 0.006,
+    "vacancyChance": 0.1,
+    "renewChance": 0.9
+  },
+  "fuel": { "ai92": 70, "ai95": 75, "premium": 85 },
+  "wearPctPer100Km": {
+    "economy": 0.8,
+    "comfort": 0.7,
+    "comfort_plus": 0.6,
+    "business": 0.75,
+    "premium": 0.9
+  },
+  "wearMileageMult": [
+    { "fromKm": 200000, "mult": 1.5 },
+    { "fromKm": 300000, "mult": 2 },
+    { "fromKm": 500000, "mult": 3 }
+  ],
+  "repairGrantaBase": {
+    "engine": 120000,
+    "transmission": 80000,
+    "suspension": 60000,
+    "brakes": 20000,
+    "tires": 25000,
+    "body": 70000
+  },
+  "repairModelMult": {
+    "lada-granta": 1,
+    "lada-vesta": 1.2,
+    "hyundai-solaris": 1.4,
+    "kia-rio": 1.4,
+    "vw-polo": 1.6,
+    "toyota-corolla": 1.8,
+    "toyota-camry": 2.5,
+    "kia-k5": 2.7,
+    "bmw-5-series": 4,
+    "mercedes-e-class": 4.5,
+    "bmw-7-series": 6,
+    "mercedes-s-class": 7,
+    "mercedes-maybach": 10
+  },
+  "usedMarket": {
+    "refreshHours": [8, 16, 0],
+    "ageYearsMin": 1,
+    "ageYearsMax": 25,
+    "mileageKmMin": 5000,
+    "mileageKmMax": 600000,
+    "conditionMin": 0.3,
+    "conditionMax": 1,
+    "marketCoeffMin": 0.8,
+    "marketCoeffMax": 1.2,
+    "lotChances": {
+      "honest": 0.7,
+      "hiddenWear": 0.2,
+      "seriousDefect": 0.07,
+      "bargain": 0.03
+    }
+  },
+  "delivery": {
+    "transport": {
+      "walk": { "ratePerKm": 700, "minKm": 1, "maxKm": 5, "minPerKm": 8 },
+      "bike": { "ratePerKm": 650, "minKm": 1, "maxKm": 8, "minPerKm": 6 },
+      "scooter": { "ratePerKm": 650, "minKm": 2, "maxKm": 8, "minPerKm": 5 },
+      "moped": { "ratePerKm": 600, "minKm": 3, "maxKm": 15, "minPerKm": 3 },
+      "car": { "ratePerKm": 550, "minKm": 5, "maxKm": 30, "minPerKm": 2 }
+    },
+    "modifiers": {
+      "short": 0.8,
+      "normal": 1,
+      "urgent": 1.3,
+      "heavy": 1.4,
+      "night": 1.5
+    },
+    "modifierWeights": { "short": 0.15, "normal": 0.45, "urgent": 0.2, "heavy": 0.12, "night": 0.08 },
+    "events": {
+      "tips": { "chance": 0.15, "bonusMin": 500, "bonusMax": 3000 },
+      "regularClient": { "chance": 0.05, "payMult": 1.5 },
+      "fastDelivery": { "chance": 0.1, "payMult": 1.25 },
+      "restaurantDelay": { "chance": 0.15, "extraMinMin": 5, "extraMinMax": 15 },
+      "clientDelay": { "chance": 0.1, "extraMinMin": 3, "extraMinMax": 10 },
+      "damagedPackaging": { "chance": 0.05, "payMult": 0.8 },
+      "complaint": { "chance": 0.03, "payMult": 0.5, "reputationDelta": -5 },
+      "cancel": { "chance": 0.02, "payMult": 0.3 }
+    }
+  },
+  "taxi": {
+    "tariffPerKm": {
+      "economy": 220,
+      "comfort": 300,
+      "comfort_plus": 420,
+      "business": 650,
+      "premium": 1000
+    },
+    "distanceBands": [
+      { "minKm": 2, "maxKm": 5, "weight": 0.35 },
+      { "minKm": 5, "maxKm": 12, "weight": 0.4 },
+      { "minKm": 12, "maxKm": 25, "weight": 0.2 },
+      { "minKm": 25, "maxKm": 50, "weight": 0.05 }
+    ],
+    "demand": [
+      { "key": "normal", "mult": 1, "weight": 0.7 },
+      { "key": "peak", "mult": 1.3, "weight": 0.2 },
+      { "key": "high", "mult": 1.8, "weight": 0.08 },
+      { "key": "surge", "mult": 2.5, "weight": 0.02 }
+    ],
+    "pickupMinMin": 2,
+    "pickupMaxMin": 6,
+    "speedMinPerKm": { "free": 2, "normal": 3, "peak": 4.5 }
+  },
+  "jobs": {
+    "cashier": { "payout": 12000, "cooldownHours": 4, "minigameMin": 5 },
+    "night_guard": { "payout": 30000, "nightStartHour": 22, "dayStartHour": 8 }
+  },
+  "education": {
+    "college": { "cost": 100000, "days": 30, "key": "college" },
+    "university": { "cost": 500000, "days": 90, "key": "university" },
+    "masters": { "cost": 2000000, "days": 180, "key": "masters" },
+    "courses": { "cost": 50000, "days": 7, "key": "courses" },
+    "reputationGain": 10
+  },
+  "career": {
+    "levels": [
+      { "key": "intern", "title": "Стажёр", "rank": 0, "payoutBase": 25000, "skillMin": 0, "reputationMin": 0, "daysMin": 0, "education": "none" },
+      { "key": "junior", "title": "Младший специалист", "rank": 1, "payoutBase": 45000, "skillMin": 50, "reputationMin": 50, "daysMin": 14, "education": "college" },
+      { "key": "specialist", "title": "Специалист", "rank": 2, "payoutBase": 70000, "skillMin": 100, "reputationMin": 100, "daysMin": 30, "education": "college" },
+      { "key": "senior", "title": "Старший специалист", "rank": 3, "payoutBase": 100000, "skillMin": 200, "reputationMin": 200, "daysMin": 60, "education": "university" },
+      { "key": "lead", "title": "Ведущий специалист", "rank": 4, "payoutBase": 140000, "skillMin": 350, "reputationMin": 350, "daysMin": 120, "education": "university" },
+      { "key": "manager", "title": "Руководитель", "rank": 5, "payoutBase": 200000, "skillMin": 500, "reputationMin": 500, "daysMin": 180, "education": "masters" }
+    ],
+    "cooldownHours": 8
+  }
+}

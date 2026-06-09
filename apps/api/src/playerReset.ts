@@ -52,6 +52,7 @@ export function resetPlayerAccount(targetUserId: number, now = Date.now()): bool
     discipline: 0,
     skill_progress: null,
     taxi_state: null,
+    delivery_state: null,
     side_gig_ready_at: 0,
     shift_ready_at: 0,
     last_work_at_by_job: null,
@@ -92,10 +93,13 @@ export function resetPlayerAccount(targetUserId: number, now = Date.now()): bool
     housing_pending_owned_id: null,
     energy: 80,
     hunger: 80,
-    mood: 70,
+    mood: 0,
     health: 100,
     reputation: 0,
     education: "none",
+    education_ends_at: null,
+    days_played: 0,
+    career_level: "none",
   });
 
   return true;

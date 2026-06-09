@@ -8,29 +8,30 @@ import {
 import { getCar } from "./gameData.js";
 
 describe("carMarket", () => {
-  it("Granta cheaper in Omsk than Moscow", () => {
+  it("Granta same price in Omsk and Moscow", () => {
     const car = getCar("lada-granta")!;
     const omsk = getCarCityPriceRub("omsk", car);
     const moscow = getCarCityPriceRub("moscow", car);
-    assert.ok(omsk < moscow);
-    assert.ok(omsk >= car.priceRub * 0.94);
+    assert.equal(omsk, moscow);
+    assert.equal(omsk, car.priceRub);
   });
 
-  it("S-Class more expensive in Omsk than Moscow", () => {
+  it("S-Class same price in Omsk and Moscow", () => {
     const car = getCar("mercedes-s-class")!;
     const omsk = getCarCityPriceRub("omsk", car);
     const moscow = getCarCityPriceRub("moscow", car);
-    assert.ok(omsk > moscow);
-    assert.ok(omsk >= car.priceRub * 1.35);
+    assert.equal(omsk, moscow);
+    assert.equal(moscow, car.priceRub);
   });
 
-  it("hypercar not sold in Omsk market", () => {
-    assert.equal(isCarClassAvailableInCity("omsk", "hypercar"), false);
-    assert.equal(isCarClassAvailableInCity("moscow", "hypercar"), true);
+  it("premium sold in Moscow market", () => {
+    assert.equal(isCarClassAvailableInCity("omsk", "premium"), false);
+    assert.equal(isCarClassAvailableInCity("moscow", "premium"), true);
   });
 
-  it("Moscow multiplier is 1.0", () => {
-    const car = getCar("bmw-m5")!;
+  it("car price multiplier is always 1", () => {
+    const car = getCar("lada-granta")!;
     assert.equal(getCarCityPriceMultiplier("moscow", car), 1);
+    assert.equal(getCarCityPriceMultiplier("omsk", car), 1);
   });
 });

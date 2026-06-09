@@ -100,13 +100,13 @@ describe("skills", () => {
     assert.equal((r.patch.charisma ?? p.charisma), 100);
   });
 
-  it("does not exceed SKILL_MAX", () => {
-    let p = player({ discipline: SKILL_MAX });
-    for (let i = 0; i < SKILL_PROGRESS_EVERY; i++) {
-      p = { ...p, ...recordSkillActionForTemplate(p, "night_guard").patch };
-    }
+  it("skills grow beyond 100 without cap", () => {
+    const p = {
+      ...player({ discipline: 100 }),
+      skill_progress: JSON.stringify({ taxi_trips: 0, delivery: 0, cashier: 0, night_guard: 9 }),
+    };
     const r = recordSkillActionForTemplate(p, "night_guard");
-    assert.equal(r.granted, undefined);
-    assert.equal(r.patch.discipline ?? p.discipline, SKILL_MAX);
+    assert.equal(r.granted?.key, "discipline");
+    assert.equal(r.patch.discipline, 101);
   });
 });

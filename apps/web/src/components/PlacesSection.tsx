@@ -3,6 +3,7 @@ import { performAction, type User } from "../api";
 import type { NavBackHandler } from "../navBack";
 import { CITY_PLACES, type PlaceId } from "../placesData";
 import { CarRepairPlace } from "./CarRepairPlace";
+import { GasStationPlace } from "./GasStationPlace";
 import { CityGridButton } from "./ui/CityGridButton";
 import { PoliceLicenseShop } from "./PoliceLicenseShop";
 
@@ -26,7 +27,7 @@ export function PlacesSection({
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!placeId || placeId === "police" || placeId === "car_repair") {
+    if (!placeId || placeId === "police" || placeId === "car_repair" || placeId === "gas_station") {
       registerBack(null);
       return;
     }
@@ -63,6 +64,20 @@ export function PlacesSection({
       return (
         <div className="place-detail">
           <CarRepairPlace
+            user={user}
+            setUser={setUser}
+            onToast={onToast}
+            registerBack={registerBack}
+            onExitPlace={() => onPlace(null)}
+          />
+        </div>
+      );
+    }
+
+    if (placeId === "gas_station") {
+      return (
+        <div className="place-detail">
+          <GasStationPlace
             user={user}
             setUser={setUser}
             onToast={onToast}

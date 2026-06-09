@@ -1,33 +1,31 @@
 {
-  "repairRatePctByClass": {
-    "economy": [0.08, 0.12],
-    "comfort": [0.1, 0.14],
-    "comfort_plus": [0.12, 0.16],
-    "business": [0.14, 0.2],
-    "premium": [0.16, 0.24],
-    "luxury": [0.16, 0.24],
-    "hypercar": [0.16, 0.24]
-  },
-  "tireRateMultiplier": 0.42,
   "services": {
     "sto": {
       "title": "СТО",
-      "hint": "Двигатель, КПП, кузов, электроника, салон",
-      "nodes": ["engine", "transmission", "body", "electronics", "interior"]
+      "hint": "Двигатель, КПП, подвеска, кузов",
+      "nodes": ["engine", "transmission", "alignment", "body"]
     },
     "tire": {
       "title": "Шиномонтаж",
-      "hint": "Шины и сход-развал",
-      "nodes": ["tires", "alignment"]
+      "hint": "Тормоза и шины",
+      "nodes": ["electronics", "tires"]
     }
   },
   "nodeLabels": {
     "engine": "Двигатель",
     "transmission": "Коробка передач",
+    "alignment": "Подвеска",
+    "electronics": "Тормоза",
     "tires": "Шины",
-    "alignment": "Сход-развал",
     "body": "Кузов",
-    "electronics": "Электроника",
     "interior": "Салон"
+  },
+  "bibleNodeMap": {
+    "engine": "engine",
+    "transmission": "transmission",
+    "alignment": "suspension",
+    "electronics": "brakes",
+    "tires": "tires",
+    "body": "body"
   }
 }

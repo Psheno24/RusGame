@@ -1,4 +1,4 @@
-import type { PlayerRow } from "./db.js";
+import { getBalanceBible } from "./balanceBible.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { formatDuration } from "./formatDuration.js";
 import { isCityResident } from "./housing.js";
@@ -128,12 +128,17 @@ export function wakeUp(userId: number, now = Date.now()): WakeResult {
   if (!isPlayerSleeping(player)) return { ok: false, error: "Вы не спите" };
 
   const energy = currentSleepEnergy(player, now);
-  updatePlayer(userId, {
+  const plannedMs = player.sleep_planned_ms ?? 0;
+  const patch: Partial<import("./db.js").PlayerRow> = {
     energy,
     sleep_started_at: null,
     sleep_planned_ms: null,
     sleep_start_energy: null,
-  });
+  };
+  if (plannedMs >= getBalanceBible().energy.sleepFullMs) {
+    patch.days_played = (player.days_played ?? 0) + 1;
+  }
+  updatePlayer(userId, patch);
 
   return { ok: true, message: `Вы проснулись. Энергия: ${energy}` };
 }

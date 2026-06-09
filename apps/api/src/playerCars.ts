@@ -38,6 +38,7 @@ export type PlayerCarRow = {
   cond_electronics?: number | null;
   cond_interior?: number | null;
   body_color?: string | null;
+  fuel_level_l?: number | null;
 };
 
 export function carBodyColorFromRow(row: PlayerCarRow): string {
@@ -49,7 +50,7 @@ export function listPlayerCars(userId: number): PlayerCarRow[] {
     .prepare(
       `SELECT id, user_id, car_model_id, acquired_at, purchase_price_rub, plate_text, plate_l1, plate_digits, plate_l2, plate_region,
               mileage_km, is_used, cond_engine, cond_transmission, cond_suspension, cond_tires, cond_alignment,
-              cond_body, cond_electronics, cond_interior, body_color
+              cond_body, cond_electronics, cond_interior, body_color, fuel_level_l
        FROM player_cars WHERE user_id = ? ORDER BY acquired_at ASC`,
     )
     .all(userId) as PlayerCarRow[];
@@ -60,7 +61,7 @@ export function getPlayerCarById(userId: number, playerCarId: number): PlayerCar
     .prepare(
       `SELECT id, user_id, car_model_id, acquired_at, purchase_price_rub, plate_text, plate_l1, plate_digits, plate_l2, plate_region,
               mileage_km, is_used, cond_engine, cond_transmission, cond_suspension, cond_tires, cond_alignment,
-              cond_body, cond_electronics, cond_interior, body_color
+              cond_body, cond_electronics, cond_interior, body_color, fuel_level_l
        FROM player_cars WHERE user_id = ? AND id = ?`,
     )
     .get(userId, playerCarId) as PlayerCarRow | undefined;

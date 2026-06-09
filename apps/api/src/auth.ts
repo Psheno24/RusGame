@@ -215,11 +215,14 @@ export function serializePlayer(p: import("./db.js").PlayerRow) {
     housingStatusLabel: housing.statusLabel,
     vitals: {
       energy: p.energy ?? 80,
-      mood: p.mood ?? 70,
+      mood: p.mood ?? 0,
       health: p.health ?? 100,
       reputation: p.reputation ?? 0,
     },
     sleeping: p.sleep_started_at != null,
     education: p.education ?? "none",
+    educationEndsAt: p.education_ends_at,
+    daysPlayed: p.days_played ?? 0,
+    careerLevel: p.career_level ?? "none",
   };
 }
