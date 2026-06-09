@@ -26,7 +26,7 @@ self.addEventListener("push", (event) => {
   } catch {
     data = { body: event.data?.text() ?? "" };
   }
-  const title = data.title?.trim() ? data.title : (data.body ?? "Россия — жизнь");
+  const title = data.title?.trim() || data.body?.trim() || "Уведомление";
   const body = data.title?.trim() ? (data.body ?? "") : "";
   event.waitUntil(
     self.registration.showNotification(title, {

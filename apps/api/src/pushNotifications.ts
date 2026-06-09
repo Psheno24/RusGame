@@ -163,9 +163,12 @@ function housingPaymentDaysLabel(daysLeft: number): string {
   return "дней";
 }
 
-export function housingPaymentPushBody(daysLeft: number): string {
+export function housingPaymentPushBody(daysLeft: number): { title: string; body: string } {
   const word = housingPaymentDaysLabel(daysLeft);
-  return `Можно продлить аренду жилья. Осталось ${daysLeft} ${word} до конца текущей аренды.`;
+  return {
+    title: "Можно продлить аренду жилья",
+    body: `Осталось ${daysLeft} ${word} до конца текущей аренды.`,
+  };
 }
 
 export function syncHousingPaymentPush(player: PlayerRow, now = Date.now()) {
@@ -218,36 +221,37 @@ function buildPushPayload(kind: PushScheduleKind, payloadJson: string): PushPayl
     case "shift_ready": {
       const jobTitle = data.jobTitle ?? "работа";
       return {
-        title: "",
-        body: `Можно выйти на смену (${jobTitle})`,
+        title: "Можно выйти на смену",
+        body: `(${jobTitle})`,
         url: "/work",
       };
     }
     case "taxi_trip_end":
       return {
-        title: "",
-        body: "Выберите новый заказ или закончите смену (Такси)",
+        title: "Выберите новый заказ",
+        body: "или закончите смену (Такси)",
         url: "/work",
       };
     case "delivery_trip_end":
       return {
-        title: "",
-        body: "Можно взять новый заказ (Доставка)",
+        title: "Можно взять новый заказ",
+        body: "(Доставка)",
         url: "/work",
       };
     case "housing_payment": {
       const daysLeft = data.daysLeft ?? 1;
+      const housing = housingPaymentPushBody(daysLeft);
       return {
-        title: "",
-        body: housingPaymentPushBody(daysLeft),
+        title: housing.title,
+        body: housing.body,
         url: "/home",
       };
     }
     case "travel_arrive": {
       const cityName = data.cityName ?? "город";
       return {
-        title: "",
-        body: `Вы добрались до ${cityName}`,
+        title: "Вы добрались",
+        body: `до ${cityName}`,
         url: "/map",
       };
     }
@@ -312,7 +316,7 @@ export async function processDuePushNotifications(now = Date.now()) {
     const prefs = getNotificationPrefs(row.user_id);
     if (prefEnabledForKind(prefs, row.kind)) {
       const payload = buildPushPayload(row.kind, row.payload_json);
-      if (payload.body) {
+      if (payload.title || payload.body) {
         await sendPushToUser(row.user_id, payload);
       }
     }
