@@ -66,14 +66,37 @@ const NAV_ITEMS = [
     label: "Город",
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden>
-        <path
-          d="M5 20V9l7-4 7 4v11"
+        <path d="M2 20h20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+        <rect
+          x="4"
+          y="12"
+          width="4"
+          height="8"
+          rx="0.5"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.75"
-          strokeLinejoin="round"
         />
-        <path d="M9 20v-5h6v5" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" />
+        <rect
+          x="10"
+          y="7"
+          width="4"
+          height="13"
+          rx="0.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+        />
+        <rect
+          x="16"
+          y="10"
+          width="4"
+          height="10"
+          rx="0.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+        />
       </svg>
     ),
   },

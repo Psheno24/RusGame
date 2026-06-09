@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 type Props = {
   title: string;
   hint?: string;
+  icon?: string;
   onClick?: () => void;
   disabled?: boolean;
   className?: string;
@@ -12,6 +13,7 @@ type Props = {
 export function CityGridButton({
   title,
   hint,
+  icon,
   onClick,
   disabled,
   className = "",
@@ -26,7 +28,7 @@ export function CityGridButton({
     >
       <span className="city-grid-title">{title}</span>
       {hint ? <span className="city-grid-hint">{hint}</span> : null}
-      {children}
+      {children ?? (icon ? <span className="city-grid-icon" aria-hidden>{icon}</span> : null)}
     </button>
   );
 }

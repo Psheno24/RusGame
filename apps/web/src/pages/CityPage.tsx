@@ -27,22 +27,23 @@ import { ProductsShop } from "../components/ProductsShop";
 import { useIntervalTick } from "../hooks/useIntervalTick";
 import { useApp } from "../context";
 import { useNotice } from "../noticeContext";
+import { CITY_SECTION_ICONS, SHOP_CATEGORY_ICONS } from "../gridIcons";
 import { placeById, type PlaceId } from "../placesData";
 
 type CitySection = CitySectionId;
 type ShopTab = "products" | "phone" | "car";
 
 const CITY_SECTIONS: { id: CitySection; title: string; icon: string }[] = [
-  { id: "shop", title: "Магазин", icon: "₽" },
-  { id: "jobs", title: "Работа", icon: "↗" },
-  { id: "housing", title: "Недвижимость", icon: "⌂" },
-  { id: "places", title: "Сервисы", icon: "●" },
+  { id: "shop", title: "Магазин", icon: CITY_SECTION_ICONS.shop },
+  { id: "jobs", title: "Работа", icon: CITY_SECTION_ICONS.jobs },
+  { id: "housing", title: "Недвижимость", icon: CITY_SECTION_ICONS.housing },
+  { id: "places", title: "Другие места", icon: CITY_SECTION_ICONS.places },
 ];
 
 const SHOP_CATEGORIES: { id: ShopTab; title: string; icon: string }[] = [
-  { id: "products", title: "Продукты", icon: "▒" },
-  { id: "phone", title: "Телефон", icon: "▣" },
-  { id: "car", title: "Авто", icon: "◆" },
+  { id: "products", title: "Продукты", icon: SHOP_CATEGORY_ICONS.products },
+  { id: "phone", title: "Телефон", icon: SHOP_CATEGORY_ICONS.phone },
+  { id: "car", title: "Авто", icon: SHOP_CATEGORY_ICONS.car },
 ];
 
 export function CityPage() {
@@ -214,7 +215,7 @@ export function CityPage() {
         backLabel = placesNav.backLabel;
       } else {
         title = placeById(placeId).title;
-        backLabel = "Разные места";
+        backLabel = "Другие места";
       }
     }
     return { title, backLabel };
@@ -353,12 +354,11 @@ export function CityPage() {
                   ? "Покупки и апгрейды"
                   : s.id === "housing"
                     ? "Дом и аренда"
-                    : "Полезные места"
+                    : "АЗС, полиция и др."
             }
+            icon={s.icon}
             onClick={() => setSection(s.id)}
-          >
-            <span className="city-grid-icon" aria-hidden>{s.icon}</span>
-          </CityGridButton>
+          />
         ))}
       </div>
 
@@ -390,9 +390,7 @@ function ShopSection({
     return (
       <div className="city-grid shop-categories">
         {SHOP_CATEGORIES.map((c) => (
-          <CityGridButton key={c.id} title={c.title} onClick={() => onTab(c.id)}>
-            <span className="city-grid-icon" aria-hidden>{c.icon}</span>
-          </CityGridButton>
+          <CityGridButton key={c.id} title={c.title} icon={c.icon} onClick={() => onTab(c.id)} />
         ))}
       </div>
     );

@@ -10,7 +10,9 @@ import {
   type User,
 } from "../api";
 import type { NavBackHandler } from "../navBack";
+import { CAR_REPAIR_SERVICE_ICONS } from "../gridIcons";
 import type { PlaceNavState } from "../placeNav";
+import { CityGridButton } from "./ui/CityGridButton";
 
 type Nav = "services" | "garage";
 
@@ -65,7 +67,7 @@ export function CarRepairPlace({ user, setUser, onToast, onNavChange, registerBa
         backLabel: placeTitle,
       });
     } else {
-      onNavChange({ inSub: false, title: placeTitle, backLabel: "Разные места" });
+      onNavChange({ inSub: false, title: placeTitle, backLabel: "Другие места" });
     }
   }, [nav, serviceId, shop, onNavChange]);
 
@@ -136,15 +138,13 @@ export function CarRepairPlace({ user, setUser, onToast, onNavChange, registerBa
         </p>
         <div className="city-grid shop-categories phone-hub">
           {shop.services.map((s) => (
-            <button
+            <CityGridButton
               key={s.id}
-              type="button"
-              className="city-grid-btn"
+              title={s.title}
+              icon={CAR_REPAIR_SERVICE_ICONS[s.id] ?? "🔧"}
+              hint={s.hint}
               onClick={() => void openService(s.id)}
-            >
-              <span className="city-grid-title">{s.title}</span>
-              <span className="city-grid-hint">{s.hint}</span>
-            </button>
+            />
           ))}
         </div>
       </div>

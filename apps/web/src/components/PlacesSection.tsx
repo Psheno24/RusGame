@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "../api";
 import type { NavBackHandler } from "../navBack";
+import { PLACE_ICONS } from "../gridIcons";
 import { CITY_PLACES, type PlaceId } from "../placesData";
 import { testOnlyGridHint, testOnlyLocked } from "../testOnlyUi";
 import { CarRepairPlace } from "./CarRepairPlace";
@@ -134,6 +135,7 @@ export function PlacesSection({
           <CityGridButton
             key={p.id}
             title={p.title}
+            icon={PLACE_ICONS[p.id]}
             hint={testOnlyGridHint(isTest, p.testOnly, p.hint)}
             disabled={locked}
             onClick={() => onPlace(p.id)}

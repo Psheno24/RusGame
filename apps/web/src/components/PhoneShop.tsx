@@ -13,6 +13,7 @@ import {
 import type { NavBackHandler } from "../navBack";
 import { useToastRef } from "../hooks/useToastRef";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { PHONE_HUB_ICONS } from "../gridIcons";
 import { CityGridButton } from "./ui/CityGridButton";
 import { PhonePreview } from "./PhonePreview";
 import { SimShop } from "./SimShop";
@@ -237,8 +238,8 @@ export function PhoneShop({ user, setUser, onToast, onNavChange, registerBack }:
 
       {nav === "hub" && (
         <div className="city-grid shop-categories phone-hub">
-          <CityGridButton title="Устройства" onClick={() => go("devices")} />
-          <CityGridButton title="Сим-карта" onClick={() => go("sim")} />
+          <CityGridButton title="Устройства" icon={PHONE_HUB_ICONS.devices} onClick={() => go("devices")} />
+          <CityGridButton title="Сим-карта" icon={PHONE_HUB_ICONS.sim} onClick={() => go("sim")} />
         </div>
       )}
 

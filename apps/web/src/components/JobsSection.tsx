@@ -1,5 +1,6 @@
 import { formatRubPerHour, formatRubRange } from "../formatRub.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { JOBS_MENU_ICONS } from "../gridIcons";
 import { CityGridButton } from "./ui/CityGridButton";
 import {
   applyJob as applyJobApi,
@@ -37,8 +38,8 @@ const JOBS_MENU: {
   icon: string;
   testOnly?: boolean;
 }[] = [
-  { id: "side_jobs", title: "Подработка", icon: "₽" },
-  { id: "career", title: "Карьера", icon: "▲", testOnly: true },
+  { id: "side_jobs", title: "Подработка", icon: JOBS_MENU_ICONS.side_jobs },
+  { id: "career", title: "Карьера", icon: JOBS_MENU_ICONS.career, testOnly: true },
 ];
 
 function isLoaderEmployment(jobId: string | null | undefined): boolean {
@@ -738,12 +739,11 @@ export function JobsSection({
                 <CityGridButton
                   key={item.id}
                   title={item.title}
+                  icon={item.icon}
                   hint={testOnlyGridHint(isTest, item.testOnly)}
                   disabled={locked}
                   onClick={() => setNav(item.id === "career" ? "freelance" : item.id)}
-                >
-                  <span className="city-grid-icon" aria-hidden>{item.icon}</span>
-                </CityGridButton>
+                />
               );
             })}
           </div>

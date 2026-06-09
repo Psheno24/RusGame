@@ -77,7 +77,7 @@ export function GasStationPlace({ user, setUser, onToast, onNavChange, registerB
 
   useEffect(() => {
     const title = nav === "detail" ? "Заправка" : "АЗС";
-    const backLabel = nav === "detail" ? "АЗС" : "Разные места";
+    const backLabel = nav === "detail" ? "АЗС" : "Другие места";
     onNavChange({ inSub: nav === "detail", title, backLabel });
   }, [nav, onNavChange]);
 

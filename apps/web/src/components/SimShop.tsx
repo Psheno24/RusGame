@@ -13,7 +13,9 @@ import {
   type SimTariffQuote,
   type User,
 } from "../api";
+import { SIM_CHANGE_PART_ICONS } from "../gridIcons";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { CityGridButton } from "./ui/CityGridButton";
 
 type SimView = "main" | "change" | "tariffs";
 type SimChangePart = "operator" | "mid" | "last";
@@ -211,18 +213,15 @@ export function SimShop({ user, setUser, onToast, onNavChange, registerBack, onE
         )}
         <div className="sim-change-grid">
           {parts.map((part) => (
-            <button
+            <CityGridButton
               key={part.id}
-              type="button"
-              className="city-grid-btn sim-change-btn"
+              className="sim-change-btn"
+              title={part.label}
+              icon={SIM_CHANGE_PART_ICONS[part.id] ?? "🔢"}
+              hint={`${part.hint} · ${formatRub(part.price)}`}
               disabled={busy || p.rubles < part.price}
               onClick={() => run(() => changeSimPart(part.id))}
-            >
-              <span className="city-grid-title">{part.label}</span>
-              <span className="city-grid-hint">
-                {part.hint} · {formatRub(part.price)}
-              </span>
-            </button>
+            />
           ))}
         </div>
       </div>

@@ -6,6 +6,7 @@ import { useIntervalTick } from "../hooks/useIntervalTick";
 import { JobsSection } from "../components/JobsSection";
 import { WorkEducationPanel } from "../components/WorkEducationPanel";
 import { TravelingCard } from "../components/TravelingCard";
+import { WORK_HUB_ICONS } from "../gridIcons";
 import { CityGridButton } from "../components/ui/CityGridButton";
 import { useApp } from "../context";
 import { useNotice } from "../noticeContext";
@@ -131,12 +132,12 @@ export function WorkPage() {
       <div className="card">
         <h2>Моя работа</h2>
         <div className="city-grid shop-categories jobs-menu-grid">
-          <CityGridButton title="Работа" onClick={() => setWorkHub("work")}>
-            <span className="city-grid-icon" aria-hidden>💼</span>
-          </CityGridButton>
-          <CityGridButton title="Образование" onClick={() => setWorkHub("education")}>
-            <span className="city-grid-icon" aria-hidden>🎓</span>
-          </CityGridButton>
+          <CityGridButton title="Работа" icon={WORK_HUB_ICONS.work} onClick={() => setWorkHub("work")} />
+          <CityGridButton
+            title="Образование"
+            icon={WORK_HUB_ICONS.education}
+            onClick={() => setWorkHub("education")}
+          />
         </div>
       </div>
     );

@@ -18,6 +18,7 @@ import {
 } from "../api";
 import { useToastRef } from "../hooks/useToastRef";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { HOUSING_ICONS } from "../gridIcons";
 import { CityGridButton } from "./ui/CityGridButton";
 
 type HousingNav = "hub" | "buy" | "buyDetail" | "exchange" | "rent";
@@ -298,8 +299,8 @@ export function HousingShop({
             </p>
           </div>
           <div className="city-grid shop-categories phone-hub">
-            <CityGridButton title="Купить" onClick={() => setNav("buy")} />
-            <CityGridButton title="Снять" onClick={() => setNav("rent")} />
+            <CityGridButton title="Купить" icon={HOUSING_ICONS.buy} onClick={() => setNav("buy")} />
+            <CityGridButton title="Снять" icon={HOUSING_ICONS.rent} onClick={() => setNav("rent")} />
           </div>
         </div>
       )}

@@ -7,6 +7,7 @@ import { PLATES_MENU_TITLE, PLATES_POLICE_MENU_HINT } from "../plateCopy";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { PlateShopSection } from "./PlateShopSection";
 import { testOnlyGridHint, testOnlyLocked } from "../testOnlyUi";
+import { POLICE_ICONS } from "../gridIcons";
 import { CityGridButton } from "./ui/CityGridButton";
 import type { PlaceNavState } from "../placeNav";
 
@@ -53,7 +54,7 @@ export function PoliceLicenseShop({ user, setUser, onToast, onNavChange, registe
 
   useEffect(() => {
     if (nav === "hub") {
-      onNavChange({ inSub: false, title: "Полиция", backLabel: "Разные места" });
+      onNavChange({ inSub: false, title: "Полиция", backLabel: "Другие места" });
     } else if (nav === "licenses") {
       onNavChange({ inSub: true, title: "Водительские права", backLabel: "Полиция" });
     } else if (nav === "fines") {
@@ -135,14 +136,16 @@ export function PoliceLicenseShop({ user, setUser, onToast, onNavChange, registe
 
       {nav === "hub" && (
         <div className="city-grid shop-categories phone-hub police-hub">
-          <CityGridButton title="Водительские права" onClick={() => setNav("licenses")} />
+          <CityGridButton title="Водительские права" icon={POLICE_ICONS.licenses} onClick={() => setNav("licenses")} />
           <CityGridButton
             title={PLATES_MENU_TITLE}
+            icon={POLICE_ICONS.plates}
             hint={PLATES_POLICE_MENU_HINT}
             onClick={() => setNav("plates")}
           />
           <CityGridButton
             title="Штрафы"
+            icon={POLICE_ICONS.fines}
             hint={testOnlyGridHint(isTest, true)}
             disabled={testOnlyLocked(isTest, true)}
             onClick={() => {

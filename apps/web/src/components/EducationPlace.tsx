@@ -12,6 +12,7 @@ import {
 } from "../api";
 import { TestOnlyNotice } from "./TestOnlyNotice";
 import { testOnlyGridHint, testOnlyLocked } from "../testOnlyUi";
+import { EDUCATION_TIER_ICONS } from "../gridIcons";
 import { CityGridButton } from "./ui/CityGridButton";
 import { ConfirmDialog } from "./ConfirmDialog";
 import type { PlaceNavState } from "../placeNav";
@@ -47,7 +48,7 @@ export function EducationPlace({ user, setUser, onToast, onNavChange, registerBa
 
   useEffect(() => {
     let title = "Образование";
-    let backLabel = "Разные места";
+    let backLabel = "Другие места";
     if (nav === "secondary") {
       title = "Среднее образование";
       backLabel = "Образование";
@@ -214,12 +215,14 @@ export function EducationPlace({ user, setUser, onToast, onNavChange, registerBa
       <div className="city-grid shop-categories education-hub">
         <CityGridButton
           title="Среднее образование"
+          icon={EDUCATION_TIER_ICONS.secondary}
           hint={testOnlyGridHint(isTest, true)}
           disabled={testOnlyLocked(isTest, true) || Boolean(status?.enrolled)}
           onClick={() => setNav("secondary")}
         />
         <CityGridButton
           title="Высшее образование"
+          icon={EDUCATION_TIER_ICONS.higher}
           hint={testOnlyGridHint(isTest, true)}
           disabled={testOnlyLocked(isTest, true) || Boolean(status?.enrolled)}
           onClick={() => setNav("higher")}

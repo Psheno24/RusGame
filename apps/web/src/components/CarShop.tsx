@@ -27,6 +27,7 @@ import {
 } from "../api";
 import type { NavBackHandler } from "../navBack";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { CAR_CATEGORY_ICONS, CAR_SHOP_ICONS } from "../gridIcons";
 import { CityGridButton } from "./ui/CityGridButton";
 import { TimerIcon } from "./ui/TimerIcon";
 import { VehiclePlate } from "./VehiclePlate";
@@ -463,10 +464,11 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
 
       {nav === "hub" && (
         <div className="city-grid shop-categories phone-hub">
-          <CityGridButton title="Купить авто" onClick={() => go("buyChoice")} />
-          <CityGridButton title="Аренда" onClick={() => go("rent")} />
+          <CityGridButton title="Купить авто" icon={CAR_SHOP_ICONS.buy} onClick={() => go("buyChoice")} />
+          <CityGridButton title="Аренда" icon={CAR_SHOP_ICONS.rent} onClick={() => go("rent")} />
           <CityGridButton
             title="Тюнинг"
+            icon={CAR_SHOP_ICONS.tuning}
             hint={testOnlyGridHint(isTest, true)}
             disabled={testOnlyLocked(isTest, true)}
             onClick={() => {
@@ -478,26 +480,21 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
 
       {nav === "buyChoice" && (
         <div className="city-grid shop-categories phone-hub">
-          <CityGridButton title="Новые" onClick={() => go("buyCategories")} />
-          <CityGridButton title="С пробегом" onClick={() => go("usedList")} />
+          <CityGridButton title="Новые" icon={CAR_SHOP_ICONS.new} onClick={() => go("buyCategories")} />
+          <CityGridButton title="С пробегом" icon={CAR_SHOP_ICONS.used} onClick={() => go("usedList")} />
         </div>
       )}
 
       {nav === "buyCategories" && (
         <div className="city-grid shop-categories phone-hub">
           {categories.map((cat) => (
-            <button
+            <CityGridButton
               key={cat.id}
-              type="button"
-              className="city-grid-btn"
+              title={cat.title}
+              icon={CAR_CATEGORY_ICONS[cat.id] ?? "🚗"}
+              hint={`${cat.subtitle}${cat.carCount > 0 ? ` · ${cat.carCount} в каталоге` : " · скоро"}`}
               onClick={() => go("buyList", { category: cat.id, car: null })}
-            >
-              <span className="city-grid-title">{cat.title}</span>
-              <span className="city-grid-hint">
-                {cat.subtitle}
-                {cat.carCount > 0 ? ` · ${cat.carCount} в каталоге` : " · скоро"}
-              </span>
-            </button>
+            />
           ))}
         </div>
       )}
@@ -667,7 +664,7 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
             <div className="card shop-license-banner">
               <p className="shop-owned">
                 Для покупки нужны права категории <strong>{categoryId}</strong> — получите в{" "}
-                <strong>полиции</strong> (раздел «Разные места»).
+                <strong>полиции</strong> (раздел «Другие места»).
               </p>
             </div>
           )}
