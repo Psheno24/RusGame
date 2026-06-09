@@ -3,7 +3,6 @@ import {
   educationAttendLesson,
   educationDropout,
   fetchEducationStatus,
-  formatDuration,
   type EducationStatus,
   type User,
 } from "../api";
@@ -113,12 +112,7 @@ export function WorkEducationPanel({ user, setUser, onToast, onBack }: Props) {
             >
               <JobActionButtonLabel
                 base="Пойти на занятие"
-                remainingMs={lessonRemaining}
-                disabledReason={
-                  !canLesson && lessonRemaining > 0
-                    ? `через ${formatDuration(lessonRemaining)}`
-                    : undefined
-                }
+                remainingMs={!canLesson && lessonRemaining > 0 ? lessonRemaining : undefined}
               />
             </button>
             <button
