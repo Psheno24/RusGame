@@ -547,6 +547,8 @@ export type JobView = {
   cooldownMs: number;
   payoutMin: number;
   payoutMax: number;
+  nightGuardFullPayoutMin?: number | null;
+  nightGuardFullPayoutMax?: number | null;
   skill: string | null;
   skillMin?: number;
   skillGain?: number;

@@ -7,6 +7,7 @@ import {
   jobNominalCooldownMs,
   nightGuardCooldownMsAtWork,
   nightGuardDisplayPayoutRange,
+  nightGuardPayoutForLocal,
   nightGuardStaminaEligible,
 } from "./jobShift.js";
 
@@ -48,6 +49,13 @@ describe("jobShift", () => {
     const range = nightGuardDisplayPayoutRange(23_750, 26_250);
     assert.equal(range.min, 39);
     assert.equal(range.max, 26_250);
+  });
+
+  it("night guard payout scales with remaining shift time", () => {
+    const full = 30_000;
+    assert.equal(nightGuardPayoutForLocal(full, full, { hour: 22, minute: 0 }).min, 30_000);
+    assert.equal(nightGuardPayoutForLocal(full, full, { hour: 22, minute: 59 }).min, 27_050);
+    assert.equal(nightGuardPayoutForLocal(full, full, { hour: 7, minute: 59 }).min, 50);
   });
 
   it("night guard cooldown from work time until 8:00", () => {

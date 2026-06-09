@@ -35,6 +35,7 @@ import {
   isNightGuardJob,
   jobNominalCooldownMs,
   nightGuardDisplayPayoutRange,
+  nightGuardPayoutForLocal,
 } from "./jobShift.js";
 import {
   findCityJob,
@@ -210,14 +211,21 @@ export async function registerRoutes(app: FastifyInstance) {
           : job.kind === "taxi_line"
             ? (job.payoutMax ?? 0)
             : (job.payoutMax ?? 0);
+      const nightGuardFullPayoutMin = isNightGuardJob(job) ? (job.payoutMin ?? 0) : null;
+      const nightGuardFullPayoutMax = isNightGuardJob(job) ? (job.payoutMax ?? 0) : null;
       if (isNightGuardJob(job)) {
-        const display = nightGuardDisplayPayoutRange(
-          job.payoutMin ?? 0,
-          job.payoutMax ?? 0,
-          job.shiftEndsAtHour ?? 8,
-        );
-        payoutMin = display.min;
-        payoutMax = display.max;
+        const fullMin = nightGuardFullPayoutMin ?? 0;
+        const fullMax = nightGuardFullPayoutMax ?? 0;
+        const endHour = job.shiftEndsAtHour ?? 8;
+        if (work.scheduleAllowed) {
+          const current = nightGuardPayoutForLocal(fullMin, fullMax, work.localTime, endHour);
+          payoutMin = current.min;
+          payoutMax = current.max;
+        } else {
+          const display = nightGuardDisplayPayoutRange(fullMin, fullMax, endHour);
+          payoutMin = display.min;
+          payoutMax = display.max;
+        }
       }
       const workCityId = city?.id ?? player.city_id;
       const access = jobAccessStatus(player, job.id, now);
@@ -239,6 +247,8 @@ export async function registerRoutes(app: FastifyInstance) {
         payoutPerHourMax: job.payoutPerHourMax ?? null,
         payoutMin,
         payoutMax,
+        nightGuardFullPayoutMin,
+        nightGuardFullPayoutMax,
         cooldownMs: baseCooldownMs,
         skill: job.skill,
         skillMin: job.skillMin,

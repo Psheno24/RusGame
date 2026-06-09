@@ -1,5 +1,6 @@
-import type { CityLocalTime } from "./cityTime";
 import { formatDuration } from "./formatDuration";
+
+type LocalHm = { hour: number; minute: number };
 
 const NIGHT_GUARD_NIGHT_START = 22;
 const NIGHT_GUARD_SHIFT_END = 8;
@@ -11,11 +12,34 @@ export function scaleNightGuardPayoutRange(
   payoutMax: number,
   shiftHours: number,
 ): { min: number; max: number } {
-  const proportion = Math.min(1, shiftHours / NIGHT_GUARD_MAX_SHIFT_HOURS);
+  const proportion = Math.min(1, Math.max(0, shiftHours) / NIGHT_GUARD_MAX_SHIFT_HOURS);
   return {
     min: Math.floor(payoutMin * proportion),
     max: Math.floor(payoutMax * proportion),
   };
+}
+
+export function nightGuardPayoutForLocal(
+  payoutMin: number,
+  payoutMax: number,
+  local: LocalHm,
+  shiftEndHour = NIGHT_GUARD_SHIFT_END,
+): { min: number; max: number } {
+  const shiftHours = computeNightGuardShiftMinutes(local.hour, local.minute, shiftEndHour) / 60;
+  return scaleNightGuardPayoutRange(payoutMin, payoutMax, shiftHours);
+}
+
+/** Диапазон за полную смену 22:00–8:00: минимум при выходе в 7:59, максимум в 22:00. */
+export function nightGuardDisplayPayoutRange(
+  payoutMin: number,
+  payoutMax: number,
+  shiftEndHour = NIGHT_GUARD_SHIFT_END,
+): { min: number; max: number } {
+  const minShiftHours = computeNightGuardShiftMinutes(7, 59, shiftEndHour) / 60;
+  const maxShiftHours = computeNightGuardShiftMinutes(NIGHT_GUARD_NIGHT_START, 0, shiftEndHour) / 60;
+  const atLatest = scaleNightGuardPayoutRange(payoutMin, payoutMax, minShiftHours);
+  const atEarliest = scaleNightGuardPayoutRange(payoutMin, payoutMax, maxShiftHours);
+  return { min: atLatest.min, max: atEarliest.max };
 }
 
 export function computeNightGuardShiftMinutes(
@@ -31,7 +55,7 @@ export function computeNightGuardShiftMinutes(
 }
 
 export function nightGuardStaminaEligible(
-  local: Pick<CityLocalTime, "hour" | "minute">,
+  local: LocalHm,
   shiftEndHour = NIGHT_GUARD_SHIFT_END,
 ): boolean {
   const shiftMinutes = computeNightGuardShiftMinutes(local.hour, local.minute, shiftEndHour);
@@ -53,7 +77,7 @@ export function getShiftDurationLabel(
     shiftEndsAtHour?: number | null;
     cooldownMs?: number;
   },
-  local?: Pick<CityLocalTime, "hour" | "minute">,
+  local?: LocalHm,
 ): string {
   if (job.kind === "taxi_line") {
     return "без фиксированного лимита";
@@ -95,7 +119,7 @@ export function getJobCooldownLabel(
     remainingMs?: number;
     lastShiftHours?: number | null;
     selectedShiftHours?: number;
-    local?: Pick<CityLocalTime, "hour" | "minute">;
+    local?: LocalHm;
   },
 ): string {
   if (opts?.remainingMs != null && opts.remainingMs > 0) {

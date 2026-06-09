@@ -1,4 +1,4 @@
-import { formatRubPerHour, formatRubRange } from "../formatRub.js";
+import { formatRub, formatRubPerHour, formatRubRange } from "../formatRub.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { JOBS_MENU_ICONS } from "../gridIcons";
 import { CityGridButton } from "./ui/CityGridButton";
@@ -87,16 +87,23 @@ function formatShiftPayoutLabel(job: JobCard): string {
   if (job.kind === "duration" && job.payoutPerHourMin != null) {
     return formatRubPerHour(job.payoutPerHourMin, job.payoutPerHourMax ?? job.payoutPerHourMin);
   }
-  const payout = formatJobPayoutRange(job.payoutMin, job.payoutMax);
   if (job.templateKey === "night_guard") {
-    return `${payout} за смену (7:59–22:00)`;
+    if (job.scheduleAllowed) {
+      return `${formatJobPayoutRange(job.payoutMin, job.payoutMax)} за смену сейчас`;
+    }
+    return `до ${formatRub(job.payoutMax)} за полную смену (22:00–8:00)`;
   }
+  const payout = formatJobPayoutRange(job.payoutMin, job.payoutMax);
   if (job.payoutMin === job.payoutMax) return payout;
   return `${payout} за смену`;
 }
 
 function formatListPayoutLabel(job: JobCard): string {
   if (job.kind === "taxi_line" || job.kind === "delivery_line") return "Доход неопределён";
+  if (job.templateKey === "night_guard") {
+    if (job.scheduleAllowed) return formatJobPayoutRange(job.payoutMin, job.payoutMax);
+    return `до ${formatRub(job.payoutMax)}`;
+  }
   return formatJobPayoutRange(job.payoutMin, job.payoutMax);
 }
 
