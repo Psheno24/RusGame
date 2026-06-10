@@ -7,7 +7,13 @@ import {
   isFixedHoliday,
   isWeekend,
 } from "./incomeMultiplier.js";
-import { getCityEventState, generateCityEventsForSlot } from "./cityEventsEngine.js";
+import {
+  generateCityEventsForSlot,
+  getCityEventState,
+  getEventSlotStart,
+  getWeatherSlotStart,
+} from "./cityEventsEngine.js";
+import { getDb } from "./db.js";
 import { generateWeather } from "./cityWeather.js";
 import { COMMON_EVENTS, getUniqueEventsForCity } from "./cityEventsCatalog.js";
 import { effectDirection, eventConflictsWithAxes, registerEventAxes } from "./cityEventConflicts.js";
@@ -140,6 +146,31 @@ describe("cityEventsEngine", () => {
       const uniqueCount = events.filter((e) => e.unique).length;
       assert.ok(uniqueCount <= 1, `slot ${slot} has ${uniqueCount} unique events`);
     }
+  });
+
+  it("repairs stored state missing events array", () => {
+    const cityId = "omsk";
+    const now = Date.now();
+    const eventSlot = getEventSlotStart(cityId, now);
+    const weatherSlot = getWeatherSlotStart(cityId, now);
+    const db = getDb();
+    db.prepare("DELETE FROM city_event_state WHERE city_id = ?").run(cityId);
+    db.prepare(
+      `INSERT INTO city_event_state (city_id, state_json, updated_at) VALUES (?, ?, ?)`,
+    ).run(
+      cityId,
+      JSON.stringify({
+        weather: generateWeather(cityId, weatherSlot),
+        eventsRefreshedAt: eventSlot,
+        weatherRefreshedAt: weatherSlot,
+      }),
+      now,
+    );
+
+    const state = getCityEventState(cityId, now);
+    assert.ok(Array.isArray(state.events));
+    assert.ok(state.events.length > 0);
+    assert.ok(state.weather);
   });
 });
 

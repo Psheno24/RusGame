@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { CityFeedPayload } from "../api";
+import { isCityFeedPayload, type CityFeedPayload } from "../api";
 
 type Props = {
   cityName: string;
@@ -9,14 +9,14 @@ type Props = {
 
 export function CityActivityFeed({ cityName, feed, nowMs = Date.now() }: Props) {
   const countdowns = useMemo(() => {
-    if (!feed) return null;
+    if (!isCityFeedPayload(feed)) return null;
     return {
       events: formatCountdown(Math.max(0, feed.nextEventsRefreshAt - nowMs)),
       weather: formatCountdown(Math.max(0, feed.nextWeatherRefreshAt - nowMs)),
     };
   }, [feed, nowMs]);
 
-  if (!feed || !countdowns) {
+  if (!isCityFeedPayload(feed) || !countdowns) {
     return (
       <section className="city-feed" aria-label="Лента города">
         <div className="city-feed-header">

@@ -194,10 +194,34 @@ function saveStored(cityId: string, state: StoredState): void {
     .run(cityId, JSON.stringify(state), Date.now());
 }
 
+function normalizeStored(
+  cityId: string,
+  stored: StoredState,
+  now: number,
+): { stored: StoredState; changed: boolean } {
+  const eventSlot = getEventSlotStart(cityId, now);
+  const weatherSlot = getWeatherSlotStart(cityId, now);
+  let changed = false;
+
+  if (!Array.isArray(stored.events) || stored.eventsRefreshedAt !== eventSlot) {
+    stored.events = generateEvents(cityId, eventSlot);
+    stored.eventsRefreshedAt = eventSlot;
+    changed = true;
+  }
+  if (!stored.weather || typeof stored.weather !== "object" || stored.weatherRefreshedAt !== weatherSlot) {
+    stored.weather = generateWeather(cityId, weatherSlot);
+    stored.weatherRefreshedAt = weatherSlot;
+    changed = true;
+  }
+
+  return { stored, changed };
+}
+
 function buildState(stored: StoredState): CityEventState {
-  const hasCityHoliday = stored.events.some((e) => e.isCityHoliday);
+  const events = Array.isArray(stored.events) ? stored.events : [];
+  const hasCityHoliday = events.some((e) => e.isCityHoliday);
   return {
-    events: stored.events,
+    events,
     weather: stored.weather,
     eventsRefreshedAt: stored.eventsRefreshedAt,
     weatherRefreshedAt: stored.weatherRefreshedAt,
@@ -229,16 +253,9 @@ export function getCityEventState(cityId: string, now = Date.now()): CityEventSt
     };
     changed = true;
   } else {
-    if (stored.eventsRefreshedAt !== eventSlot) {
-      stored.events = generateEvents(cityId, eventSlot);
-      stored.eventsRefreshedAt = eventSlot;
-      changed = true;
-    }
-    if (stored.weatherRefreshedAt !== weatherSlot) {
-      stored.weather = generateWeather(cityId, weatherSlot);
-      stored.weatherRefreshedAt = weatherSlot;
-      changed = true;
-    }
+    const normalized = normalizeStored(cityId, stored, now);
+    stored = normalized.stored;
+    changed = normalized.changed;
   }
 
   if (changed) saveStored(cityId, stored);
