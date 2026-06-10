@@ -12,6 +12,10 @@ ${SITE_DOMAIN} {
 	encode gzip
 	reverse_proxy app:3001
 }
+
+www.${SITE_DOMAIN} {
+	redir https://${SITE_DOMAIN}{uri} permanent
+}
 EOF
 
 exec caddy run --config /tmp/Caddyfile --adapter caddyfile

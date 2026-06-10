@@ -1,7 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { checkServerHealth } from "../api";
 import { useApp } from "../context";
 import { formatRub } from "../formatRub.js";
+
+function connectionHint(): string | null {
+  const host = window.location.hostname;
+  if (host.startsWith("www.") || host === "rupkgame.ru") {
+    return "Откройте игру по адресу https://game.rupkgame.ru (без www).";
+  }
+  return null;
+}
 
 export function AuthPage() {
   const { login, register } = useApp();
@@ -10,7 +19,19 @@ export function AuthPage() {
   const [loginName, setLoginName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [hostWarning, setHostWarning] = useState<string | null>(null);
+  const [serverOk, setServerOk] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const hint = connectionHint();
+    if (hint) {
+      setHostWarning(hint);
+      setServerOk(false);
+      return;
+    }
+    void checkServerHealth().then(setServerOk);
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,8 +78,14 @@ export function AuthPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          {hostWarning && <p className="auth-error">{hostWarning}</p>}
+          {serverOk === false && !hostWarning && (
+            <p className="auth-error">
+              Сервер недоступен. Проверьте интернет или отключите блокировщик рекламы для этого сайта.
+            </p>
+          )}
           {error && <p className="auth-error">{error}</p>}
-          <button className="btn btn-primary" type="submit" disabled={busy}>
+          <button className="btn btn-primary" type="submit" disabled={busy || serverOk === false}>
             {busy ? "Подождите…" : mode === "login" ? "Войти" : "Создать аккаунт"}
           </button>
         </form>
