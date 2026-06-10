@@ -192,7 +192,7 @@ export function Layout() {
         </header>
       )}
       <main className="app-main">
-        <ErrorBoundary>
+        <ErrorBoundary key={location.pathname}>
           <Outlet />
         </ErrorBoundary>
       </main>

@@ -487,6 +487,18 @@ export type CityFeedPayload = {
   nextWeatherRefreshAt: number;
 };
 
+export function isCityFeedPayload(feed: unknown): feed is CityFeedPayload {
+  if (!feed || typeof feed !== "object" || Array.isArray(feed)) return false;
+  const candidate = feed as Partial<CityFeedPayload>;
+  return (
+    candidate.weather != null &&
+    typeof candidate.weather === "object" &&
+    Array.isArray(candidate.events) &&
+    typeof candidate.nextEventsRefreshAt === "number" &&
+    typeof candidate.nextWeatherRefreshAt === "number"
+  );
+}
+
 export type PlayerFeedEvent = {
   id: number;
   ts: number;

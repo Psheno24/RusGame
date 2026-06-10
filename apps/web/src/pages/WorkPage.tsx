@@ -36,8 +36,8 @@ export function WorkPage() {
   const [dataReady, setDataReady] = useState(false);
   const [workHub, setWorkHub] = useState<"hub" | "work" | "education">("hub");
 
-  const employedId = user?.player.jobId ?? null;
-  const educationEnrolled = Boolean(user?.player.educationEnrolled);
+  const employedId = user?.player?.jobId ?? null;
+  const educationEnrolled = Boolean(user?.player?.educationEnrolled);
 
   const load = useCallback(async (force = false) => {
     const data = await fetchCityCached(force);

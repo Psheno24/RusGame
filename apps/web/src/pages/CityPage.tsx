@@ -9,6 +9,7 @@ import {
   type CityLocalTimeView,
   type JobView,
   type User,
+  isCityFeedPayload,
 } from "../api";
 import { fetchCityCached, invalidateCityCache } from "../cityDataCache";
 import { getCityLocalTime } from "../cityTime";
@@ -91,7 +92,7 @@ export function CityPage() {
     setCityJobs(data.jobs ?? []);
     setWorkAccess(data.workAccess ?? null);
     setActiveEmployment(data.activeEmployment ?? null);
-    setCityFeed(data.feed ?? null);
+    setCityFeed(isCityFeedPayload(data.feed) ? data.feed : null);
     setUser((prev) => (prev ? { ...prev, player: data.player } : prev));
   }, [setUser]);
 
@@ -331,11 +332,11 @@ export function CityPage() {
           <span className="city-overview-chip city-overview-chip--muted">
             Население: {population.toLocaleString("ru-RU")}
           </span>
-          <span className={`city-overview-chip ${user?.player.isResident ? "city-overview-chip--ok" : "city-overview-chip--warn"}`}>
-            {user?.player.isResident ? "Житель" : "Гость"}
+          <span className={`city-overview-chip ${user?.player?.isResident ? "city-overview-chip--ok" : "city-overview-chip--warn"}`}>
+            {user?.player?.isResident ? "Житель" : "Гость"}
           </span>
-          <span className={`city-overview-chip ${user?.player.jobId ? "city-overview-chip--ok" : "city-overview-chip--muted"}`}>
-            {user?.player.jobId ? "Есть работа" : "Без работы"}
+          <span className={`city-overview-chip ${user?.player?.jobId ? "city-overview-chip--ok" : "city-overview-chip--muted"}`}>
+            {user?.player?.jobId ? "Есть работа" : "Без работы"}
           </span>
         </div>
         <button type="button" className="btn btn-secondary city-map-btn" onClick={() => navigate("/map", { state: { focusHome: true } })}>

@@ -25,12 +25,17 @@ export class ErrorBoundary extends Component<Props, State> {
           <button
             type="button"
             className="btn btn-primary"
-            onClick={() => {
-              this.setState({ error: null });
-              window.location.reload();
-            }}
+            onClick={() => this.setState({ error: null })}
           >
             Обновить
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ marginTop: "0.75rem" }}
+            onClick={() => window.location.reload()}
+          >
+            Перезагрузить страницу
           </button>
         </div>
       );
