@@ -4,6 +4,7 @@ import { appendPlayerFeed } from "./playerFeed.js";
 import { getVehicleRental } from "./gameData.js";
 import { hasDriverLicense } from "./playerCars.js";
 import { playerHasVehicleRentalRecord } from "./vehicleRental.js";
+import { applyPercentModifier, rentalDemandModifier } from "./cityEffectModifiers.js";
 import { buildVehicleRentalTimeInfo } from "./vehicleRentalDisplay.js";
 
 const MS_HOUR = 60 * 60 * 1000;
@@ -35,7 +36,8 @@ export function rentVehicle(
   if (rental.needsLicense && !hasDriverLicense(player, "B")) {
     return { ok: false, error: "Нужны права категории B — оформите в полиции" };
   }
-  const priceRub = rental.pricePerHourRub * hours;
+  const rentMod = rentalDemandModifier(player.city_id, now);
+  const priceRub = applyPercentModifier(rental.pricePerHourRub * hours, rentMod.totalPct);
   if (player.rubles < priceRub) {
     return { ok: false, error: `Нужно ${formatRub(priceRub)}` };
   }

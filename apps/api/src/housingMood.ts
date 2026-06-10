@@ -7,6 +7,7 @@ import {
 import { getHousingProperty, housingTypeMoodBonus } from "./housingCatalog.js";
 import { listPlayerCars } from "./playerCars.js";
 import { getOwnedHousing, isSubletActive } from "./playerOwnedHousing.js";
+import { cityMoodEventBonus } from "./cityEffectModifiers.js";
 
 function hasActiveTemporaryHousing(player: PlayerRow, now: number): boolean {
   return (
@@ -36,11 +37,17 @@ export function housingMoodBonusForPlayer(player: PlayerRow, now = Date.now()): 
 
 /** Настроение: только город, активное жильё и лучший автомобиль (не меняется от действий). */
 export function effectiveMood(player: PlayerRow, now = Date.now()): number {
+  const events = cityMoodEventBonus(player.city_id, now);
   return clampBibleMood(
     cityTierMoodBonus(player.city_id) +
       housingMoodBonusForPlayer(player, now) +
-      carMoodBonusForPlayer(player),
+      carMoodBonusForPlayer(player) +
+      events.total,
   );
+}
+
+export function cityMoodEventHints(player: PlayerRow, now = Date.now()): string[] {
+  return cityMoodEventBonus(player.city_id, now).hints;
 }
 
 export function carMoodBonusForPlayer(player: PlayerRow): number {

@@ -32,9 +32,12 @@ import { workEnergyCost } from "./balanceBible.js";
 import { applyDrivingWear, resolveTaxiPlayerCarId } from "./carWear.js";
 import { consumeFuelLiters } from "./carFuel.js";
 import {
+  clampReputation,
   clampVital,
   scaleWorkCosts,
 } from "./playerStats.js";
+import { applyWorkReputationGain } from "./cityEffectModifiers.js";
+import { rollTaxiTripEvents } from "./taxiTripEvents.js";
 import { jobCityId, validateJobWorkAccess } from "./jobLocation.js";
 import { isVehicleRentalActive } from "./vehicleRental.js";
 import {
@@ -167,6 +170,8 @@ function generateOrder(player: PlayerRow, orderTariff: string): TaxiOrder {
   const { tripMinutes, distanceKm, demand } = rollTaxiOrderTrip(
     taxiConfig.tripMinutesMin,
     taxiConfig.tripMinutesMax,
+    player.city_id,
+    Date.now(),
   );
   const passengerRating =
     Math.random() < 0.65
@@ -262,9 +267,10 @@ function completeActiveTrip(
 ): { state: TaxiState; payoutRub: number; message: string } {
   const trip = state.activeTrip!;
   const order = trip.order;
-  let payoutRub = order.payoutRub;
+  const rolled = rollTaxiTripEvents(order.payoutRub);
+  let payoutRub = rolled.payoutRub;
   let payNote = "";
-  const payoutNotes: string[] = [];
+  const payoutNotes = [...rolled.payoutNotes];
 
   if (order.payment === "cash") {
     const { noPayChance, partialPayChance } = cashPaymentRiskChances(
@@ -306,6 +312,11 @@ function completeActiveTrip(
   updatePlayer(player.user_id, {
     energy: clampVital("energy", (player.energy ?? 80) - energyCost),
     rubles: player.rubles + payoutRub,
+    reputation: clampReputation(
+      (player.reputation ?? 0) +
+        applyWorkReputationGain(2, player.city_id, now) +
+        rolled.reputationDelta,
+    ),
     ...skillPatch,
   });
   appendPlayerFeed(
@@ -340,7 +351,9 @@ function completeActiveTrip(
     next = { ...next, availableOrders: [], ordersRefreshAt: 0 };
   }
 
-  const msg = `Поездка ${order.tripMinutes} мин · +${formatRub(payoutRub)}${payNote}`;
+  const totalMinutes = order.tripMinutes + rolled.extraMinutes;
+  const eventNote = rolled.notes.length ? ` · ${rolled.notes.join(", ")}` : "";
+  const msg = `Поездка ${totalMinutes} мин · +${formatRub(payoutRub)}${eventNote}${payNote}`;
   return { state: next, payoutRub, message: msg };
 }
 

@@ -4,6 +4,11 @@ import { getPlayer, updatePlayer } from "./db.js";
 import { appendPlayerFeed } from "./playerFeed.js";
 import { educationEnrollmentReputationGain, workEnergyCost } from "./balanceBible.js";
 import {
+  applyPercentModifier,
+  educationCostModifier,
+  educationReputationModifier,
+} from "./cityEffectModifiers.js";
+import {
   cancelEducationLessonReadyPush,
   scheduleEducationLessonReadyPush,
 } from "./pushNotifications.js";
@@ -115,9 +120,11 @@ export function enrollmentQuote(
   const isReenroll =
     dropout?.institutionId === institution.id && dropout.sessionsDone > 0;
   const dropoutCooldownMs = dropoutCooldownRemaining(institution.id, dropout, now);
-  const baseCost = isReenroll
+  const rawCost = isReenroll
     ? Math.round(institution.costRub * REENROLL_COST_FRACTION)
     : institution.costRub;
+  const costMod = educationCostModifier(player.city_id, now);
+  const baseCost = applyPercentModifier(rawCost, costMod.totalPct);
   return {
     costRub: baseCost,
     resumeSessionsDone: isReenroll ? dropout!.sessionsDone : 0,
@@ -179,7 +186,16 @@ export function enrollInInstitution(
     rubles: player.rubles - costRub,
     education_enrollment: JSON.stringify(enrollment),
     education_dropout: null,
-    reputation: clampReputation((player.reputation ?? 0) + educationEnrollmentReputationGain()),
+    reputation: clampReputation(
+      (player.reputation ?? 0) +
+        Math.max(
+          0,
+          Math.round(
+            educationEnrollmentReputationGain() *
+              (1 + educationReputationModifier(player.city_id, now).totalPct / 100),
+          ),
+        ),
+    ),
   });
 
   const resume = resumeSessionsDone > 0 ? ` (продолжение с ${resumeSessionsDone}/${institution.sessions})` : "";

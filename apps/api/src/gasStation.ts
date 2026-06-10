@@ -4,6 +4,7 @@ import { getPlayer, updatePlayer } from "./db.js";
 import { appendPlayerFeed } from "./playerFeed.js";
 import { getCar } from "./gameData.js";
 import {
+  fuelPriceHints,
   fuelPriceRub,
   getCarConsumptionL100,
   getCarTankLiters,
@@ -29,24 +30,27 @@ export type GasStationCarView = {
 
 export type GasStationView = {
   fuelPrices: Record<FuelType, number>;
+  fuelPriceHints: string[];
   cars: GasStationCarView[];
 };
 
-function fuelPrices(): Record<FuelType, number> {
+function fuelPrices(cityId: string, now = Date.now()): Record<FuelType, number> {
   return {
-    ai92: fuelPriceRub("ai92"),
-    ai95: fuelPriceRub("ai95"),
-    premium: fuelPriceRub("premium"),
+    ai92: fuelPriceRub("ai92", cityId, now),
+    ai95: fuelPriceRub("ai95", cityId, now),
+    premium: fuelPriceRub("premium", cityId, now),
   };
 }
 
-function buildCarView(row: ReturnType<typeof listPlayerCars>[number]): GasStationCarView | null {
+function buildCarView(
+  row: ReturnType<typeof listPlayerCars>[number],
+  prices: Record<FuelType, number>,
+): GasStationCarView | null {
   const car = getCar(row.car_model_id);
   if (!car) return null;
   const tankL = getCarTankLiters(car);
   const fuelLevelL = getFuelLevelLiters(row, car);
   const litersToFull = Math.max(0, Math.round((tankL - fuelLevelL) * 10) / 10);
-  const prices = fuelPrices();
   const fillCostRub: Record<FuelType, number> = {
     ai92: Math.round(litersToFull * prices.ai92),
     ai95: Math.round(litersToFull * prices.ai95),
@@ -66,12 +70,14 @@ function buildCarView(row: ReturnType<typeof listPlayerCars>[number]): GasStatio
   };
 }
 
-export function getGasStation(player: PlayerRow): GasStationView {
+export function getGasStation(player: PlayerRow, now = Date.now()): GasStationView {
+  const prices = fuelPrices(player.city_id, now);
   const cars = listPlayerCars(player.user_id)
-    .map(buildCarView)
+    .map((row) => buildCarView(row, prices))
     .filter((x): x is GasStationCarView => x != null);
   return {
-    fuelPrices: fuelPrices(),
+    fuelPrices: prices,
+    fuelPriceHints: fuelPriceHints(player.city_id, now),
     cars,
   };
 }
@@ -109,7 +115,7 @@ export function refuelCar(
     wantLiters = Math.round(maxAdd * 10) / 10;
   }
 
-  const pricePerL = fuelPriceRub(fuelType);
+  const pricePerL = fuelPriceRub(fuelType, player.city_id, now);
   const costRub = Math.round(wantLiters * pricePerL);
   if (player.rubles < costRub) {
     return { ok: false, error: `Нужно ${formatRub(costRub)}` };

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { CarModel } from "./gameData.js";
+import { applyPercentModifier, newCarPriceModifier } from "./cityEffectModifiers.js";
 
 const DATA_DIR = join(import.meta.dirname, "../../../data");
 
@@ -62,8 +63,14 @@ export function getCarBasePriceRub(car: CarModel): number {
   return car.priceRub;
 }
 
-export function getCarCityPriceRub(cityId: string, car: CarModel): number {
-  return Math.round(getCarBasePriceRub(car) * getCarCityPriceMultiplier(cityId, car));
+export function getCarCityPriceRub(cityId: string, car: CarModel, now = Date.now()): number {
+  const base = Math.round(getCarBasePriceRub(car) * getCarCityPriceMultiplier(cityId, car));
+  const mod = newCarPriceModifier(cityId, now);
+  return applyPercentModifier(base, mod.totalPct);
+}
+
+export function getCarCityPriceHints(cityId: string, now = Date.now()): string[] {
+  return newCarPriceModifier(cityId, now).hints;
 }
 
 export function getCarCityPriceRubById(cityId: string, carId: string, getCar: (id: string) => CarModel | undefined): number | null {

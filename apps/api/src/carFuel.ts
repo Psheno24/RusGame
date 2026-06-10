@@ -1,4 +1,5 @@
 import { getBalanceBible } from "./balanceBible.js";
+import { applyPercentModifier, fuelPriceModifier } from "./cityEffectModifiers.js";
 import { getCar, type CarModel } from "./gameData.js";
 import { getDb } from "./db.js";
 import { getPlayerCarById, type PlayerCarRow } from "./playerCars.js";
@@ -15,9 +16,16 @@ export function getCarConsumptionL100(car: CarModel): number {
   return raw.fuelConsumptionL100 ?? car.fuelConsumption ?? 7;
 }
 
-export function fuelPriceRub(type: FuelType): number {
+export function fuelPriceRub(type: FuelType, cityId?: string, now = Date.now()): number {
   const f = getBalanceBible().fuel;
-  return f[type] ?? 70;
+  const base = f[type] ?? 70;
+  if (!cityId) return base;
+  const mod = fuelPriceModifier(cityId, now);
+  return applyPercentModifier(base, mod.totalPct);
+}
+
+export function fuelPriceHints(cityId: string, now = Date.now()): string[] {
+  return fuelPriceModifier(cityId, now).hints;
 }
 
 export function getFuelLevelLiters(row: PlayerCarRow, car: CarModel): number {

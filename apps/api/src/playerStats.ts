@@ -2,6 +2,7 @@ import { formatRub } from "./formatRub.js";
 import type { PlayerRow } from "./db.js";
 import type { SkillKey } from "./skills.js";
 import { clampBibleMood, moodEnergyCostMultiplier } from "./balanceBible.js";
+import { applyPercentModifier, energyCostModifier } from "./cityEffectModifiers.js";
 import { effectiveMood } from "./housingMood.js";
 
 export type VitalKey = "energy" | "mood" | "health";
@@ -107,13 +108,20 @@ export function workPayoutMultiplier(_player: PlayerRow): number {
   return 1;
 }
 
-export function scaleWorkCosts(player: PlayerRow, costs?: StatCosts): StatCosts | undefined {
+export function scaleWorkCosts(
+  player: PlayerRow,
+  costs?: StatCosts,
+  now = Date.now(),
+): StatCosts | undefined {
   if (!costs) return costs;
-  const mood = effectiveMood(player);
+  const mood = effectiveMood(player, now);
   const mult = moodEnergyCostMultiplier(mood);
+  const eventPct = energyCostModifier(player.city_id, now).totalPct;
   const scaled = { ...costs };
   if (scaled.energy != null) {
-    scaled.energy = Math.max(1, Math.round(scaled.energy * mult));
+    let energy = Math.max(1, Math.round(scaled.energy * mult));
+    if (eventPct) energy = applyPercentModifier(energy, eventPct);
+    scaled.energy = energy;
   }
   return scaled;
 }

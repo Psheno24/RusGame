@@ -239,7 +239,15 @@
     ],
     "pickupMinMin": 2,
     "pickupMaxMin": 6,
-    "speedMinPerKm": { "free": 2, "normal": 3, "peak": 4.5 }
+    "speedMinPerKm": { "free": 2, "normal": 3, "peak": 4.5 },
+    "events": {
+      "tips": { "chance": 0.18, "bonusMin": 300, "bonusMax": 2500 },
+      "smoothRide": { "chance": 0.12, "payMult": 1.2 },
+      "passengerLate": { "chance": 0.14, "extraMinMin": 3, "extraMinMax": 10 },
+      "trafficJam": { "chance": 0.12, "extraMinMin": 5, "extraMinMax": 15 },
+      "rudePassenger": { "chance": 0.04, "payMult": 0.85 },
+      "complaint": { "chance": 0.03, "payMult": 0.5, "reputationDelta": -5 }
+    }
   },
   "jobs": {
     "cashier": { "payout": 12000, "cooldownHours": 4, "minigameMin": 5 },

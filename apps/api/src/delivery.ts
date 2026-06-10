@@ -29,6 +29,11 @@ import {
 } from "./playerDelivery.js";
 import { getIncomeMultiplierBreakdown } from "./incomeMultiplier.js";
 import { buildDeliveryOrderBreakdown } from "./linePayoutBreakdown.js";
+import {
+  applyPercentModifier,
+  applyWorkReputationGain,
+  deliveryOrdersModifier,
+} from "./cityEffectModifiers.js";
 import { scheduleDeliveryTripEndPush } from "./pushNotifications.js";
 
 const MODIFIER_TITLES: Record<DeliveryModifier, string> = {
@@ -92,9 +97,11 @@ function generateOrder(player: PlayerRow, now: number): DeliveryOrder {
     distanceKm = Math.max(0.5, Math.round(distanceKm * scale * 10) / 10);
   }
 
+  const ordersMod = deliveryOrdersModifier(player.city_id, now);
+  const baseBeforeOrders = distanceKm * cfg.ratePerKm * modMult * cityMult * incomeBd.total;
   const basePayoutRub = Math.max(
     100,
-    Math.round(distanceKm * cfg.ratePerKm * modMult * cityMult * incomeBd.total),
+    Math.round(applyPercentModifier(baseBeforeOrders, ordersMod.totalPct)),
   );
   const modifierTitle = MODIFIER_TITLES[modifier];
   const payoutBreakdown = buildDeliveryOrderBreakdown({
@@ -227,7 +234,11 @@ function completeTrip(
   const patch: Partial<PlayerRow> = {
     rubles: player.rubles + rolled.payoutRub,
     energy: clampVital("energy", (player.energy ?? 80) - energyCost),
-    reputation: clampReputation((player.reputation ?? 0) + 2 + rolled.reputationDelta),
+    reputation: clampReputation(
+      (player.reputation ?? 0) +
+        applyWorkReputationGain(2, player.city_id, now) +
+        rolled.reputationDelta,
+    ),
     ...skillResult.patch,
   };
   updatePlayer(player.user_id, patch);

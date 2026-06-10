@@ -1,5 +1,6 @@
 import { randInt } from "./random.js";
 import { getBalanceBible } from "./balanceBible.js";
+import { applyTaxiSpeedMinPerKm } from "./cityEffectModifiers.js";
 
 /** Кривая почасового дохода такси (legacy, для совместимости тестов). */
 export type TaxiPayoutCurve = {
@@ -54,7 +55,12 @@ export function rollDemandMult(): { key: string; mult: number } {
 }
 
 /** Время и дистанция заказа — как в Омске; город влияет только на ₽/км. */
-export function rollTaxiOrderTrip(tripMinutesMin: number, tripMinutesMax: number): {
+export function rollTaxiOrderTrip(
+  tripMinutesMin: number,
+  tripMinutesMax: number,
+  cityId?: string,
+  now = Date.now(),
+): {
   tripMinutes: number;
   distanceKm: number;
   demand: { key: string; mult: number };
@@ -64,10 +70,11 @@ export function rollTaxiOrderTrip(tripMinutesMin: number, tripMinutesMax: number
   const pickup = randInt(cfg.pickupMinMin, Math.min(cfg.pickupMaxMin, tripMinutes - 1));
   const travelMin = tripMinutes - pickup;
   const demand = rollDemandMult();
-  const speed =
+  let speed =
     demand.key === "peak" || demand.key === "surge"
       ? cfg.speedMinPerKm.peak
       : cfg.speedMinPerKm.normal;
+  if (cityId) speed = applyTaxiSpeedMinPerKm(speed, cityId, now);
   const distanceKm = Math.max(
     0.5,
     Math.round((travelMin / speed) * (randInt(90, 110) / 100) * 10) / 10,

@@ -6,6 +6,7 @@
 import type { City } from "./gameData.js";
 import { getCity } from "./gameData.js";
 import { isOnMapGraph, mapGraphDistance } from "./mapGraph.js";
+import { applyTravelDurationMs } from "./cityEffectModifiers.js";
 
 export type TravelMode = "train" | "plane";
 
@@ -61,6 +62,7 @@ export function computeTravelRoute(
   fromId: string,
   toId: string,
   mode: TravelMode,
+  now = Date.now(),
 ): TravelRoute | null {
   if (fromId === toId) return null;
   const from = getCity(fromId);
@@ -74,7 +76,9 @@ export function computeTravelRoute(
   if (mode === "plane" && !planeAvailable(from, to, graphDistance)) return null;
 
   const priceRub = mode === "train" ? trainPriceRub(graphDistance) : planePriceRub(graphDistance);
-  const durationMs = mode === "train" ? trainDurationMs(graphDistance) : planeDurationMs(graphDistance);
+  const baseDurationMs =
+    mode === "train" ? trainDurationMs(graphDistance) : planeDurationMs(graphDistance);
+  const durationMs = applyTravelDurationMs(baseDurationMs, fromId, now);
 
   return { mode, priceRub, durationMs, graphDistance };
 }

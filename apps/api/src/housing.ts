@@ -14,6 +14,7 @@ import {
   subletMonthlyIncomeRub,
   getBalanceBible,
 } from "./balanceBible.js";
+import { applyPercentModifier, housingRentModifier } from "./cityEffectModifiers.js";
 import {
   getHousingPropertiesForCity,
   getHousingProperty,
@@ -105,12 +106,19 @@ function creditWeeklySubletPayouts(row: OwnedHousingRow, userId: number, now: nu
   return true;
 }
 
-export function getHousingPrices(cityId: string) {
+function applyHousingRentEvents(base: number, cityId: string, now = Date.now()): number {
+  const mod = housingRentModifier(cityId, now);
+  return applyPercentModifier(base, mod.totalPct);
+}
+
+export function getHousingPrices(cityId: string, now = Date.now()) {
   const city = getCity(cityId);
   const mult = getCityEconomyMultiplier(cityId);
   const dormMonthly = Math.round(15000 * mult);
-  const dormRub = Math.round(dormMonthly / 30);
-  const rentRub = housingRentPriceRub(cityId, "communal_room") ?? Math.round(20000 * mult);
+  const dormRub = applyHousingRentEvents(Math.round(dormMonthly / 30), cityId, now);
+  const baseRent = housingRentPriceRub(cityId, "communal_room") ?? Math.round(20000 * mult);
+  const rentRub = applyHousingRentEvents(baseRent, cityId, now);
+  const rentMod = housingRentModifier(cityId, now);
   const cheapest = getHousingPropertiesForCity(cityId)[0];
   const buyRub =
     (cheapest ? housingBuyPriceRub(cityId, cheapest.typeKey) : null) ??
@@ -123,6 +131,7 @@ export function getHousingPrices(cityId: string) {
     dormHours: config.dormHours,
     rentDays: config.rentDays,
     cityMultiplier: mult,
+    rentEventHints: rentMod.hints,
   };
 }
 

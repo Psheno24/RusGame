@@ -26,7 +26,7 @@ import {
   nightGuardStaminaEligible,
   scaleNightGuardPayoutRange,
 } from "./jobShift.js";
-import { applyJobSalaryRange } from "./cityEffectModifiers.js";
+import { applyJobSalaryRange, applyWorkReputationGain } from "./cityEffectModifiers.js";
 import {
   findCityJob,
   getCity,
@@ -503,7 +503,9 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
   };
 
   if (job.kind === "cooldown") {
-    patch.reputation = clampReputation((player.reputation ?? 0) + 2);
+    patch.reputation = clampReputation(
+      (player.reputation ?? 0) + applyWorkReputationGain(2, player.city_id, now),
+    );
   }
 
   const templateKey = job.templateKey ?? "";

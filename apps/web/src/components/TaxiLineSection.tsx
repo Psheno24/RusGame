@@ -244,8 +244,11 @@ export function TaxiLinePanels({ taxi }: { taxi: TaxiLineHandle }) {
           </h3>
           <TaxiOrderSummary order={status.activeTrip.order} />
           <p className="taxi-order-pay">
-            Выплата по прибытии:{" "}
-            <strong className="rub-amount">{formatRub(status.activeTrip.order.payoutRub)}</strong>
+            Ожидаемая выплата: ~{formatRub(status.activeTrip.order.payoutRub)}
+            <span className="shop-owned">
+              {" "}
+              (итог может измениться: чаевые, пробки, наличные)
+            </span>
           </p>
           <p className="shop-owned">Новые заказы появятся после завершения поездки.</p>
         </div>
