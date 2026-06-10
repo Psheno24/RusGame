@@ -44,12 +44,11 @@ import {
   cashPaymentRiskChances,
   rollTaxiOrderTrip,
   taxiKmPayoutRub,
+  taxiTariffRatePerKm,
   type TaxiCashRiskConfig,
 } from "./taxiPayout.js";
 import { getIncomeMultiplierBreakdown } from "./incomeMultiplier.js";
 import { buildTaxiOrderBreakdown, TAXI_DEMAND_TITLES } from "./linePayoutBreakdown.js";
-import { getBalanceBible } from "./balanceBible.js";
-
 type TaxiConfig = {
   idleOfflineMs: number;
   ordersRefreshMs: number;
@@ -168,8 +167,6 @@ function generateOrder(player: PlayerRow, orderTariff: string): TaxiOrder {
   });
   const tariffDef = taxiConfig.tariffs[orderTariff] ?? taxiConfig.tariffs.economy!;
   const { tripMinutes, distanceKm, demand } = rollTaxiOrderTrip(
-    taxiConfig.tripMinutesMin,
-    taxiConfig.tripMinutesMax,
     player.city_id,
     Date.now(),
   );
@@ -180,9 +177,7 @@ function generateOrder(player: PlayerRow, orderTariff: string): TaxiOrder {
         ? randInt(35, 41) / 10
         : randInt(30, 34) / 10;
   const payment: "card" | "cash" = Math.random() < 0.38 ? "cash" : "card";
-  const ratePerKm =
-    (getBalanceBible().taxi as { tariffPerKm: Record<string, number> }).tariffPerKm[orderTariff] ??
-    220;
+  const ratePerKm = taxiTariffRatePerKm(orderTariff);
   const payoutRub = Math.round(
     taxiKmPayoutRub(distanceKm, orderTariff, demand.mult, cityMult) * incomeBd.total,
   );

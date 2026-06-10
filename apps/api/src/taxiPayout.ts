@@ -1,6 +1,11 @@
 import { randInt } from "./random.js";
 import { getBalanceBible } from "./balanceBible.js";
-import { applyTaxiSpeedMinPerKm } from "./cityEffectModifiers.js";
+import {
+  capTripByMaxMinutes,
+  rollAutoTrafficSpeed,
+  tripMinutesFromKm,
+  type AutoTrafficConfig,
+} from "./lineTripSpeed.js";
 
 /** Кривая почасового дохода такси (legacy, для совместимости тестов). */
 export type TaxiPayoutCurve = {
@@ -22,12 +27,14 @@ export type TaxiCashRiskConfig = {
 };
 
 type TaxiBible = {
-  tariffPerKm: Record<string, number>;
+  baseRatePerKm: number;
+  tariffMult: Record<string, number>;
   distanceBands: { minKm: number; maxKm: number; weight: number }[];
   demand: { key: string; mult: number; weight: number }[];
   pickupMinMin: number;
   pickupMaxMin: number;
-  speedMinPerKm: { free: number; normal: number; peak: number };
+  maxTripMinutes?: number;
+  autoTraffic: AutoTrafficConfig;
 };
 
 function taxiBible(): TaxiBible {
@@ -54,55 +61,47 @@ export function rollDemandMult(): { key: string; mult: number } {
   return { key: d.key, mult: d.mult };
 }
 
-/** Время и дистанция заказа — как в Омске; город влияет только на ₽/км. */
+/** Ставка ₽/км для тарифа в базовом городе (без городского коэффициента). */
+export function taxiTariffRatePerKm(tariff: string): number {
+  const cfg = taxiBible();
+  const mult = cfg.tariffMult[tariff] ?? cfg.tariffMult.economy ?? 1;
+  return Math.round(cfg.baseRatePerKm * mult);
+}
+
+/** Дистанция → время (подача + пробки на авто); спрос влияет только на оплату. */
 export function rollTaxiOrderTrip(
-  tripMinutesMin: number,
-  tripMinutesMax: number,
   cityId?: string,
   now = Date.now(),
 ): {
   tripMinutes: number;
   distanceKm: number;
   demand: { key: string; mult: number };
+  pickupMinutes: number;
+  trafficTitle?: string;
 } {
   const cfg = taxiBible();
-  const tripMinutes = randInt(tripMinutesMin, tripMinutesMax);
-  const pickup = randInt(cfg.pickupMinMin, Math.min(cfg.pickupMaxMin, tripMinutes - 1));
-  const travelMin = tripMinutes - pickup;
+  let distanceKm = rollTripKm();
   const demand = rollDemandMult();
-  let speed =
-    demand.key === "peak" || demand.key === "surge"
-      ? cfg.speedMinPerKm.peak
-      : cfg.speedMinPerKm.normal;
-  if (cityId) speed = applyTaxiSpeedMinPerKm(speed, cityId, now);
-  const distanceKm = Math.max(
-    0.5,
-    Math.round((travelMin / speed) * (randInt(90, 110) / 100) * 10) / 10,
-  );
-  return { tripMinutes, distanceKm, demand };
+  const pickupMinutes = randInt(cfg.pickupMinMin, cfg.pickupMaxMin);
+  const { minPerKm, trafficTitle } = rollAutoTrafficSpeed(cfg.autoTraffic, cityId, now);
+  let tripMinutes = tripMinutesFromKm(distanceKm, minPerKm, pickupMinutes);
+
+  const maxTrip = cfg.maxTripMinutes ?? 45;
+  const capped = capTripByMaxMinutes(distanceKm, tripMinutes, maxTrip);
+  distanceKm = capped.distanceKm;
+  tripMinutes = capped.tripMinutes;
+
+  return { tripMinutes, distanceKm, demand, pickupMinutes, trafficTitle };
 }
 
-export function tripMinutesFromKm(km: number, demandKey: string): number {
-  const cfg = taxiBible();
-  const pickup = randInt(cfg.pickupMinMin, cfg.pickupMaxMin);
-  const speed =
-    demandKey === "peak" || demandKey === "surge"
-      ? cfg.speedMinPerKm.peak
-      : demandKey === "high"
-        ? cfg.speedMinPerKm.normal
-        : cfg.speedMinPerKm.normal;
-  const travelMin = km * speed * randInt(90, 110) / 100;
-  return Math.max(3, pickup + Math.round(travelMin));
-}
-
-/** Выплата: км × тариф × спрос × город. */
+/** Выплата: км × база × тариф × спрос × город. */
 export function taxiKmPayoutRub(
   km: number,
   tariff: string,
   demandMult: number,
   cityMult: number,
 ): number {
-  const rate = taxiBible().tariffPerKm[tariff] ?? taxiBible().tariffPerKm.economy ?? 220;
+  const rate = taxiTariffRatePerKm(tariff);
   return Math.max(150, Math.round(km * rate * demandMult * cityMult));
 }
 

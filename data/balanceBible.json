@@ -190,12 +190,18 @@
     }
   },
   "delivery": {
+    "baseRatePerKm": 250,
     "transport": {
-      "walk": { "ratePerKm": 200, "minKm": 1, "maxKm": 5, "minPerKm": 8.5 },
-      "bike": { "ratePerKm": 235, "minKm": 1, "maxKm": 8, "minPerKm": 6.5 },
-      "scooter": { "ratePerKm": 245, "minKm": 2, "maxKm": 8, "minPerKm": 5 },
-      "moped": { "ratePerKm": 210, "minKm": 3, "maxKm": 15, "minPerKm": 3.5 },
-      "car": { "ratePerKm": 165, "minKm": 5, "maxKm": 30, "minPerKm": 2.5 }
+      "walk": { "minKm": 1, "maxKm": 5, "speedMinPerKm": 7, "speedMaxPerKm": 11 },
+      "bike": { "minKm": 1, "maxKm": 8, "speedMinPerKm": 5, "speedMaxPerKm": 8 },
+      "scooter": { "minKm": 2, "maxKm": 8, "speedMinPerKm": 4, "speedMaxPerKm": 6.5 },
+      "moped": { "minKm": 3, "maxKm": 15, "speedMinPerKm": 2.8, "speedMaxPerKm": 4.5 },
+      "car": { "minKm": 5, "maxKm": 30, "speedMinPerKm": 2, "speedMaxPerKm": 3.5 }
+    },
+    "autoTraffic": {
+      "free": { "weight": 0.15, "speedMinPerKm": 1.8, "speedMaxPerKm": 2.4 },
+      "normal": { "weight": 0.58, "speedMinPerKm": 2.5, "speedMaxPerKm": 3.5 },
+      "jam": { "weight": 0.27, "speedMinPerKm": 3.8, "speedMaxPerKm": 5.5 }
     },
     "modifiers": {
       "short": 0.8,
@@ -218,12 +224,13 @@
     }
   },
   "taxi": {
-    "tariffPerKm": {
-      "economy": 220,
-      "comfort": 300,
-      "comfort_plus": 420,
-      "business": 650,
-      "premium": 1000
+    "baseRatePerKm": 400,
+    "tariffMult": {
+      "economy": 1,
+      "comfort": 1.25,
+      "comfort_plus": 1.45,
+      "business": 1.8,
+      "premium": 2.2
     },
     "distanceBands": [
       { "minKm": 2, "maxKm": 5, "weight": 0.35 },
@@ -239,7 +246,12 @@
     ],
     "pickupMinMin": 2,
     "pickupMaxMin": 6,
-    "speedMinPerKm": { "free": 2, "normal": 3, "peak": 4.5 },
+    "maxTripMinutes": 45,
+    "autoTraffic": {
+      "free": { "weight": 0.15, "speedMinPerKm": 1.8, "speedMaxPerKm": 2.4 },
+      "normal": { "weight": 0.58, "speedMinPerKm": 2.5, "speedMaxPerKm": 3.5 },
+      "jam": { "weight": 0.27, "speedMinPerKm": 3.8, "speedMaxPerKm": 5.5 }
+    },
     "events": {
       "tips": { "chance": 0.18, "bonusMin": 300, "bonusMax": 2500 },
       "smoothRide": { "chance": 0.12, "payMult": 1.2 },

@@ -35,6 +35,12 @@ import {
   deliveryOrdersModifier,
 } from "./cityEffectModifiers.js";
 import { scheduleDeliveryTripEndPush } from "./pushNotifications.js";
+import {
+  capTripByMaxMinutes,
+  rollDeliverySpeedMinPerKm,
+  tripMinutesFromKm,
+  type AutoTrafficConfig,
+} from "./lineTripSpeed.js";
 
 const MODIFIER_TITLES: Record<DeliveryModifier, string> = {
   short: "Короткий",
@@ -73,10 +79,12 @@ function pickModifier(): DeliveryModifier {
 
 function generateOrder(player: PlayerRow, now: number): DeliveryOrder {
   const bible = getBalanceBible().delivery as {
+    baseRatePerKm: number;
     transport: Record<
       DeliveryTransport,
-      { ratePerKm: number; minKm: number; maxKm: number; minPerKm: number }
+      { minKm: number; maxKm: number; speedMinPerKm: number; speedMaxPerKm: number }
     >;
+    autoTraffic?: AutoTrafficConfig;
     modifiers: Record<DeliveryModifier, number>;
     maxTripMinutes?: number;
   };
@@ -87,18 +95,24 @@ function generateOrder(player: PlayerRow, now: number): DeliveryOrder {
   const modMult = bible.modifiers[modifier] ?? 1;
   const cityMult = getCityEconomyMultiplier(player.city_id);
   const incomeBd = getIncomeMultiplierBreakdown(player.city_id, now, { mode: "delivery" });
-  let effectiveMinPerKm = cfg.minPerKm * randInt(90, 110) / 100;
-  let tripMinutes = Math.max(1, Math.round(distanceKm * effectiveMinPerKm));
+  const speedRoll = rollDeliverySpeedMinPerKm(
+    transport,
+    cfg.speedMinPerKm,
+    cfg.speedMaxPerKm,
+    bible.autoTraffic,
+    player.city_id,
+    now,
+  );
+  let tripMinutes = tripMinutesFromKm(distanceKm, speedRoll.minPerKm);
 
   const maxTripMinutes = bible.maxTripMinutes ?? 45;
-  if (tripMinutes > maxTripMinutes) {
-    const scale = maxTripMinutes / tripMinutes;
-    tripMinutes = maxTripMinutes;
-    distanceKm = Math.max(0.5, Math.round(distanceKm * scale * 10) / 10);
-  }
+  const capped = capTripByMaxMinutes(distanceKm, tripMinutes, maxTripMinutes);
+  distanceKm = capped.distanceKm;
+  tripMinutes = capped.tripMinutes;
 
+  const ratePerKm = bible.baseRatePerKm;
   const ordersMod = deliveryOrdersModifier(player.city_id, now);
-  const baseBeforeOrders = distanceKm * cfg.ratePerKm * modMult * cityMult * incomeBd.total;
+  const baseBeforeOrders = distanceKm * ratePerKm * modMult * cityMult * incomeBd.total;
   const basePayoutRub = Math.max(
     100,
     Math.round(applyPercentModifier(baseBeforeOrders, ordersMod.totalPct)),
@@ -106,7 +120,7 @@ function generateOrder(player: PlayerRow, now: number): DeliveryOrder {
   const modifierTitle = MODIFIER_TITLES[modifier];
   const payoutBreakdown = buildDeliveryOrderBreakdown({
     distanceKm,
-    ratePerKm: cfg.ratePerKm,
+    ratePerKm,
     transport,
     modifierTitle,
     modifierMult: modMult,
@@ -114,6 +128,7 @@ function generateOrder(player: PlayerRow, now: number): DeliveryOrder {
     incomeMult: incomeBd.total,
     incomeHints: incomeBd.hints,
     payoutRub: basePayoutRub,
+    trafficTitle: speedRoll.trafficTitle,
   });
 
   return {
@@ -123,7 +138,7 @@ function generateOrder(player: PlayerRow, now: number): DeliveryOrder {
     modifier,
     modifierTitle,
     modifierMult: modMult,
-    ratePerKm: cfg.ratePerKm,
+    ratePerKm,
     cityMult,
     incomeMult: incomeBd.total,
     incomeMultHints: incomeBd.hints,

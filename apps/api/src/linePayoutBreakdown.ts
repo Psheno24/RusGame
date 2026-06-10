@@ -84,6 +84,7 @@ export function buildDeliveryOrderBreakdown(opts: {
   incomeMult: number;
   incomeHints: string[];
   payoutRub: number;
+  trafficTitle?: string;
 }): LinePayoutBreakdown {
   const transportTitle = DELIVERY_TRANSPORT_TITLES[opts.transport] ?? opts.transport;
   const formulaParts = [
@@ -95,12 +96,16 @@ export function buildDeliveryOrderBreakdown(opts: {
 
   const lines: LinePayoutBreakdownLine[] = [
     { label: "Маршрут", value: `${formatKm(opts.distanceKm)} км` },
-    { label: "Транспорт", value: `${transportTitle} · ${formatRub(opts.ratePerKm)}/км` },
+    { label: "Ставка", value: `${formatRub(opts.ratePerKm)}/км` },
+    { label: "Транспорт", value: transportTitle },
     {
       label: "Тип заказа",
       value: `${opts.modifierTitle} ×${formatCoef(opts.modifierMult)}`,
     },
   ];
+  if (opts.trafficTitle) {
+    lines.push({ label: "Дорога", value: opts.trafficTitle });
+  }
   if (opts.cityMult !== 1) {
     lines.push({ label: "Город", value: `×${formatCoef(opts.cityMult)}` });
   }
