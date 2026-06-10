@@ -40,6 +40,25 @@ export type GasStationView = {
   cars: GasStationCarView[];
 };
 
+function roundFuelLiters(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+function resolveRefuelLiters(maxAdd: number, liters?: number): number | { error: string } {
+  const cap = roundFuelLiters(maxAdd);
+  if (cap <= 0) return { error: "Бак уже полный" };
+
+  if (liters != null && liters > 0) {
+    const requested = roundFuelLiters(liters);
+    if (requested <= 0) return { error: "Укажите количество литров" };
+    const want = Math.min(cap, requested);
+    if (want <= 0) return { error: "Бак уже полный" };
+    return want;
+  }
+
+  return cap;
+}
+
 function fuelPrices(cityId: string, now = Date.now()): Record<FuelType, number> {
   return {
     ai92: fuelPriceRub("ai92", cityId, now),
@@ -144,15 +163,9 @@ export function refuelCar(
   const maxAdd = Math.max(0, tankL - current);
   if (maxAdd <= 0) return { ok: false, error: "Бак уже полный" };
 
-  let wantLiters: number;
-  if (liters != null && liters > 0) {
-    const rounded = Math.round(liters);
-    if (rounded < 1) return { ok: false, error: "Минимум 1 литр" };
-    wantLiters = Math.min(Math.floor(maxAdd), rounded);
-    if (wantLiters < 1) return { ok: false, error: "Бак уже полный" };
-  } else {
-    wantLiters = Math.round(maxAdd * 10) / 10;
-  }
+  const resolved = resolveRefuelLiters(maxAdd, liters);
+  if (typeof resolved !== "number") return { ok: false, error: resolved.error };
+  const wantLiters = resolved;
 
   const pricePerL = fuelPriceRub(fuelType, player.city_id, now);
   const costRub = Math.round(wantLiters * pricePerL);
@@ -160,7 +173,7 @@ export function refuelCar(
     return { ok: false, error: `Нужно ${formatRub(costRub)}` };
   }
 
-  const nextLevel = Math.min(tankL, current + wantLiters);
+  const nextLevel = roundFuelLiters(Math.min(tankL, current + wantLiters));
   updatePlayer(userId, { rubles: player.rubles - costRub });
   setFuelLevelLiters(userId, playerCarId, nextLevel);
 
@@ -202,15 +215,9 @@ export function refuelRentalCar(
   const maxAdd = Math.max(0, tankL - current);
   if (maxAdd <= 0) return { ok: false, error: "Бак уже полный" };
 
-  let wantLiters: number;
-  if (liters != null && liters > 0) {
-    const rounded = Math.round(liters);
-    if (rounded < 1) return { ok: false, error: "Минимум 1 литр" };
-    wantLiters = Math.min(Math.floor(maxAdd), rounded);
-    if (wantLiters < 1) return { ok: false, error: "Бак уже полный" };
-  } else {
-    wantLiters = Math.round(maxAdd * 10) / 10;
-  }
+  const resolved = resolveRefuelLiters(maxAdd, liters);
+  if (typeof resolved !== "number") return { ok: false, error: resolved.error };
+  const wantLiters = resolved;
 
   const pricePerL = fuelPriceRub(fuelType, player.city_id, now);
   const costRub = Math.round(wantLiters * pricePerL);
@@ -218,7 +225,7 @@ export function refuelRentalCar(
     return { ok: false, error: `Нужно ${formatRub(costRub)}` };
   }
 
-  const nextLevel = Math.min(tankL, current + wantLiters);
+  const nextLevel = roundFuelLiters(Math.min(tankL, current + wantLiters));
   updatePlayer(userId, { rubles: player.rubles - costRub });
   setRentalFuelLevelLiters(userId, nextLevel);
 

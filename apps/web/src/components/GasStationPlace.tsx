@@ -29,13 +29,33 @@ const FUEL_LABELS: Record<FuelType, string> = {
   premium: "Премиум",
 };
 
+function roundFuelLiters(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
 function formatFuelLiters(n: number): string {
-  const rounded = Math.round(n * 10) / 10;
+  const rounded = roundFuelLiters(n);
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
 }
 
-function maxRefuelLiters(car: GasStationCarView): number {
-  return Math.floor(car.litersToFull);
+/** Есть дробная часть до полного бака (например 3.6 л). */
+function hasFuelFraction(litersToFull: number): boolean {
+  return Math.round(roundFuelLiters(litersToFull) * 10) % 10 !== 0;
+}
+
+/** Позиции ползунка: 1…floor(л), последняя — ровно до полного бака. */
+function refuelSliderMax(litersToFull: number): number {
+  const full = roundFuelLiters(litersToFull);
+  if (full <= 0) return 0;
+  const floor = Math.floor(full);
+  return hasFuelFraction(full) ? floor + 1 : Math.max(1, floor);
+}
+
+function sliderValueToLiters(sliderValue: number, litersToFull: number): number {
+  const full = roundFuelLiters(litersToFull);
+  const max = refuelSliderMax(full);
+  if (sliderValue >= max) return full;
+  return sliderValue;
 }
 
 function carTitle(car: GasStationCarView): string {
@@ -72,13 +92,14 @@ export function GasStationPlace({ user, setUser, onToast, onNavChange, registerB
     [station, selectedKey],
   );
 
-  const maxLiters = selectedCar ? maxRefuelLiters(selectedCar) : 1;
-  const canRefuel = maxLiters >= 1;
+  const sliderMax = selectedCar ? refuelSliderMax(selectedCar.litersToFull) : 0;
+  const canRefuel = sliderMax >= 1;
+  const actualLiters = selectedCar ? sliderValueToLiters(liters, selectedCar.litersToFull) : 0;
 
   useEffect(() => {
     if (!selectedCar) return;
-    setLiters((prev) => Math.min(maxLiters, Math.max(1, prev)));
-  }, [selectedCar, maxLiters]);
+    setLiters((prev) => Math.min(sliderMax, Math.max(1, prev)));
+  }, [selectedCar, sliderMax]);
 
   useEffect(() => {
     const title = nav === "detail" ? "Заправка" : "АЗС";
@@ -102,7 +123,7 @@ export function GasStationPlace({ user, setUser, onToast, onNavChange, registerB
 
   const openCar = (car: GasStationCarView) => {
     setSelectedKey(carListKey(car));
-    setLiters(Math.max(1, maxRefuelLiters(car)));
+    setLiters(refuelSliderMax(car.litersToFull));
     setNav("detail");
   };
 
@@ -110,7 +131,7 @@ export function GasStationPlace({ user, setUser, onToast, onNavChange, registerB
     if (!selectedCar || busy || !canRefuel) return;
     const fuelType = selectedCar.recommendedFuel;
     const pricePerL = station?.fuelPrices[fuelType] ?? 0;
-    const cost = Math.round(liters * pricePerL);
+    const cost = Math.round(actualLiters * pricePerL);
     if (user.player.rubles < cost) {
       onToastRef.current(`Нужно ${formatRub(cost)}`, true);
       return;
@@ -119,8 +140,8 @@ export function GasStationPlace({ user, setUser, onToast, onNavChange, registerB
     try {
       const r = await refuelAtGasStation(
         selectedCar.isRental
-          ? { rental: true, fuelType, liters }
-          : { playerCarId: selectedCar.playerCarId!, fuelType, liters },
+          ? { rental: true, fuelType, liters: actualLiters }
+          : { playerCarId: selectedCar.playerCarId!, fuelType, liters: actualLiters },
       );
       setUser(r.user);
       onToastRef.current(
@@ -141,8 +162,8 @@ export function GasStationPlace({ user, setUser, onToast, onNavChange, registerB
   if (nav === "detail" && selectedCar) {
     const fuelType = selectedCar.recommendedFuel;
     const pricePerL = station.fuelPrices[fuelType];
-    const previewLevel = selectedCar.fuelLevelL + liters;
-    const totalCost = Math.round(liters * pricePerL);
+    const previewLevel = roundFuelLiters(selectedCar.fuelLevelL + actualLiters);
+    const totalCost = Math.round(actualLiters * pricePerL);
     const afford = user.player.rubles >= totalCost;
 
     return (
@@ -164,7 +185,7 @@ export function GasStationPlace({ user, setUser, onToast, onNavChange, registerB
               type="range"
               className="home-sleep-slider gas-station-slider"
               min={1}
-              max={maxLiters}
+              max={sliderMax}
               step={1}
               value={liters}
               disabled={busy}
@@ -172,7 +193,10 @@ export function GasStationPlace({ user, setUser, onToast, onNavChange, registerB
               aria-label="Литры для заправки"
             />
             <p className="gas-station-liters-hint">
-              Заправить: <strong>{liters}</strong> л
+              Заправить: <strong>{formatFuelLiters(actualLiters)}</strong> л
+              {liters >= sliderMax && hasFuelFraction(selectedCar.litersToFull) ? (
+                <span className="phone-list-meta"> · до полного бака</span>
+              ) : null}
             </p>
           </>
         ) : (
@@ -195,17 +219,20 @@ export function GasStationPlace({ user, setUser, onToast, onNavChange, registerB
       {station.cars.length === 0 ? (
         <p className="shop-stub">Нет автомобилей для заправки</p>
       ) : (
-        <ul className="gas-station-cars">
+        <ul className="phone-list gas-station-cars">
           {station.cars.map((car) => (
             <li key={carListKey(car)}>
-              <button type="button" className="gas-station-car-btn" onClick={() => openCar(car)}>
-                <span className="car-accent" style={{ color: car.accent }} aria-hidden>
-                  ●
-                </span>
-                <span className="gas-station-car-name">{carTitle(car)}</span>
-                <span className="gas-station-car-fuel">
-                  {formatFuelLiters(car.fuelLevelL)} / {formatFuelLiters(car.tankL)} л ({car.fuelPct}
-                  %)
+              <button type="button" className="phone-list-item" onClick={() => openCar(car)}>
+                <span className="car-list-thumb" style={{ background: car.accent }} aria-hidden />
+                <span className="phone-list-info">
+                  <span className="phone-list-name">
+                    {carTitle(car)}
+                    {car.isRental ? <span className="phone-list-meta"> · аренда</span> : null}
+                  </span>
+                  <span className="phone-list-price">
+                    {formatFuelLiters(car.fuelLevelL)} / {formatFuelLiters(car.tankL)} л ({car.fuelPct}
+                    %)
+                  </span>
                 </span>
               </button>
             </li>

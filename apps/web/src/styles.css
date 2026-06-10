@@ -1470,6 +1470,10 @@ body {
   margin: 8px 0 4px;
 }
 
+.gas-station-list {
+  margin-top: 4px;
+}
+
 .gas-station-detail {
   display: flex;
   flex-direction: column;
