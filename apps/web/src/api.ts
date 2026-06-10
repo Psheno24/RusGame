@@ -344,11 +344,32 @@ export function getAccessToken() {
 }
 
 const AUTH_PATHS = new Set([
+  "/api/session/login",
+  "/api/session/register",
+  "/api/session/refresh",
+  "/api/session/logout",
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/refresh",
   "/api/auth/logout",
 ]);
+
+function networkErrorMessage(): string {
+  const host = typeof window !== "undefined" ? window.location.hostname : "";
+  if (host.startsWith("www.") || host === "rupkgame.ru") {
+    return "Нет связи с сервером. Откройте https://game.rupkgame.ru (без www).";
+  }
+  return "Нет связи с сервером. Проверьте интернет и отключите блокировщик рекламы для этого сайта.";
+}
+
+export async function checkServerHealth(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/health", { credentials: "include" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
 
 async function api<T>(
   path: string,
@@ -365,7 +386,7 @@ async function api<T>(
   try {
     res = await fetch(path, { ...init, headers, credentials: "include" });
   } catch {
-    throw new Error("Нет связи с сервером");
+    throw new Error(networkErrorMessage());
   }
   const data = await res.json().catch(() => ({}));
 
@@ -382,7 +403,7 @@ async function api<T>(
 export async function refreshSession(): Promise<User | null> {
   try {
     const data = await api<{ accessToken: string; user: User }>(
-      "/api/auth/refresh",
+      "/api/session/refresh",
       { method: "POST" },
     );
     setAccessToken(data.accessToken);
@@ -394,7 +415,7 @@ export async function refreshSession(): Promise<User | null> {
 
 export async function login(loginName: string, password: string) {
   const data = await api<{ accessToken: string; user: User }>(
-    "/api/auth/login",
+    "/api/session/login",
     {
       method: "POST",
       body: JSON.stringify({ login: loginName, password }),
@@ -406,7 +427,7 @@ export async function login(loginName: string, password: string) {
 
 export async function register(loginName: string, password: string) {
   const data = await api<{ accessToken: string; user: User }>(
-    "/api/auth/register",
+    "/api/session/register",
     {
       method: "POST",
       body: JSON.stringify({ login: loginName, password }),
@@ -418,14 +439,14 @@ export async function register(loginName: string, password: string) {
 
 export async function logout() {
   try {
-    await api("/api/auth/logout", { method: "POST" });
+    await api("/api/session/logout", { method: "POST" });
   } finally {
     setAccessToken(null);
   }
 }
 
 export async function fetchMe() {
-  const data = await api<{ user: User; accessToken?: string }>("/api/auth/me");
+  const data = await api<{ user: User; accessToken?: string }>("/api/session/me");
   if (data.accessToken) setAccessToken(data.accessToken);
   return data.user;
 }
