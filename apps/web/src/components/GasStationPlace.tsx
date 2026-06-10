@@ -39,13 +39,18 @@ function maxRefuelLiters(car: GasStationCarView): number {
 }
 
 function carTitle(car: GasStationCarView): string {
+  if (car.isRental) return `${car.brand}`;
   return `${car.brand} ${car.model}`;
+}
+
+function carListKey(car: GasStationCarView): string {
+  return car.isRental ? "rental" : String(car.playerCarId);
 }
 
 export function GasStationPlace({ user, setUser, onToast, onNavChange, registerBack, onExitPlace }: Props) {
   const [station, setStation] = useState<GasStationView | null>(null);
   const [nav, setNav] = useState<Nav>("list");
-  const [selectedCarId, setSelectedCarId] = useState<number | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [liters, setLiters] = useState(1);
   const [busy, setBusy] = useState(false);
   const onToastRef = useToastRef(onToast);
@@ -63,8 +68,8 @@ export function GasStationPlace({ user, setUser, onToast, onNavChange, registerB
   }, [reload]);
 
   const selectedCar = useMemo(
-    () => station?.cars.find((c) => c.playerCarId === selectedCarId) ?? null,
-    [station, selectedCarId],
+    () => station?.cars.find((c) => carListKey(c) === selectedKey) ?? null,
+    [station, selectedKey],
   );
 
   const maxLiters = selectedCar ? maxRefuelLiters(selectedCar) : 1;
@@ -85,7 +90,7 @@ export function GasStationPlace({ user, setUser, onToast, onNavChange, registerB
     const handler: NavBackHandler = () => {
       if (nav === "detail") {
         setNav("list");
-        setSelectedCarId(null);
+        setSelectedKey(null);
         return true;
       }
       onExitPlace();
@@ -96,7 +101,7 @@ export function GasStationPlace({ user, setUser, onToast, onNavChange, registerB
   }, [nav, registerBack, onExitPlace]);
 
   const openCar = (car: GasStationCarView) => {
-    setSelectedCarId(car.playerCarId);
+    setSelectedKey(carListKey(car));
     setLiters(Math.max(1, maxRefuelLiters(car)));
     setNav("detail");
   };
@@ -112,11 +117,11 @@ export function GasStationPlace({ user, setUser, onToast, onNavChange, registerB
     }
     setBusy(true);
     try {
-      const r = await refuelAtGasStation({
-        playerCarId: selectedCar.playerCarId,
-        fuelType,
-        liters,
-      });
+      const r = await refuelAtGasStation(
+        selectedCar.isRental
+          ? { rental: true, fuelType, liters }
+          : { playerCarId: selectedCar.playerCarId!, fuelType, liters },
+      );
       setUser(r.user);
       onToastRef.current(
         `${r.carName}: +${r.liters} л ${FUEL_LABELS[fuelType]} (−${formatRub(r.costRub)})`,
@@ -186,39 +191,25 @@ export function GasStationPlace({ user, setUser, onToast, onNavChange, registerB
   }
 
   return (
-    <div className="place-detail gas-station">
-      <p className="place-detail-lead">
-        АИ-92 {formatRub(station.fuelPrices.ai92)}/л · АИ-95{" "}
-        {formatRub(station.fuelPrices.ai95)}/л · Премиум {formatRub(station.fuelPrices.premium)}/л
-      </p>
+    <div className="gas-station-list">
       {station.cars.length === 0 ? (
         <p className="shop-stub">Нет автомобилей для заправки</p>
       ) : (
-        <ul className="phone-list">
-          {station.cars.map((car) => {
-            const full = maxRefuelLiters(car) < 1;
-            return (
-              <li key={car.playerCarId}>
-                <button
-                  type="button"
-                  className="phone-list-item"
-                  onClick={() => openCar(car)}
-                >
-                  <span className="phone-list-thumb car-accent-dot" style={{ color: car.accent }} aria-hidden>
-                    ●
-                  </span>
-                  <span className="phone-list-info">
-                    <span className="phone-list-name">{carTitle(car)}</span>
-                    <span className="muted">
-                      {full
-                        ? "Бак полный"
-                        : `${formatFuelLiters(car.fuelLevelL)} / ${formatFuelLiters(car.tankL)} л`}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
+        <ul className="gas-station-cars">
+          {station.cars.map((car) => (
+            <li key={carListKey(car)}>
+              <button type="button" className="gas-station-car-btn" onClick={() => openCar(car)}>
+                <span className="car-accent" style={{ color: car.accent }} aria-hidden>
+                  ●
+                </span>
+                <span className="gas-station-car-name">{carTitle(car)}</span>
+                <span className="gas-station-car-fuel">
+                  {formatFuelLiters(car.fuelLevelL)} / {formatFuelLiters(car.tankL)} л ({car.fuelPct}
+                  %)
+                </span>
+              </button>
+            </li>
+          ))}
         </ul>
       )}
     </div>

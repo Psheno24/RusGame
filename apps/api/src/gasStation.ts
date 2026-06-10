@@ -6,7 +6,6 @@ import { getCar } from "./gameData.js";
 import {
   fuelPriceHints,
   fuelPriceRub,
-  getCarConsumptionL100,
   getCarTankLiters,
   getFuelLevelLiters,
   recommendedFuelType,
@@ -14,9 +13,16 @@ import {
   type FuelType,
 } from "./carFuel.js";
 import { getPlayerCarById, listPlayerCars } from "./playerCars.js";
+import { isVehicleRentalActive } from "./vehicleRental.js";
+import {
+  getRentalFuelLevelLiters,
+  rentalFuelSummary,
+  setRentalFuelLevelLiters,
+} from "./rentalFuel.js";
 
 export type GasStationCarView = {
-  playerCarId: number;
+  playerCarId: number | null;
+  isRental: boolean;
   brand: string;
   model: string;
   accent: string;
@@ -42,7 +48,7 @@ function fuelPrices(cityId: string, now = Date.now()): Record<FuelType, number> 
   };
 }
 
-function buildCarView(
+function buildOwnedCarView(
   row: ReturnType<typeof listPlayerCars>[number],
   prices: Record<FuelType, number>,
 ): GasStationCarView | null {
@@ -58,6 +64,7 @@ function buildCarView(
   };
   return {
     playerCarId: row.id,
+    isRental: false,
     brand: car.brand,
     model: car.model,
     accent: car.accent,
@@ -70,11 +77,43 @@ function buildCarView(
   };
 }
 
+function buildRentalCarView(
+  player: PlayerRow,
+  prices: Record<FuelType, number>,
+): GasStationCarView | null {
+  const summary = rentalFuelSummary(player);
+  if (!summary) return null;
+  const { car, fuelLevelL, tankL, recommendedFuel, label } = summary;
+  const litersToFull = Math.max(0, Math.round((tankL - fuelLevelL) * 10) / 10);
+  const fillCostRub: Record<FuelType, number> = {
+    ai92: Math.round(litersToFull * prices.ai92),
+    ai95: Math.round(litersToFull * prices.ai95),
+    premium: Math.round(litersToFull * prices.premium),
+  };
+  return {
+    playerCarId: null,
+    isRental: true,
+    brand: label,
+    model: "аренда",
+    accent: "#4a5568",
+    fuelLevelL,
+    tankL,
+    fuelPct: tankL > 0 ? Math.round((fuelLevelL / tankL) * 100) : 0,
+    litersToFull,
+    recommendedFuel,
+    fillCostRub,
+  };
+}
+
 export function getGasStation(player: PlayerRow, now = Date.now()): GasStationView {
   const prices = fuelPrices(player.city_id, now);
   const cars = listPlayerCars(player.user_id)
-    .map((row) => buildCarView(row, prices))
+    .map((row) => buildOwnedCarView(row, prices))
     .filter((x): x is GasStationCarView => x != null);
+  if (isVehicleRentalActive(player, now)) {
+    const rentalView = buildRentalCarView(player, prices);
+    if (rentalView) cars.push(rentalView);
+  }
   return {
     fuelPrices: prices,
     fuelPriceHints: fuelPriceHints(player.city_id, now),
@@ -126,6 +165,64 @@ export function refuelCar(
   setFuelLevelLiters(userId, playerCarId, nextLevel);
 
   const carName = `${car.brand} ${car.model}`;
+  appendPlayerFeed(
+    userId,
+    "shop:car",
+    `АЗС: ${carName} +${wantLiters} л ${fuelType.toUpperCase()} (−${formatRub(costRub)})`,
+    now,
+  );
+
+  return {
+    ok: true,
+    liters: wantLiters,
+    costRub,
+    fuelLevelL: nextLevel,
+    carName,
+  };
+}
+
+export function refuelRentalCar(
+  userId: number,
+  fuelType: FuelType,
+  liters?: number,
+  now = Date.now(),
+):
+  | { ok: true; liters: number; costRub: number; fuelLevelL: number; carName: string }
+  | { ok: false; error: string } {
+  const player = getPlayer(userId);
+  if (!player) return { ok: false, error: "Игрок не найден" };
+  if (!isVehicleRentalActive(player, now)) {
+    return { ok: false, error: "Нет активной аренды автомобиля" };
+  }
+  const summary = rentalFuelSummary(player);
+  if (!summary) return { ok: false, error: "Арендованный автомобиль не найден" };
+
+  const { car, fuelLevelL, tankL, label } = summary;
+  const current = fuelLevelL;
+  const maxAdd = Math.max(0, tankL - current);
+  if (maxAdd <= 0) return { ok: false, error: "Бак уже полный" };
+
+  let wantLiters: number;
+  if (liters != null && liters > 0) {
+    const rounded = Math.round(liters);
+    if (rounded < 1) return { ok: false, error: "Минимум 1 литр" };
+    wantLiters = Math.min(Math.floor(maxAdd), rounded);
+    if (wantLiters < 1) return { ok: false, error: "Бак уже полный" };
+  } else {
+    wantLiters = Math.round(maxAdd * 10) / 10;
+  }
+
+  const pricePerL = fuelPriceRub(fuelType, player.city_id, now);
+  const costRub = Math.round(wantLiters * pricePerL);
+  if (player.rubles < costRub) {
+    return { ok: false, error: `Нужно ${formatRub(costRub)}` };
+  }
+
+  const nextLevel = Math.min(tankL, current + wantLiters);
+  updatePlayer(userId, { rubles: player.rubles - costRub });
+  setRentalFuelLevelLiters(userId, nextLevel);
+
+  const carName = `${label} (аренда)`;
   appendPlayerFeed(
     userId,
     "shop:car",

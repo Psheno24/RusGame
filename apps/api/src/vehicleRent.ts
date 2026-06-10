@@ -2,14 +2,33 @@ import { formatRub } from "./formatRub.js";
 import { getPlayer, updatePlayer } from "./db.js";
 import { appendPlayerFeed } from "./playerFeed.js";
 import { getVehicleRental } from "./gameData.js";
-import { hasDriverLicense } from "./playerCars.js";
+import { hasDriverLicense, hasScooterLicense } from "./playerCars.js";
 import { playerHasVehicleRentalRecord } from "./vehicleRental.js";
 import { applyPercentModifier, rentalDemandModifier } from "./cityEffectModifiers.js";
 import { buildVehicleRentalTimeInfo } from "./vehicleRentalDisplay.js";
+import { initRentalFuelFull } from "./rentalFuel.js";
 
 const MS_HOUR = 60 * 60 * 1000;
 export const VEHICLE_RENT_MIN_HOURS = 1;
 export const VEHICLE_RENT_MAX_HOURS = 24;
+
+function rentalLicenseError(
+  player: NonNullable<ReturnType<typeof getPlayer>>,
+  rental: NonNullable<ReturnType<typeof getVehicleRental>>,
+): string | null {
+  if (!rental.needsLicense) return null;
+  const cat = rental.licenseCategory ?? "B";
+  if (cat === "M") {
+    if (!hasScooterLicense(player)) {
+      return "Нужны права любой категории в полиции — категория M для скутера выдаётся автоматически";
+    }
+    return null;
+  }
+  if (!hasDriverLicense(player, cat)) {
+    return `Нужны права категории ${cat} — оформите в полиции`;
+  }
+  return null;
+}
 
 export function rentVehicle(
   userId: number,
@@ -33,9 +52,8 @@ export function rentVehicle(
       error: `Срок аренды: от ${VEHICLE_RENT_MIN_HOURS} до ${VEHICLE_RENT_MAX_HOURS} ч`,
     };
   }
-  if (rental.needsLicense && !hasDriverLicense(player, "B")) {
-    return { ok: false, error: "Нужны права категории B — оформите в полиции" };
-  }
+  const licenseError = rentalLicenseError(player, rental);
+  if (licenseError) return { ok: false, error: licenseError };
   const rentMod = rentalDemandModifier(player.city_id, now);
   const priceRub = applyPercentModifier(rental.pricePerHourRub * hours, rentMod.totalPct);
   if (player.rubles < priceRub) {
@@ -53,6 +71,7 @@ export function rentVehicle(
     vehicle_rental_id: rentalId,
     vehicle_rental_expires_at: expiresAt,
   });
+  initRentalFuelFull(userId, rentalId);
   appendPlayerFeed(
     userId,
     "shop:rent",

@@ -76,6 +76,7 @@ export function resetPlayerAccount(targetUserId: number, now = Date.now()): bool
     plate_region: null,
     vehicle_rental_id: null,
     vehicle_rental_expires_at: null,
+    vehicle_rental_fuel_level_l: null,
     drivers_license: 0,
     driver_licenses: null,
     housing_type: "dorm",

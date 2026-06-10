@@ -17,6 +17,7 @@ import { isVehicleRentalActive } from "./vehicleRental.js";
 import { listPlayerCars, playerHasAnyCar } from "./playerCars.js";
 import { applyDrivingWear } from "./carWear.js";
 import { consumeFuelLiters } from "./carFuel.js";
+import { consumeRentalFuelLiters } from "./rentalFuel.js";
 import {
   hasActiveDeliveryTrip,
   parseDeliveryState,
@@ -242,6 +243,8 @@ function completeTrip(
     if (carRow) {
       applyDrivingWear(player.user_id, carRow.id, trip.order.distanceKm);
       consumeFuelLiters(player.user_id, carRow.id, trip.order.distanceKm);
+    } else if (isVehicleRentalActive(player, now) && player.vehicle_rental_id?.startsWith("car")) {
+      consumeRentalFuelLiters(player.user_id, trip.order.distanceKm);
     }
   }
 

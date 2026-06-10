@@ -133,6 +133,8 @@ export type VehicleRentalDef = {
   hint: string;
   pricePerHourRub: number;
   needsLicense: boolean;
+  /** B — авто, M — скутер (выдаётся с любой категорией). */
+  licenseCategory?: string;
   accent: string;
   /** Модель для такси; без поля аренда не подходит для работы таксистом. */
   taxiCarModelId?: string;
@@ -153,9 +155,6 @@ const cars: CarModel[] = carsRaw.map((c) => ({
 const carCategories = JSON.parse(
   readFileSync(join(DATA_DIR, "carCategories.json"), "utf-8"),
 ) as CarCategoryDef[];
-const vehicleRentals = JSON.parse(
-  readFileSync(join(DATA_DIR, "vehicleRentals.json"), "utf-8"),
-) as VehicleRentalDef[];
 const jobTemplates = JSON.parse(
   readFileSync(join(DATA_DIR, "jobTemplates.json"), "utf-8"),
 ) as Record<string, JobTemplate>;
@@ -233,10 +232,16 @@ export function getCarsByCategory(categoryId: string): CarModel[] {
   return getCars().filter((c) => c.category === categoryId);
 }
 
+function loadVehicleRentals(): VehicleRentalDef[] {
+  return JSON.parse(
+    readFileSync(join(DATA_DIR, "vehicleRentals.json"), "utf-8"),
+  ) as VehicleRentalDef[];
+}
+
 export function getVehicleRentals(): VehicleRentalDef[] {
-  return [...vehicleRentals];
+  return loadVehicleRentals();
 }
 
 export function getVehicleRental(id: string): VehicleRentalDef | undefined {
-  return vehicleRentals.find((r) => r.id === id);
+  return loadVehicleRentals().find((r) => r.id === id);
 }

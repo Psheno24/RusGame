@@ -3,7 +3,6 @@ import { getPlayer, updatePlayer } from "./db.js";
 import { getVehicleRental } from "./gameData.js";
 import { appendPlayerFeed } from "./playerFeed.js";
 import { parseTaxiState, saveTaxiState, type TaxiState } from "./playerTaxi.js";
-
 export function isVehicleRentalActive(
   player: PlayerRow,
   now = Date.now(),
@@ -41,6 +40,7 @@ export function syncPlayerVehicleRental(player: PlayerRow, now = Date.now()): Pl
     updatePlayer(player.user_id, {
       vehicle_rental_id: null,
       vehicle_rental_expires_at: null,
+      vehicle_rental_fuel_level_l: null,
     });
     return getPlayer(player.user_id) ?? player;
   }
@@ -82,6 +82,7 @@ export function cancelVehicleRental(
   updatePlayer(userId, {
     vehicle_rental_id: null,
     vehicle_rental_expires_at: null,
+    vehicle_rental_fuel_level_l: null,
   });
 
   if (state?.carSource === "rental") {

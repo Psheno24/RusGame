@@ -221,16 +221,33 @@ export function hasDriverLicense(player: PlayerRow, category: string): boolean {
   return parseDriverLicenses(player).includes(category);
 }
 
+/** Категория M выдаётся вместе с любой покупаемой категорией (скутер). */
+export const BUNDLED_SCOOTER_LICENSE = "M";
+
 export function addDriverLicense(userId: number, category: string) {
   const player = getPlayer(userId);
   if (!player) return;
   const cur = parseDriverLicenses(player);
-  if (cur.includes(category)) return;
-  const next = [...cur, category].sort();
+  const nextSet = new Set(cur);
+  nextSet.add(category);
+  if (category !== BUNDLED_SCOOTER_LICENSE) {
+    nextSet.add(BUNDLED_SCOOTER_LICENSE);
+  }
+  const next = [...nextSet].sort();
+  if (next.length === cur.length && cur.every((c) => nextSet.has(c))) return;
   updatePlayer(userId, {
     driver_licenses: JSON.stringify(next),
     drivers_license: 1,
   } as Partial<PlayerRow>);
+}
+
+/** Скутер: любая оформленная категория (M выдаётся автоматически). */
+export function hasScooterLicense(player: PlayerRow): boolean {
+  const licenses = parseDriverLicenses(player);
+  return (
+    licenses.includes(BUNDLED_SCOOTER_LICENSE) ||
+    licenses.some((c) => c !== BUNDLED_SCOOTER_LICENSE)
+  );
 }
 
 export function getBestCarCooldownReducePct(userId: number): number {

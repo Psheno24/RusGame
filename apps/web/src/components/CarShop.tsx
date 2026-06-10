@@ -79,6 +79,13 @@ const RENTAL_ICONS: Record<string, string> = {
 const RENT_MIN_HOURS = 1;
 const RENT_MAX_HOURS = 24;
 
+function rentalLicenseOk(rental: VehicleRental, licenses: Set<string>): boolean {
+  if (!rental.needsLicense) return true;
+  const cat = rental.licenseCategory ?? "B";
+  if (cat === "M") return licenses.size > 0;
+  return licenses.has(cat);
+}
+
 type Props = {
   user: User;
   setUser: (u: User) => void;
@@ -1026,9 +1033,19 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
           <p className="shop-price">
             Тариф: <strong>{rub(selectedRental.pricePerHourRub)}/ч</strong>
           </p>
-          {selectedRental.needsLicense && !licenses.has("B") ? (
+          {selectedRental.needsLicense && !rentalLicenseOk(selectedRental, licenses) ? (
             <p className="shop-owned">
-              Нужны права категории B — получите в <strong>полиции</strong>.
+              {(selectedRental.licenseCategory ?? "B") === "M" ? (
+                <>
+                  Нужны права любой категории в <strong>полиции</strong> — категория M для
+                  скутера выдаётся автоматически.
+                </>
+              ) : (
+                <>
+                  Нужны права категории {selectedRental.licenseCategory ?? "B"} — получите в{" "}
+                  <strong>полиции</strong>.
+                </>
+              )}
             </p>
           ) : (
             <>

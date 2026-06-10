@@ -4,12 +4,14 @@ import { getCarCategories } from "./gameData.js";
 import { addDriverLicense, hasDriverLicense, parseDriverLicenses } from "./playerCars.js";
 
 export function getDriverLicenseShop() {
-  return getCarCategories().map((c) => ({
-    category: c.id,
-    title: c.title,
-    subtitle: c.subtitle,
-    priceRub: c.licensePriceRub,
-  }));
+  return getCarCategories()
+    .filter((c) => c.licensePriceRub > 0)
+    .map((c) => ({
+      category: c.id,
+      title: c.title,
+      subtitle: c.subtitle,
+      priceRub: c.licensePriceRub,
+    }));
 }
 
 export function buyDriverLicenseCategory(
@@ -18,8 +20,11 @@ export function buyDriverLicenseCategory(
 ): { ok: true } | { ok: false; error: string } {
   const player = getPlayer(userId);
   if (!player) return { ok: false, error: "Игрок не найден" };
+  if (category === "M") {
+    return { ok: false, error: "Категория M выдаётся автоматически при оформлении любой другой категории" };
+  }
   const def = getCarCategories().find((c) => c.id === category);
-  if (!def) return { ok: false, error: "Категория не найдена" };
+  if (!def || def.licensePriceRub <= 0) return { ok: false, error: "Категория не найдена" };
   if (hasDriverLicense(player, category)) {
     return { ok: false, error: `Права категории ${category} уже есть` };
   }

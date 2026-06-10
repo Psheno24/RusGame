@@ -277,6 +277,7 @@ export type VehicleRental = {
   hint: string;
   pricePerHourRub: number;
   needsLicense: boolean;
+  licenseCategory?: string;
   accent: string;
 };
 
@@ -1231,7 +1232,8 @@ export async function fetchCarRepairShop(service?: CarRepairServiceId) {
 export type FuelType = "ai92" | "ai95" | "premium";
 
 export type GasStationCarView = {
-  playerCarId: number;
+  playerCarId: number | null;
+  isRental: boolean;
   brand: string;
   model: string;
   accent: string;
@@ -1253,7 +1255,8 @@ export function fetchGasStation() {
 }
 
 export function refuelAtGasStation(body: {
-  playerCarId: number;
+  playerCarId?: number;
+  rental?: boolean;
   fuelType: FuelType;
   liters?: number;
 }) {

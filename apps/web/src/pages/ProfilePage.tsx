@@ -24,6 +24,17 @@ const EDUCATION_TIER_LABELS: Record<string, string> = {
   higher: " (высшее)",
 };
 
+/** Категории для профиля: по алфавиту; M один раз, если есть хотя бы одна другая. */
+function formatLicenseCategories(categories: string[] | undefined): string {
+  const unique = [...new Set(categories ?? [])];
+  if (unique.length === 0) return "—";
+  const nonM = unique.filter((c) => c !== "M");
+  const display = new Set(nonM);
+  if (nonM.length > 0) display.add("M");
+  else if (unique.includes("M")) display.add("M");
+  return [...display].sort((a, b) => a.localeCompare(b, "ru")).join(", ");
+}
+
 export function ProfilePage() {
   const { user, logout } = useApp();
   const [confirmLogout, setConfirmLogout] = useState(false);
@@ -50,6 +61,12 @@ export function ProfilePage() {
                 {p.educationEnrolled
                   ? "На обучении"
                   : `${EDUCATION_DIRECTION_LABELS[p.education ?? "none"] ?? p.education}${EDUCATION_TIER_LABELS[p.educationTier ?? "none"] ?? ""}`}
+              </span>
+            </div>
+            <div className="profile-stat">
+              <span className="profile-stat-label">Категории прав</span>
+              <span className="profile-stat-value">
+                {formatLicenseCategories(p.driverLicenseCategories)}
               </span>
             </div>
           </div>

@@ -31,6 +31,8 @@ import {
 import { workEnergyCost } from "./balanceBible.js";
 import { applyDrivingWear, resolveTaxiPlayerCarId } from "./carWear.js";
 import { consumeFuelLiters } from "./carFuel.js";
+import { consumeRentalFuelLiters } from "./rentalFuel.js";
+import { taxiFuelBlockReason } from "./taxiFuel.js";
 import {
   clampReputation,
   clampVital,
@@ -295,12 +297,13 @@ function completeActiveTrip(
 
   const energyCost =
     scaleWorkCosts(player, { energy: workEnergyCost("taxi") })?.energy ?? 3;
+  const tripKm = order.distanceKm ?? order.tripMinutes / 3;
   const carId = resolveTaxiPlayerCarId(player.user_id, state.carSource, state.carRefId);
   if (carId != null) {
-    applyDrivingWear(player.user_id, carId, order.distanceKm ?? order.tripMinutes / 3);
-    if (!consumeFuelLiters(player.user_id, carId, order.distanceKm ?? order.tripMinutes / 3)) {
-      payNote += " Бак пуст — доехали на остатках.";
-    }
+    applyDrivingWear(player.user_id, carId, tripKm);
+    consumeFuelLiters(player.user_id, carId, tripKm);
+  } else if (state.carSource === "rental") {
+    consumeRentalFuelLiters(player.user_id, tripKm);
   }
   const skillResult = recordSkillAction(player, "taxi_trips");
   const skillPatch = skillResult.patch;
@@ -492,8 +495,10 @@ export function getTaxiStatus(player: PlayerRow, job: JobDef, now = Date.now()):
   const carTariff = state?.taxiClass ?? "economy";
   const rawOrders = state?.activeTrip ? [] : (state?.availableOrders ?? []);
   const availableOrders: TaxiOrderView[] = rawOrders.map((o) => {
-    const canAccept = canCarFulfillOrderTariff(carTariff, o.tariff);
-    const block = acceptBlockReasonForOrder(carTariff, o.tariff);
+    const tariffBlock = acceptBlockReasonForOrder(carTariff, o.tariff);
+    const fuelBlock = state ? taxiFuelBlockReason(player, state, o.distanceKm) : null;
+    const block = fuelBlock ?? tariffBlock;
+    const canAccept = !fuelBlock && canCarFulfillOrderTariff(carTariff, o.tariff);
     return {
       ...o,
       canAccept,
@@ -686,6 +691,9 @@ export function taxiAcceptOrder(
     const block = acceptBlockReasonForOrder(state.taxiClass, order.tariff);
     return { ok: false, error: block ?? "Автомобиль не подходит для этого тарифа" };
   }
+
+  const fuelBlock = taxiFuelBlockReason(player, state, order.distanceKm);
+  if (fuelBlock) return { ok: false, error: fuelBlock };
 
   const tripMs = order.tripMinutes * MS_MIN;
   const activeTrip: TaxiActiveTrip = {

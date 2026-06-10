@@ -16,6 +16,32 @@ export function getCarConsumptionL100(car: CarModel): number {
   return raw.fuelConsumptionL100 ?? car.fuelConsumption ?? 7;
 }
 
+export function fuelLitersForDistance(car: CarModel, distanceKm: number): number {
+  return Math.round(((distanceKm * getCarConsumptionL100(car)) / 100) * 10) / 10;
+}
+
+export function hasOwnedFuelForDistance(
+  userId: number,
+  playerCarId: number,
+  distanceKm: number,
+): boolean {
+  const row = getPlayerCarById(userId, playerCarId);
+  if (!row) return false;
+  const car = getCar(row.car_model_id);
+  if (!car) return false;
+  const need = fuelLitersForDistance(car, distanceKm);
+  return getFuelLevelLiters(row, car) >= need;
+}
+
+export const GAS_STATION_HINT =
+  "Заправьтесь на АЗС — раздел «Другие места» в городе.";
+
+export function insufficientFuelMessage(needL: number, haveL: number): string {
+  const need = Math.round(needL * 10) / 10;
+  const have = Math.round(haveL * 10) / 10;
+  return `Недостаточно бензина: нужно ~${need} л, в баке ${have} л. ${GAS_STATION_HINT}`;
+}
+
 export function fuelPriceRub(type: FuelType, cityId?: string, now = Date.now()): number {
   const f = getBalanceBible().fuel;
   const base = f[type] ?? 70;
@@ -50,8 +76,7 @@ export function consumeFuelLiters(
   if (!row) return false;
   const car = getCar(row.car_model_id);
   if (!car) return false;
-  const consumption = getCarConsumptionL100(car);
-  const used = (distanceKm * consumption) / 100;
+  const used = fuelLitersForDistance(car, distanceKm);
   const current = getFuelLevelLiters(row, car);
   if (current < used) {
     setFuelLevelLiters(userId, playerCarId, 0);

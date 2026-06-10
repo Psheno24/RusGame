@@ -1032,22 +1032,27 @@ export async function registerRoutes(app: FastifyInstance) {
     return getGasStation(player);
   });
 
-  app.post<{ Body: { playerCarId?: number; fuelType?: string; liters?: number } }>(
+  app.post<{ Body: { playerCarId?: number; rental?: boolean; fuelType?: string; liters?: number } }>(
     "/api/places/gas-station",
     async (req, reply) => {
       const userId = await resolveUserId(req);
       if (!userId) return reply.code(401).send({ error: "Не авторизован" });
-      const { refuelCar } = await import("./gasStation.js");
-      const playerCarId = Number(req.body?.playerCarId);
+      const { refuelCar, refuelRentalCar } = await import("./gasStation.js");
       const fuelType = req.body?.fuelType;
-      if (!Number.isInteger(playerCarId) || playerCarId <= 0) {
-        return reply.code(400).send({ error: "Укажите playerCarId" });
-      }
       if (fuelType !== "ai92" && fuelType !== "ai95" && fuelType !== "premium") {
         return reply.code(400).send({ error: "Укажите fuelType: ai92, ai95 или premium" });
       }
       const liters = req.body?.liters != null ? Number(req.body.liters) : undefined;
-      const result = refuelCar(userId, playerCarId, fuelType, liters);
+      let result;
+      if (req.body?.rental) {
+        result = refuelRentalCar(userId, fuelType, liters);
+      } else {
+        const playerCarId = Number(req.body?.playerCarId);
+        if (!Number.isInteger(playerCarId) || playerCarId <= 0) {
+          return reply.code(400).send({ error: "Укажите playerCarId или rental: true" });
+        }
+        result = refuelCar(userId, playerCarId, fuelType, liters);
+      }
       if (!result.ok) return reply.code(400).send({ error: result.error });
       const user = await getPublicUser(userId);
       return {

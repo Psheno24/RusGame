@@ -1,4 +1,5 @@
 [
+  { "id": "M", "title": "Категория M", "subtitle": "Скутеры и мопеды", "licensePriceRub": 0 },
   { "id": "A", "title": "Категория A", "subtitle": "Мотоциклы", "licensePriceRub": 12000 },
   { "id": "B", "title": "Категория B", "subtitle": "Легковые автомобили", "licensePriceRub": 28000 },
   { "id": "C", "title": "Категория C", "subtitle": "Грузовые автомобили", "licensePriceRub": 45000 },

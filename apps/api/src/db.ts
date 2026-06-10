@@ -39,6 +39,7 @@ export type PlayerRow = {
   plate_region: string | null;
   vehicle_rental_id: string | null;
   vehicle_rental_expires_at: number | null;
+  vehicle_rental_fuel_level_l: number | null;
   drivers_license: number;
   driver_licenses: string | null;
   housing_type: string | null;
@@ -672,6 +673,11 @@ function migrate(database: Database.Database) {
     database.exec("ALTER TABLE player_cars ADD COLUMN fuel_level_l REAL");
   }
 
+  const colsRentalFuel = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
+  if (!colsRentalFuel.some((c) => c.name === "vehicle_rental_fuel_level_l")) {
+    database.exec("ALTER TABLE players ADD COLUMN vehicle_rental_fuel_level_l REAL");
+  }
+
   const colsEduV2 = database.prepare("PRAGMA table_info(players)").all() as { name: string }[];
   if (!colsEduV2.some((c) => c.name === "education_tier")) {
     database.exec("ALTER TABLE players ADD COLUMN education_tier TEXT NOT NULL DEFAULT 'none'");
@@ -776,7 +782,7 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
         phone_device_id = ?, phone_acquired_at = ?,
         car_owned = ?, car_model_id = ?, car_acquired_at = ?,
         plate_text = ?, plate_l1 = ?, plate_digits = ?, plate_l2 = ?, plate_region = ?,
-        vehicle_rental_id = ?, vehicle_rental_expires_at = ?,
+        vehicle_rental_id = ?, vehicle_rental_expires_at = ?, vehicle_rental_fuel_level_l = ?,
         drivers_license = ?, driver_licenses = ?,
         housing_type = ?, housing_city_id = ?, housing_expires_at = ?, housing_owned_at = ?, housing_property_id = ?,
         housing_owned_id = ?, housing_last_type = ?, housing_last_city_id = ?, housing_last_expires_at = ?,
@@ -827,6 +833,7 @@ export function updatePlayer(userId: number, patch: Partial<PlayerRow>) {
       next.plate_region ?? null,
       next.vehicle_rental_id ?? null,
       next.vehicle_rental_expires_at ?? null,
+      next.vehicle_rental_fuel_level_l ?? null,
       next.drivers_license ?? 0,
       next.driver_licenses ?? null,
       next.housing_type ?? null,

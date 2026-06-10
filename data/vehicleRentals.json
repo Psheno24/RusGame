@@ -3,7 +3,7 @@
     "id": "scooter",
     "label": "Самокат",
     "hint": "По городу, без прав",
-    "pricePerHourRub": 200,
+    "pricePerHourRub": 150,
     "needsLicense": false,
     "accent": "#2d8f5c"
   },
@@ -11,7 +11,7 @@
     "id": "bike",
     "label": "Велосипед",
     "hint": "Прогулки и короткие дела",
-    "pricePerHourRub": 150,
+    "pricePerHourRub": 200,
     "needsLicense": false,
     "accent": "#1e6b4f"
   },
@@ -21,6 +21,7 @@
     "hint": "Быстрее велосипеда",
     "pricePerHourRub": 600,
     "needsLicense": true,
+    "licenseCategory": "M",
     "accent": "#4a5568"
   },
   {
@@ -29,6 +30,7 @@
     "hint": "Дешёвое авто на время",
     "pricePerHourRub": 800,
     "needsLicense": true,
+    "licenseCategory": "B",
     "accent": "#3d4f6f",
     "taxiCarModelId": "lada-granta"
   }
