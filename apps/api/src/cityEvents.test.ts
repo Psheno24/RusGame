@@ -91,6 +91,17 @@ describe("cityEventsEngine", () => {
     assert.ok(state.nextWeatherRefreshAt > now);
   });
 
+  it("persists events across repeated loads in the same slot", () => {
+    const cityId = "test_slot_persist";
+    const now = Date.parse("2026-03-04T10:00:00.000Z");
+    const a = getCityEventState(cityId, now);
+    const b = getCityEventState(cityId, now + 12_000);
+    assert.deepEqual(
+      a.events.map((e) => e.templateId),
+      b.events.map((e) => e.templateId),
+    );
+  });
+
   it("winter siberian weather is cold", () => {
     const now = Date.parse("2026-01-15T06:00:00.000Z");
     const w = generateWeather("omsk", now);

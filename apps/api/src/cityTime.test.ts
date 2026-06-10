@@ -66,6 +66,20 @@ describe("cityTime", () => {
     assert.equal(omsk.hour, 18);
   });
 
+  it("event slot start is stable within the same 3-hour window", async () => {
+    const { getEventSlotStart } = await import("./cityEventsEngine.js");
+    const t1 = Date.parse("2026-03-04T10:00:00.000Z");
+    const t2 = t1 + 15_000;
+    assert.equal(getEventSlotStart("moscow", t1), getEventSlotStart("moscow", t2));
+  });
+
+  it("weather slot start is stable within the same hour", async () => {
+    const { getWeatherSlotStart } = await import("./cityEventsEngine.js");
+    const t1 = Date.parse("2026-03-04T10:00:00.000Z");
+    const t2 = t1 + 15_000;
+    assert.equal(getWeatherSlotStart("moscow", t1), getWeatherSlotStart("moscow", t2));
+  });
+
   it("night guard at 00:28 Omsk is allowed but blocked in Moscow", () => {
     const schedule = { mode: "night" as const, nightStartHour: 22, dayStartHour: 6 };
     const now = Date.parse("2026-05-31T18:28:00.000Z");

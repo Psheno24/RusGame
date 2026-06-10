@@ -1,5 +1,5 @@
 import { getCity } from "./gameData.js";
-import { getCityLocalTime } from "./cityTime.js";
+import { getLocalMsIntoEventSlot, getLocalMsIntoHour } from "./cityTime.js";
 import { getDb } from "./db.js";
 import {
   COMMON_EVENTS,
@@ -42,16 +42,13 @@ function getTimezone(cityId: string): string {
 /** Начало текущего 3-часового слота событий (локальное время города). */
 export function getEventSlotStart(cityId: string, now = Date.now()): number {
   const tz = getTimezone(cityId);
-  const local = getCityLocalTime(tz, now);
-  const slotHour = Math.floor(local.hour / 3) * 3;
-  return now - (local.minutesOfDay - slotHour * 60) * 60_000;
+  return now - getLocalMsIntoEventSlot(tz, now);
 }
 
 /** Начало текущего часового слота погоды. */
 export function getWeatherSlotStart(cityId: string, now = Date.now()): number {
   const tz = getTimezone(cityId);
-  const local = getCityLocalTime(tz, now);
-  return now - local.minute * 60_000;
+  return now - getLocalMsIntoHour(tz, now);
 }
 
 function rollEffects(rng: () => number, template: CityEventTemplate): RolledEffect[] {
@@ -232,12 +229,12 @@ export function getCityEventState(cityId: string, now = Date.now()): CityEventSt
     };
     changed = true;
   } else {
-    if (stored.eventsRefreshedAt < eventSlot) {
+    if (stored.eventsRefreshedAt !== eventSlot) {
       stored.events = generateEvents(cityId, eventSlot);
       stored.eventsRefreshedAt = eventSlot;
       changed = true;
     }
-    if (stored.weatherRefreshedAt < weatherSlot) {
+    if (stored.weatherRefreshedAt !== weatherSlot) {
       stored.weather = generateWeather(cityId, weatherSlot);
       stored.weatherRefreshedAt = weatherSlot;
       changed = true;

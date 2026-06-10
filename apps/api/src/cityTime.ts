@@ -30,16 +30,32 @@ export function getCityTimezone(city: { timezone?: string } | undefined): string
   return city?.timezone?.trim() || DEFAULT_TIMEZONE;
 }
 
-function readLocalParts(timezone: string, now: number): { hour: number; minute: number } {
+function readLocalParts(timezone: string, now: number): { hour: number; minute: number; second: number } {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: timezone,
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
     hour12: false,
   }).formatToParts(new Date(now));
   const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
   const minute = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
-  return { hour, minute };
+  const second = Number(parts.find((p) => p.type === "second")?.value ?? 0);
+  return { hour, minute, second };
+}
+
+/** Миллисекунды от начала текущего часа (локальное время). */
+export function getLocalMsIntoHour(timezone: string, now = Date.now()): number {
+  const { minute, second } = readLocalParts(timezone, now);
+  return minute * 60_000 + second * 1000 + (now % 1000);
+}
+
+/** Миллисекунды от начала текущего 3-часового слота (локальное время). */
+export function getLocalMsIntoEventSlot(timezone: string, now = Date.now()): number {
+  const { hour, minute, second } = readLocalParts(timezone, now);
+  const slotHour = Math.floor(hour / 3) * 3;
+  const minutesOfDay = hour * 60 + minute;
+  return (minutesOfDay - slotHour * 60) * 60_000 + second * 1000 + (now % 1000);
 }
 
 export function getTimeOfDayPeriod(hour: number): TimeOfDayPeriod {
