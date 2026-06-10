@@ -26,6 +26,7 @@ import {
   nightGuardStaminaEligible,
   scaleNightGuardPayoutRange,
 } from "./jobShift.js";
+import { applyJobSalaryRange } from "./cityEffectModifiers.js";
 import {
   findCityJob,
   getCity,
@@ -169,9 +170,12 @@ function calculateCooldownJobPayout(
   player: PlayerRow,
   job: JobDef,
   localTime: CityLocalTime,
+  now = Date.now(),
 ): { payout: number; multiplier: number } {
-  const mid = Math.floor(((job.payoutMin ?? 0) + (job.payoutMax ?? 0)) / 2);
-  const base = randInt(job.payoutMin ?? mid, job.payoutMax ?? mid);
+  const rawMin = job.payoutMin ?? 0;
+  const rawMax = job.payoutMax ?? rawMin;
+  const adjusted = applyJobSalaryRange(player.city_id, job.templateKey, rawMin, rawMax, now);
+  const base = randInt(adjusted.min, adjusted.max);
   const timeMult = getPayoutMultiplier(localTime.hour, job.payoutPeriods);
   const vitalMult = workPayoutMultiplier(player);
   const multiplier = timeMult * vitalMult;
@@ -183,12 +187,16 @@ function calculateNightGuardPayout(
   job: JobDef,
   localTime: CityLocalTime,
   shiftHours: number,
+  now = Date.now(),
 ): { payout: number; multiplier: number } {
-  const scaled = scaleNightGuardPayoutRange(
+  const fullAdj = applyJobSalaryRange(
+    player.city_id,
+    job.templateKey,
     job.payoutMin ?? 0,
     job.payoutMax ?? 0,
-    shiftHours,
+    now,
   );
+  const scaled = scaleNightGuardPayoutRange(fullAdj.min, fullAdj.max, shiftHours);
   const mid = Math.floor((scaled.min + scaled.max) / 2);
   const base = randInt(
     scaled.min > 0 ? scaled.min : mid,
@@ -205,8 +213,12 @@ function calculateDurationJobPayout(
   job: JobDef,
   localTime: CityLocalTime,
   hours: number,
+  now = Date.now(),
 ): { payout: number; multiplier: number } {
-  const perHour = randInt(job.payoutPerHourMin ?? 0, job.payoutPerHourMax ?? 0);
+  const rawMin = job.payoutPerHourMin ?? 0;
+  const rawMax = job.payoutPerHourMax ?? rawMin;
+  const adjusted = applyJobSalaryRange(player.city_id, job.templateKey, rawMin, rawMax, now);
+  const perHour = randInt(adjusted.min, adjusted.max);
   const timeMult = getPayoutMultiplier(localTime.hour, job.payoutPeriods);
   const vitalMult = workPayoutMultiplier(player);
   const multiplier = timeMult * vitalMult;
@@ -480,10 +492,10 @@ export function doJobWork(userId: number, jobId: string, hours?: number, now = D
   const payoutResult = isLoader
     ? { payout: LOADER_PAYOUT_RUB, multiplier: 1 }
     : job.kind === "duration"
-      ? calculateDurationJobPayout(player, job, schedule.localTime, shiftHours)
+      ? calculateDurationJobPayout(player, job, schedule.localTime, shiftHours, now)
       : isNightGuardJob(job)
-        ? calculateNightGuardPayout(player, job, schedule.localTime, shiftHours)
-        : calculateCooldownJobPayout(player, job, schedule.localTime);
+        ? calculateNightGuardPayout(player, job, schedule.localTime, shiftHours, now)
+        : calculateCooldownJobPayout(player, job, schedule.localTime, now);
 
   const patch: Partial<PlayerRow> = {
     rubles: player.rubles + payoutResult.payout,

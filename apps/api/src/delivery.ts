@@ -27,7 +27,7 @@ import {
   type DeliveryState,
   type DeliveryTransport,
 } from "./playerDelivery.js";
-import { getDeliveryIncomeMultiplier } from "./incomeMultiplier.js";
+import { getDeliveryIncomeMultiplier, getIncomeMultiplierBreakdown } from "./incomeMultiplier.js";
 import { scheduleDeliveryTripEndPush } from "./pushNotifications.js";
 
 const MODIFIER_TITLES: Record<DeliveryModifier, string> = {
@@ -269,6 +269,7 @@ export type DeliveryStatus = {
   ordersCompleted: number;
   canTakeOrder: boolean;
   incomeMultiplier: number;
+  incomeMultiplierHints: string[];
   takeOrderBlockedReason?: string | null;
   completedMessage?: string;
   completedPayout?: number;
@@ -304,13 +305,16 @@ export function getDeliveryStatus(player: PlayerRow, job: JobDef, now = Date.now
   }
   const canTakeOrder = takeOrderBlockedReason == null;
 
+  const incomeBd = getIncomeMultiplierBreakdown(player.city_id, now, { mode: "delivery" });
+
   return {
     transport,
     activeTrip,
     sessionIncomeRub: state.sessionIncomeRub,
     ordersCompleted: state.ordersCompleted,
     canTakeOrder,
-    incomeMultiplier: getDeliveryIncomeMultiplier(player.city_id, now),
+    incomeMultiplier: incomeBd.total,
+    incomeMultiplierHints: incomeBd.hints,
     takeOrderBlockedReason,
     completedMessage: advanced.completedMessage,
     completedPayout: advanced.completedPayout,

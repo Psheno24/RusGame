@@ -64,5 +64,6 @@ export function useDeliveryLine(
     ordersCompleted: status?.ordersCompleted ?? 0,
     activeTrip: status?.activeTrip ?? null,
     incomeMultiplier: status?.incomeMultiplier ?? 1,
+    incomeMultiplierHints: status?.incomeMultiplierHints,
   };
 }

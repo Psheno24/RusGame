@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { formatDuration, type TaxiOrderView, type TaxiStatus } from "../api";
 import { formatRub } from "../formatRub.js";
 import { type TaxiLineHandle } from "../hooks/useTaxiLine";
+import { appendEffectHints } from "../jobPayout";
 
 type TaxiCarOption = TaxiStatus["availableCars"][number];
 
@@ -149,7 +150,12 @@ export function TaxiLineSetup({ taxi }: SetupProps) {
           </div>
           <div className="taxi-driver-stat">
             <span>Текущий коэффициент дохода</span>
-            <strong>{formatIncomeMult(status.incomeMultiplier ?? 1)}</strong>
+            <strong>
+              {appendEffectHints(
+                formatIncomeMult(status.incomeMultiplier ?? 1),
+                status.incomeMultiplierHints,
+              )}
+            </strong>
           </div>
         </div>
 

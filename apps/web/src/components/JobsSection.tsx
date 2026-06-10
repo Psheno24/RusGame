@@ -15,7 +15,7 @@ import {
 } from "../api";
 import { applyLiveJobSchedule, formatJobListScheduleNote, getCityLocalTime } from "../cityTime";
 import { buildJobRequirements, jobRequirementsMet } from "../jobRequirements";
-import { formatJobPayoutRange } from "../jobPayout";
+import { formatJobPayoutRange, appendEffectHints } from "../jobPayout";
 import { getJobCooldownLabel, getShiftDurationLabel } from "../jobShift";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { JobActionButtonLabel } from "./JobActionButtonLabel";
@@ -85,26 +85,37 @@ const JOB_ICONS: Record<string, string> = {
 function formatShiftPayoutLabel(job: JobCard): string {
   if (job.kind === "taxi_line" || job.kind === "delivery_line") return "Доход неопределён";
   if (job.kind === "duration" && job.payoutPerHourMin != null) {
-    return formatRubPerHour(job.payoutPerHourMin, job.payoutPerHourMax ?? job.payoutPerHourMin);
+    return appendEffectHints(
+      formatRubPerHour(job.payoutPerHourMin, job.payoutPerHourMax ?? job.payoutPerHourMin),
+      job.payoutHints,
+    );
   }
   if (job.templateKey === "night_guard") {
     if (job.scheduleAllowed) {
-      return `${formatJobPayoutRange(job.payoutMin, job.payoutMax)} за смену сейчас`;
+      return appendEffectHints(
+        `${formatJobPayoutRange(job.payoutMin, job.payoutMax)} за смену сейчас`,
+        job.payoutHints,
+      );
     }
-    return `до ${formatRub(job.payoutMax)} за полную смену (22:00–8:00)`;
+    return appendEffectHints(
+      `до ${formatRub(job.payoutMax)} за полную смену (22:00–8:00)`,
+      job.payoutHints,
+    );
   }
   const payout = formatJobPayoutRange(job.payoutMin, job.payoutMax);
-  if (job.payoutMin === job.payoutMax) return payout;
-  return `${payout} за смену`;
+  const base = job.payoutMin === job.payoutMax ? payout : `${payout} за смену`;
+  return appendEffectHints(base, job.payoutHints);
 }
 
 function formatListPayoutLabel(job: JobCard): string {
   if (job.kind === "taxi_line" || job.kind === "delivery_line") return "Доход неопределён";
   if (job.templateKey === "night_guard") {
-    if (job.scheduleAllowed) return formatJobPayoutRange(job.payoutMin, job.payoutMax);
-    return `до ${formatRub(job.payoutMax)}`;
+    if (job.scheduleAllowed) {
+      return appendEffectHints(formatJobPayoutRange(job.payoutMin, job.payoutMax), job.payoutHints);
+    }
+    return appendEffectHints(`до ${formatRub(job.payoutMax)}`, job.payoutHints);
   }
-  return formatJobPayoutRange(job.payoutMin, job.payoutMax);
+  return appendEffectHints(formatJobPayoutRange(job.payoutMin, job.payoutMax), job.payoutHints);
 }
 
 function formatListMeta(
@@ -442,9 +453,12 @@ export function JobsSection({
         ? ` ×${job.payoutMultiplier.toFixed(2).replace(/\.?0+$/, "")}`
         : "";
     if (job.kind === "duration" && job.payoutPerHourMin != null) {
-      const earn = formatRubRange(
-        job.payoutPerHourMin * hours,
-        (job.payoutPerHourMax ?? job.payoutPerHourMin) * hours,
+      const earn = appendEffectHints(
+        formatRubRange(
+          job.payoutPerHourMin * hours,
+          (job.payoutPerHourMax ?? job.payoutPerHourMin) * hours,
+        ),
+        job.payoutHints,
       );
       return {
         title: "Выйти на смену?",
@@ -455,7 +469,7 @@ export function JobsSection({
     }
     const local = getCityLocalTime(cityTimezone);
     const shiftLabel = getShiftDurationLabel(job, local);
-    const earn = formatJobPayoutRange(job.payoutMin, job.payoutMax);
+    const earn = appendEffectHints(formatJobPayoutRange(job.payoutMin, job.payoutMax), job.payoutHints);
     return {
       title: "Выйти на смену?",
       text: `${shiftLabel} · ${earn}${mult}`,

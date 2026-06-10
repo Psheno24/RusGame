@@ -2,6 +2,7 @@ import { getCityLocalTime } from "./cityTime.js";
 import { getCity } from "./gameData.js";
 import { collectActiveEffects, getCityEventState } from "./cityEventsEngine.js";
 import type { RolledEffect } from "./cityEventsCatalog.js";
+import { lineIncomeHints } from "./cityEffectModifiers.js";
 
 const BUSINESS_TARIFFS = new Set(["business", "premium"]);
 
@@ -60,6 +61,7 @@ export type IncomeMultiplierBreakdown = {
   isEvening: boolean;
   isWeekend: boolean;
   isHoliday: boolean;
+  hints: string[];
 };
 
 function sumEffectValues(
@@ -115,6 +117,7 @@ export function computeIncomeMultiplier(
     isEvening: eveningBonus > 0,
     isWeekend: isWeekend(timezone, now),
     isHoliday: isFixedHoliday(timezone, now) || cityHoliday,
+    hints: [],
   };
 }
 
@@ -129,7 +132,7 @@ export function getIncomeMultiplierBreakdown(
   const state = getCityEventState(cityId, now);
   const effects = collectActiveEffects(state);
 
-  return computeIncomeMultiplier(
+  const bd = computeIncomeMultiplier(
     local.hour,
     tz,
     now,
@@ -137,6 +140,17 @@ export function getIncomeMultiplierBreakdown(
     state.hasCityHoliday,
     opts,
   );
+
+  return {
+    ...bd,
+    hints: lineIncomeHints(cityId, now, {
+      mode: opts?.mode ?? "taxi",
+      taxiClass: opts?.taxiClass ?? null,
+      evening: bd.evening,
+      calendar: bd.calendar,
+      isHoliday: bd.isHoliday,
+    }),
+  };
 }
 
 export function getTaxiIncomeMultiplier(

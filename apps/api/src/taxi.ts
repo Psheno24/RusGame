@@ -43,7 +43,7 @@ import {
   taxiKmPayoutRub,
   type TaxiCashRiskConfig,
 } from "./taxiPayout.js";
-import { getTaxiIncomeMultiplier } from "./incomeMultiplier.js";
+import { getTaxiIncomeMultiplier, getIncomeMultiplierBreakdown } from "./incomeMultiplier.js";
 
 type TaxiConfig = {
   idleOfflineMs: number;
@@ -415,6 +415,7 @@ export type TaxiStatus = {
   availableCars: TaxiCarOption[];
   cityTariffs: string[];
   incomeMultiplier: number;
+  incomeMultiplierHints: string[];
   completedMessage?: string;
   completedPayout?: number;
 };
@@ -464,7 +465,10 @@ export function getTaxiStatus(player: PlayerRow, job: JobDef, now = Date.now()):
   });
 
   const carTariffDef = taxiConfig.tariffs[carTariff];
-  const incomeMult = getTaxiIncomeMultiplier(player.city_id, state?.taxiClass ?? null, now);
+  const incomeBd = getIncomeMultiplierBreakdown(player.city_id, now, {
+    mode: "taxi",
+    taxiClass: state?.taxiClass ?? null,
+  });
 
   return {
     carSelected: Boolean(selected),
@@ -486,7 +490,8 @@ export function getTaxiStatus(player: PlayerRow, job: JobDef, now = Date.now()):
     payoutMax: job.payoutMax ?? 0,
     availableCars: cars,
     cityTariffs: availableTariffsForCity(player.city_id),
-    incomeMultiplier: incomeMult,
+    incomeMultiplier: incomeBd.total,
+    incomeMultiplierHints: incomeBd.hints,
     completedMessage,
     completedPayout,
   };

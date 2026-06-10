@@ -30,6 +30,7 @@ import {
 } from "./auth.js";
 import { countPlayersInCity, getDb, getPlayer, getUserById, getUserByLogin, listPlayersForAdmin, updatePlayer } from "./db.js";
 import { getCityLocalTime, getCityTimezone } from "./cityTime.js";
+import { applyJobSalaryRange } from "./cityEffectModifiers.js";
 import {
   getShiftDurationLabel,
   isNightGuardJob,
@@ -200,34 +201,64 @@ export async function registerRoutes(app: FastifyInstance) {
       const record = lastWorkRecordForJob(player, job.id);
       const baseCooldownMs =
         record?.cooldownMs ?? jobNominalCooldownMs(job, work.localTime);
-      let payoutMin =
+      let baseMin =
         job.kind === "duration"
           ? (job.payoutPerHourMin ?? 0) * (job.shiftHoursMin ?? 4)
           : job.kind === "taxi_line"
             ? (job.payoutMin ?? 0)
             : (job.payoutMin ?? 0);
-      let payoutMax =
+      let baseMax =
         job.kind === "duration"
           ? (job.payoutPerHourMax ?? 0) * (job.shiftHoursMax ?? 12)
           : job.kind === "taxi_line"
             ? (job.payoutMax ?? 0)
             : (job.payoutMax ?? 0);
-      const nightGuardFullPayoutMin = isNightGuardJob(job) ? (job.payoutMin ?? 0) : null;
-      const nightGuardFullPayoutMax = isNightGuardJob(job) ? (job.payoutMax ?? 0) : null;
+
+      let payoutHints: string[] = [];
+      const eventCityId = city?.id ?? player.city_id;
+      let payoutPerHourMin = job.payoutPerHourMin ?? null;
+      let payoutPerHourMax = job.payoutPerHourMax ?? null;
+      if (job.kind === "cooldown" || job.kind === "duration") {
+        if (job.kind === "duration") {
+          const hourAdj = applyJobSalaryRange(
+            eventCityId,
+            job.templateKey,
+            job.payoutPerHourMin ?? 0,
+            job.payoutPerHourMax ?? job.payoutPerHourMin ?? 0,
+            now,
+          );
+          payoutPerHourMin = hourAdj.min;
+          payoutPerHourMax = hourAdj.max;
+          payoutHints = hourAdj.hints;
+          baseMin = hourAdj.min * (job.shiftHoursMin ?? 4);
+          baseMax = hourAdj.max * (job.shiftHoursMax ?? 12);
+        } else {
+          const adjusted = applyJobSalaryRange(eventCityId, job.templateKey, baseMin, baseMax, now);
+          baseMin = adjusted.min;
+          baseMax = adjusted.max;
+          payoutHints = adjusted.hints;
+        }
+      }
+
+      let payoutMin = baseMin;
+      let payoutMax = baseMax;
+      let nightGuardFullPayoutMin: number | null = null;
+      let nightGuardFullPayoutMax: number | null = null;
       if (isNightGuardJob(job)) {
-        const fullMin = nightGuardFullPayoutMin ?? 0;
-        const fullMax = nightGuardFullPayoutMax ?? 0;
+        nightGuardFullPayoutMin = baseMin;
+        nightGuardFullPayoutMax = baseMax;
         const endHour = job.shiftEndsAtHour ?? 8;
         if (work.scheduleAllowed) {
-          const current = nightGuardPayoutForLocal(fullMin, fullMax, work.localTime, endHour);
+          const current = nightGuardPayoutForLocal(baseMin, baseMax, work.localTime, endHour);
           payoutMin = current.min;
           payoutMax = current.max;
         } else {
-          const display = nightGuardDisplayPayoutRange(fullMin, fullMax, endHour);
+          const display = nightGuardDisplayPayoutRange(baseMin, baseMax, endHour);
           payoutMin = display.min;
           payoutMax = display.max;
         }
       }
+
       const workCityId = city?.id ?? player.city_id;
       const access = jobAccessStatus(player, job.id, now);
       return {
@@ -244,10 +275,11 @@ export async function registerRoutes(app: FastifyInstance) {
         shiftHours: job.shiftHours ?? null,
         shiftEndsAtHour: job.shiftEndsAtHour ?? null,
         shiftDurationLabel: getShiftDurationLabel(job, cooldown.ready ? work.localTime : undefined),
-        payoutPerHourMin: job.payoutPerHourMin ?? null,
-        payoutPerHourMax: job.payoutPerHourMax ?? null,
+        payoutPerHourMin: payoutPerHourMin,
+        payoutPerHourMax: payoutPerHourMax,
         payoutMin,
         payoutMax,
+        payoutHints,
         nightGuardFullPayoutMin,
         nightGuardFullPayoutMax,
         cooldownMs: baseCooldownMs,

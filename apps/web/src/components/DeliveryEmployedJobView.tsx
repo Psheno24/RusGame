@@ -7,6 +7,7 @@ import { JobActionButtonLabel } from "./JobActionButtonLabel";
 import { JobRequirementsList } from "./JobRequirementsList";
 import { useDeliveryLine } from "../hooks/useDeliveryLine";
 import type { JobView, User } from "../api";
+import { appendEffectHints } from "../jobPayout";
 
 const TRANSPORT_LABELS: Record<string, string> = {
   walk: "Пешком",
@@ -59,6 +60,7 @@ export function DeliveryEmployedJobView({
     ordersCompleted,
     activeTrip,
     incomeMultiplier,
+    incomeMultiplierHints,
   } = delivery;
 
   const requirementsMet = jobRequirementsMet(jobRequirements);
@@ -95,7 +97,9 @@ export function DeliveryEmployedJobView({
             </div>
             <div>
               <dt>Текущий коэффициент дохода</dt>
-              <dd>{formatIncomeMult(incomeMultiplier ?? 1)}</dd>
+              <dd>
+                {appendEffectHints(formatIncomeMult(incomeMultiplier ?? 1), incomeMultiplierHints)}
+              </dd>
             </div>
             <JobRequirementsList requirements={jobRequirements} />
           </dl>

@@ -566,6 +566,7 @@ export type JobView = {
   cooldownMs: number;
   payoutMin: number;
   payoutMax: number;
+  payoutHints?: string[];
   nightGuardFullPayoutMin?: number | null;
   nightGuardFullPayoutMax?: number | null;
   skill: string | null;
@@ -711,6 +712,7 @@ export type TaxiStatus = {
   }>;
   cityTariffs: string[];
   incomeMultiplier: number;
+  incomeMultiplierHints?: string[];
 };
 
 export async function fetchTaxiStatus() {
@@ -788,6 +790,7 @@ export type DeliveryStatus = {
   ordersCompleted: number;
   canTakeOrder: boolean;
   incomeMultiplier: number;
+  incomeMultiplierHints?: string[];
   takeOrderBlockedReason?: string | null;
   completedMessage?: string;
   completedPayout?: number;
