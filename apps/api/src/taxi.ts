@@ -43,7 +43,9 @@ import {
   taxiKmPayoutRub,
   type TaxiCashRiskConfig,
 } from "./taxiPayout.js";
-import { getTaxiIncomeMultiplier, getIncomeMultiplierBreakdown } from "./incomeMultiplier.js";
+import { getIncomeMultiplierBreakdown } from "./incomeMultiplier.js";
+import { buildTaxiOrderBreakdown, TAXI_DEMAND_TITLES } from "./linePayoutBreakdown.js";
+import { getBalanceBible } from "./balanceBible.js";
 
 type TaxiConfig = {
   idleOfflineMs: number;
@@ -157,7 +159,10 @@ export function listTaxiCarOptions(player: PlayerRow, now = Date.now()): TaxiCar
 
 function generateOrder(player: PlayerRow, orderTariff: string): TaxiOrder {
   const cityMult = getCitySalaryMultiplier(player.city_id);
-  const incomeMult = getTaxiIncomeMultiplier(player.city_id, orderTariff);
+  const incomeBd = getIncomeMultiplierBreakdown(player.city_id, Date.now(), {
+    mode: "taxi",
+    taxiClass: orderTariff,
+  });
   const tariffDef = taxiConfig.tariffs[orderTariff] ?? taxiConfig.tariffs.economy!;
   const { tripMinutes, distanceKm, demand } = rollTaxiOrderTrip(
     taxiConfig.tripMinutesMin,
@@ -170,7 +175,23 @@ function generateOrder(player: PlayerRow, orderTariff: string): TaxiOrder {
         ? randInt(35, 41) / 10
         : randInt(30, 34) / 10;
   const payment: "card" | "cash" = Math.random() < 0.38 ? "cash" : "card";
-  const payoutRub = Math.round(taxiKmPayoutRub(distanceKm, orderTariff, demand.mult, cityMult) * incomeMult);
+  const ratePerKm =
+    (getBalanceBible().taxi as { tariffPerKm: Record<string, number> }).tariffPerKm[orderTariff] ??
+    220;
+  const payoutRub = Math.round(
+    taxiKmPayoutRub(distanceKm, orderTariff, demand.mult, cityMult) * incomeBd.total,
+  );
+  const payoutBreakdown = buildTaxiOrderBreakdown({
+    distanceKm,
+    ratePerKm,
+    tariffTitle: tariffDef.title,
+    demandKey: demand.key,
+    demandMult: demand.mult,
+    cityMult,
+    incomeMult: incomeBd.total,
+    incomeHints: incomeBd.hints,
+    payoutRub,
+  });
 
   return {
     id: `o-${Date.now()}-${randInt(1000, 9999)}`,
@@ -181,6 +202,14 @@ function generateOrder(player: PlayerRow, orderTariff: string): TaxiOrder {
     payoutRub,
     tariff: orderTariff,
     tariffTitle: tariffDef.title,
+    demandKey: demand.key,
+    demandTitle: TAXI_DEMAND_TITLES[demand.key] ?? demand.key,
+    demandMult: demand.mult,
+    ratePerKm,
+    cityMult,
+    incomeMult: incomeBd.total,
+    incomeMultHints: incomeBd.hints,
+    payoutBreakdown,
     offeredAt: Date.now(),
   };
 }

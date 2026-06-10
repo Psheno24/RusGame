@@ -3899,6 +3899,59 @@ button.property-badge--live:not(:disabled):active {
   margin-top: 0;
 }
 
+.line-payout-breakdown {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.line-payout-breakdown--compact {
+  padding: 8px 10px;
+}
+
+.line-payout-formula {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.line-payout-specs {
+  margin: 0;
+  display: grid;
+  gap: 4px 12px;
+  grid-template-columns: minmax(88px, auto) 1fr;
+  font-size: 0.82rem;
+}
+
+.line-payout-specs > div {
+  display: contents;
+}
+
+.line-payout-specs dt {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.line-payout-specs dd {
+  margin: 0;
+  color: var(--text);
+}
+
+.taxi-order-summary .taxi-order-meta {
+  margin-bottom: 10px;
+}
+
+.taxi-order-trip-time {
+  margin: 1rem 0 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
 .taxi-order-cash-hint {
   font-size: 0.82rem;
   color: var(--text-muted);

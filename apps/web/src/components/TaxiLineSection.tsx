@@ -3,6 +3,7 @@ import { formatDuration, type TaxiOrderView, type TaxiStatus } from "../api";
 import { formatRub } from "../formatRub.js";
 import { type TaxiLineHandle } from "../hooks/useTaxiLine";
 import { appendEffectHints } from "../jobPayout";
+import { LinePayoutBreakdown } from "./LinePayoutBreakdown";
 
 type TaxiCarOption = TaxiStatus["availableCars"][number];
 
@@ -13,6 +14,33 @@ function formatIncomeMult(value: number): string {
 
 function carOptionKey(c: { source: string; refId: number }) {
   return `${c.source}:${c.refId}`;
+}
+
+function TaxiOrderSummary({
+  order,
+}: {
+  order: Pick<
+    TaxiOrderView,
+    "passengerRating" | "payment" | "payoutBreakdown" | "tripMinutes"
+  >;
+}) {
+  return (
+    <div className="taxi-order-summary">
+      <p className="taxi-order-meta">
+        Пассажир {order.passengerRating.toFixed(1)} ★ ·{" "}
+        {order.payment === "cash" ? "наличные" : "карта"}
+        {order.payment === "cash" && (
+          <span className="taxi-order-cash-hint"> (возможны риски с наличными)</span>
+        )}
+      </p>
+      <LinePayoutBreakdown
+        breakdown={order.payoutBreakdown}
+        compact
+        showFormula={false}
+      />
+      <p className="taxi-order-trip-time">{order.tripMinutes} мин в пути</p>
+    </div>
+  );
 }
 
 function TaxiCarList({
@@ -73,16 +101,7 @@ function OrderCard({
 
   return (
     <li className={`taxi-order-card${blocked ? " taxi-order-card--blocked" : ""}`}>
-      <p className="taxi-order-tariff">
-        Вызов по тарифу <strong>«{order.tariffTitle}»</strong>
-      </p>
-      <p className="taxi-order-meta">
-        {order.tripMinutes} мин в пути · пассажир {order.passengerRating.toFixed(1)} ★ ·{" "}
-        {order.payment === "cash" ? "наличные" : "карта"}
-        {order.payment === "cash" && (
-          <span className="taxi-order-cash-hint"> (возможны риски с наличными)</span>
-        )}
-      </p>
+      <TaxiOrderSummary order={order} />
       <p className="taxi-order-pay">
         Выплата: <strong className="rub-amount">{formatRub(order.payoutRub)}</strong>
       </p>
@@ -220,12 +239,11 @@ export function TaxiLinePanels({ taxi }: { taxi: TaxiLineHandle }) {
       )}
       {inTrip && status.activeTrip && (
         <div className="card taxi-trip-active">
-          <h3>В поездке</h3>
-          <p>
-            {status.activeTrip.order.tripMinutes} мин · осталось{" "}
-            <strong>{formatDuration(status.activeTrip.remainingMs)}</strong>
-          </p>
-          <p>
+          <h3>
+            В поездке · осталось {formatDuration(status.activeTrip.remainingMs)}
+          </h3>
+          <TaxiOrderSummary order={status.activeTrip.order} />
+          <p className="taxi-order-pay">
             Выплата по прибытии:{" "}
             <strong className="rub-amount">{formatRub(status.activeTrip.order.payoutRub)}</strong>
           </p>

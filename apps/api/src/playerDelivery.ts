@@ -1,5 +1,6 @@
 import type { PlayerRow } from "./db.js";
 import { getDb } from "./db.js";
+import type { LinePayoutBreakdown } from "./linePayoutBreakdown.js";
 
 export type DeliveryTransport = "walk" | "bike" | "scooter" | "moped" | "car";
 
@@ -11,7 +12,13 @@ export type DeliveryOrder = {
   transport: DeliveryTransport;
   modifier: DeliveryModifier;
   modifierTitle: string;
+  modifierMult: number;
+  ratePerKm: number;
+  cityMult: number;
+  incomeMult: number;
+  incomeMultHints: string[];
   basePayoutRub: number;
+  payoutBreakdown: LinePayoutBreakdown;
   tripMinutes: number;
   offeredAt: number;
 };

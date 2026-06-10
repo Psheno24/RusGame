@@ -8,6 +8,7 @@ import { JobRequirementsList } from "./JobRequirementsList";
 import { useDeliveryLine } from "../hooks/useDeliveryLine";
 import type { JobView, User } from "../api";
 import { appendEffectHints } from "../jobPayout";
+import { LinePayoutBreakdown } from "./LinePayoutBreakdown";
 
 const TRANSPORT_LABELS: Record<string, string> = {
   walk: "Пешком",
@@ -108,10 +109,19 @@ export function DeliveryEmployedJobView({
             {activeTrip ? (
               <div className="taxi-active-trip job-detail-action-btn">
                 <p>
-                  Доставка {activeTrip.order.distanceKm} км · {activeTrip.order.modifierTitle}
+                  Доставка {activeTrip.order.distanceKm.toFixed(1).replace(/\.0$/, "")} км ·{" "}
+                  {activeTrip.order.tripMinutes} мин · тип{" "}
+                  <strong>{activeTrip.order.modifierTitle}</strong>
                 </p>
                 <p>Осталось: {formatDuration(activeTrip.remainingMs)}</p>
-                <p>Ожидаемая оплата: ~{formatRub(activeTrip.order.basePayoutRub)}</p>
+                <LinePayoutBreakdown breakdown={activeTrip.order.payoutBreakdown} compact />
+                <p>
+                  Ожидаемая оплата: ~{formatRub(activeTrip.order.basePayoutRub)}
+                  <span className="shop-owned">
+                    {" "}
+                    (финальная сумма может измениться от событий по пути)
+                  </span>
+                </p>
               </div>
             ) : (
               <button

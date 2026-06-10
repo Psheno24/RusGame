@@ -27,7 +27,8 @@ import {
   type DeliveryState,
   type DeliveryTransport,
 } from "./playerDelivery.js";
-import { getDeliveryIncomeMultiplier, getIncomeMultiplierBreakdown } from "./incomeMultiplier.js";
+import { getIncomeMultiplierBreakdown } from "./incomeMultiplier.js";
+import { buildDeliveryOrderBreakdown } from "./linePayoutBreakdown.js";
 import { scheduleDeliveryTripEndPush } from "./pushNotifications.js";
 
 const MODIFIER_TITLES: Record<DeliveryModifier, string> = {
@@ -80,7 +81,7 @@ function generateOrder(player: PlayerRow, now: number): DeliveryOrder {
   const modifier = pickModifier();
   const modMult = bible.modifiers[modifier] ?? 1;
   const cityMult = getCityEconomyMultiplier(player.city_id);
-  const incomeMult = getDeliveryIncomeMultiplier(player.city_id, now);
+  const incomeBd = getIncomeMultiplierBreakdown(player.city_id, now, { mode: "delivery" });
   let effectiveMinPerKm = cfg.minPerKm * randInt(90, 110) / 100;
   let tripMinutes = Math.max(1, Math.round(distanceKm * effectiveMinPerKm));
 
@@ -93,16 +94,34 @@ function generateOrder(player: PlayerRow, now: number): DeliveryOrder {
 
   const basePayoutRub = Math.max(
     100,
-    Math.round(distanceKm * cfg.ratePerKm * modMult * cityMult * incomeMult),
+    Math.round(distanceKm * cfg.ratePerKm * modMult * cityMult * incomeBd.total),
   );
+  const modifierTitle = MODIFIER_TITLES[modifier];
+  const payoutBreakdown = buildDeliveryOrderBreakdown({
+    distanceKm,
+    ratePerKm: cfg.ratePerKm,
+    transport,
+    modifierTitle,
+    modifierMult: modMult,
+    cityMult,
+    incomeMult: incomeBd.total,
+    incomeHints: incomeBd.hints,
+    payoutRub: basePayoutRub,
+  });
 
   return {
     id: `d-${Date.now()}-${randInt(1000, 9999)}`,
     distanceKm,
     transport,
     modifier,
-    modifierTitle: MODIFIER_TITLES[modifier],
+    modifierTitle,
+    modifierMult: modMult,
+    ratePerKm: cfg.ratePerKm,
+    cityMult,
+    incomeMult: incomeBd.total,
+    incomeMultHints: incomeBd.hints,
     basePayoutRub,
+    payoutBreakdown,
     tripMinutes,
     offeredAt: now,
   };

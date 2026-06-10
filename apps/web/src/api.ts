@@ -663,14 +663,28 @@ export async function workJob(jobId: string, hours?: number) {
   });
 }
 
+export type LinePayoutBreakdown = {
+  formula: string;
+  lines: { label: string; value: string }[];
+};
+
 export type TaxiOrderView = {
   id: string;
+  distanceKm?: number;
   tripMinutes: number;
   passengerRating: number;
   payment: "card" | "cash";
   payoutRub: number;
   tariff: string;
   tariffTitle: string;
+  demandKey?: string;
+  demandTitle?: string;
+  demandMult?: number;
+  ratePerKm?: number;
+  cityMult?: number;
+  incomeMult?: number;
+  incomeMultHints?: string[];
+  payoutBreakdown?: LinePayoutBreakdown;
   offeredAt: number;
   canAccept: boolean;
   acceptBlockReason?: string | null;
@@ -773,7 +787,13 @@ export type DeliveryOrderView = {
   transport: string;
   modifier: string;
   modifierTitle: string;
+  modifierMult?: number;
+  ratePerKm?: number;
+  cityMult?: number;
+  incomeMult?: number;
+  incomeMultHints?: string[];
   basePayoutRub: number;
+  payoutBreakdown?: LinePayoutBreakdown;
   tripMinutes: number;
 };
 

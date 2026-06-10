@@ -1,5 +1,10 @@
 import type { PlayerRow } from "./db.js";
 import { getDb } from "./db.js";
+import {
+  legacyTaxiBreakdown,
+  type LinePayoutBreakdown,
+  TAXI_DEMAND_TITLES,
+} from "./linePayoutBreakdown.js";
 
 export type TaxiOrder = {
   id: string;
@@ -11,6 +16,14 @@ export type TaxiOrder = {
   payoutRub: number;
   tariff: string;
   tariffTitle: string;
+  demandKey: string;
+  demandTitle: string;
+  demandMult: number;
+  ratePerKm: number;
+  cityMult: number;
+  incomeMult: number;
+  incomeMultHints: string[];
+  payoutBreakdown: LinePayoutBreakdown;
   offeredAt: number;
 };
 
@@ -95,15 +108,32 @@ function normalizeOrder(raw: unknown): TaxiOrder | null {
         ? o.expectedPayoutRub
         : null;
   if (payoutRub == null) return null;
+  const distanceKm = Number(o.distanceKm) || Number(o.tripMinutes) / 3 || 5;
+  const tariffTitle = String(o.tariffTitle ?? "Эконом");
+  const demandKey = String(o.demandKey ?? "normal");
+  const storedBreakdown = o.payoutBreakdown as LinePayoutBreakdown | undefined;
   return {
     id: String(o.id ?? `o-${Date.now()}`),
-    distanceKm: Number(o.distanceKm) || Number(o.tripMinutes) / 3 || 5,
+    distanceKm,
     tripMinutes: Number(o.tripMinutes) || 10,
     passengerRating: Number(o.passengerRating) || 4,
     payment: o.payment === "cash" ? "cash" : "card",
     payoutRub,
     tariff: String(o.tariff ?? "economy"),
-    tariffTitle: String(o.tariffTitle ?? "Эконом"),
+    tariffTitle,
+    demandKey,
+    demandTitle: String(o.demandTitle ?? TAXI_DEMAND_TITLES[demandKey] ?? "Обычный"),
+    demandMult: Number(o.demandMult) || 1,
+    ratePerKm: Number(o.ratePerKm) || 0,
+    cityMult: Number(o.cityMult) || 1,
+    incomeMult: Number(o.incomeMult) || 1,
+    incomeMultHints: Array.isArray(o.incomeMultHints)
+      ? o.incomeMultHints.map(String)
+      : [],
+    payoutBreakdown:
+      storedBreakdown?.lines?.length
+        ? storedBreakdown
+        : legacyTaxiBreakdown(distanceKm, payoutRub, tariffTitle),
     offeredAt: Number(o.offeredAt) || Date.now(),
   };
 }
