@@ -1,45 +1,54 @@
-import { getDb } from "./db.js";
+import { getCityEventState } from "./cityEventsEngine.js";
+import { formatRefreshCountdown } from "./incomeMultiplier.js";
+import { weatherBackgroundClass, type CityWeather } from "./cityWeather.js";
+import type { ActiveCityEvent } from "./cityEventsCatalog.js";
 
-export type CityFeedType = "city:random";
-
-export type CityFeedEvent = {
-  id: number;
-  ts: number;
-  type: CityFeedType;
-  actorUserId: number | null;
-  actorName: string;
-  text: string;
+export type CityFeedWeather = CityWeather & {
+  backgroundClass: string;
+  nextRefreshInMs: number;
+  nextRefreshLabel: string;
 };
 
-const MAX_STORED = 50;
-const DEFAULT_LIST = 12;
+export type CityFeedEvent = {
+  id: string;
+  title: string;
+  text: string;
+  unique: boolean;
+};
 
-export function appendCityFeed(
-  cityId: string,
-  type: CityFeedType,
-  text: string,
-  _actorUserId?: number,
-  ts: number = Date.now(),
-): CityFeedEvent {
-  const db = getDb();
-  const r = db
-    .prepare(
-      `INSERT INTO city_feed (city_id, ts, type, actor_user_id, actor_name, text)
-       VALUES (?, ?, ?, NULL, ?, ?)`,
-    )
-    .run(cityId, ts, type, "Город", text);
+export type CityFeedPayload = {
+  weather: CityFeedWeather;
+  events: CityFeedEvent[];
+  nextEventsRefreshAt: number;
+  nextWeatherRefreshAt: number;
+};
 
-  const id = Number(r.lastInsertRowid);
-  db.prepare(
-    `DELETE FROM city_feed WHERE city_id = ? AND id NOT IN (
-      SELECT id FROM city_feed WHERE city_id = ? ORDER BY ts DESC, id DESC LIMIT ?
-    )`,
-  ).run(cityId, cityId, MAX_STORED);
+/** @deprecated legacy append — сохраняем для совместимости тестов. */
+export type LegacyCityFeedType = "city:random";
 
-  return { id, ts, type, actorUserId: null, actorName: "Город", text };
+export function getCityFeed(cityId: string, now = Date.now()): CityFeedPayload {
+  const state = getCityEventState(cityId, now);
+  const nextWeatherRefreshInMs = Math.max(0, state.nextWeatherRefreshAt - now);
+
+  return {
+    weather: {
+      ...state.weather,
+      backgroundClass: weatherBackgroundClass(state.weather.condition),
+      nextRefreshInMs: nextWeatherRefreshInMs,
+      nextRefreshLabel: formatRefreshCountdown(nextWeatherRefreshInMs),
+    },
+    events: state.events.map((ev: ActiveCityEvent) => ({
+      id: ev.id,
+      title: ev.title,
+      text: ev.text,
+      unique: ev.unique,
+    })),
+    nextEventsRefreshAt: state.nextEventsRefreshAt,
+    nextWeatherRefreshAt: state.nextWeatherRefreshAt,
+  };
 }
 
-/** Пока без автогенерации — лента пустая, события добавим позже. */
-export function listCityFeed(_cityId: string, _limit = DEFAULT_LIST): CityFeedEvent[] {
-  return [];
+/** @deprecated */
+export function listCityFeed(cityId: string, now = Date.now()): CityFeedPayload {
+  return getCityFeed(cityId, now);
 }

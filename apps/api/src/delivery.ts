@@ -27,6 +27,7 @@ import {
   type DeliveryState,
   type DeliveryTransport,
 } from "./playerDelivery.js";
+import { getDeliveryIncomeMultiplier } from "./incomeMultiplier.js";
 import { scheduleDeliveryTripEndPush } from "./pushNotifications.js";
 
 const MODIFIER_TITLES: Record<DeliveryModifier, string> = {
@@ -79,6 +80,7 @@ function generateOrder(player: PlayerRow, now: number): DeliveryOrder {
   const modifier = pickModifier();
   const modMult = bible.modifiers[modifier] ?? 1;
   const cityMult = getCityEconomyMultiplier(player.city_id);
+  const incomeMult = getDeliveryIncomeMultiplier(player.city_id, now);
   let effectiveMinPerKm = cfg.minPerKm * randInt(90, 110) / 100;
   let tripMinutes = Math.max(1, Math.round(distanceKm * effectiveMinPerKm));
 
@@ -91,7 +93,7 @@ function generateOrder(player: PlayerRow, now: number): DeliveryOrder {
 
   const basePayoutRub = Math.max(
     100,
-    Math.round(distanceKm * cfg.ratePerKm * modMult * cityMult),
+    Math.round(distanceKm * cfg.ratePerKm * modMult * cityMult * incomeMult),
   );
 
   return {
@@ -266,6 +268,7 @@ export type DeliveryStatus = {
   sessionIncomeRub: number;
   ordersCompleted: number;
   canTakeOrder: boolean;
+  incomeMultiplier: number;
   takeOrderBlockedReason?: string | null;
   completedMessage?: string;
   completedPayout?: number;
@@ -307,6 +310,7 @@ export function getDeliveryStatus(player: PlayerRow, job: JobDef, now = Date.now
     sessionIncomeRub: state.sessionIncomeRub,
     ordersCompleted: state.ordersCompleted,
     canTakeOrder,
+    incomeMultiplier: getDeliveryIncomeMultiplier(player.city_id, now),
     takeOrderBlockedReason,
     completedMessage: advanced.completedMessage,
     completedPayout: advanced.completedPayout,

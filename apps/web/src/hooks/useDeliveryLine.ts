@@ -63,5 +63,6 @@ export function useDeliveryLine(
     sessionIncomeRub: status?.sessionIncomeRub ?? 0,
     ordersCompleted: status?.ordersCompleted ?? 0,
     activeTrip: status?.activeTrip ?? null,
+    incomeMultiplier: status?.incomeMultiplier ?? 1,
   };
 }

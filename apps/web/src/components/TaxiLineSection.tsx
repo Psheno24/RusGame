@@ -5,6 +5,11 @@ import { type TaxiLineHandle } from "../hooks/useTaxiLine";
 
 type TaxiCarOption = TaxiStatus["availableCars"][number];
 
+function formatIncomeMult(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  return `×${rounded.toFixed(1).replace(/\.0$/, "")}`;
+}
+
 function carOptionKey(c: { source: string; refId: number }) {
   return `${c.source}:${c.refId}`;
 }
@@ -141,6 +146,10 @@ export function TaxiLineSetup({ taxi }: SetupProps) {
             <span>Текущая сессия</span>
             <strong className="rub-amount">+{formatRub(status.sessionIncomeRub)}</strong>
             <small>Заказов: {status.ordersCompleted}</small>
+          </div>
+          <div className="taxi-driver-stat">
+            <span>Текущий коэффициент дохода</span>
+            <strong>{formatIncomeMult(status.incomeMultiplier ?? 1)}</strong>
           </div>
         </div>
 

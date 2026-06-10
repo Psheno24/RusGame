@@ -1886,6 +1886,104 @@ body {
   border: 1px dashed #33465f;
 }
 
+.city-feed-refresh {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.city-weather-card {
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f0f4fa;
+}
+
+.city-weather--clear {
+  background: linear-gradient(135deg, #1a4a7a 0%, #2d6a9f 50%, #f0a030 120%);
+}
+
+.city-weather--partly-cloudy {
+  background: linear-gradient(135deg, #2a3f5f 0%, #4a6a8a 60%, #8ab0d0 120%);
+}
+
+.city-weather--cloudy {
+  background: linear-gradient(135deg, #2a3545 0%, #4a5565 100%);
+}
+
+.city-weather--rain,
+.city-weather--heavy-rain {
+  background: linear-gradient(135deg, #1a2a3a 0%, #2a4055 70%, #3a5570 100%);
+}
+
+.city-weather--snow,
+.city-weather--blizzard {
+  background: linear-gradient(135deg, #3a4a5a 0%, #6a8090 50%, #a0b8c8 100%);
+}
+
+.city-weather--fog {
+  background: linear-gradient(135deg, #4a5058 0%, #7a8088 100%);
+}
+
+.city-weather--windy {
+  background: linear-gradient(135deg, #2a4555 0%, #4a7080 100%);
+}
+
+.city-weather-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.city-weather-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.city-weather-temps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.city-weather-temp {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.city-weather-feels {
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+
+.city-weather-details {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+  opacity: 0.9;
+}
+
+.city-weather-refresh {
+  margin: 8px 0 0;
+  font-size: 0.68rem;
+  opacity: 0.75;
+}
+
+.city-feed-event-title {
+  display: block;
+  font-size: 0.88rem;
+  margin-bottom: 2px;
+}
+
+.city-feed-tag--unique {
+  background: rgba(180, 120, 40, 0.25);
+  color: #e8c060;
+  border-color: rgba(200, 150, 60, 0.4);
+}
+
 .city-feed-foot {
   margin: 10px 0 0;
   font-size: 0.68rem;

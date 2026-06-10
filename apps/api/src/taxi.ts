@@ -43,6 +43,7 @@ import {
   taxiKmPayoutRub,
   type TaxiCashRiskConfig,
 } from "./taxiPayout.js";
+import { getTaxiIncomeMultiplier } from "./incomeMultiplier.js";
 
 type TaxiConfig = {
   idleOfflineMs: number;
@@ -156,6 +157,7 @@ export function listTaxiCarOptions(player: PlayerRow, now = Date.now()): TaxiCar
 
 function generateOrder(player: PlayerRow, orderTariff: string): TaxiOrder {
   const cityMult = getCitySalaryMultiplier(player.city_id);
+  const incomeMult = getTaxiIncomeMultiplier(player.city_id, orderTariff);
   const tariffDef = taxiConfig.tariffs[orderTariff] ?? taxiConfig.tariffs.economy!;
   const { tripMinutes, distanceKm, demand } = rollTaxiOrderTrip(
     taxiConfig.tripMinutesMin,
@@ -168,7 +170,7 @@ function generateOrder(player: PlayerRow, orderTariff: string): TaxiOrder {
         ? randInt(35, 41) / 10
         : randInt(30, 34) / 10;
   const payment: "card" | "cash" = Math.random() < 0.38 ? "cash" : "card";
-  const payoutRub = taxiKmPayoutRub(distanceKm, orderTariff, demand.mult, cityMult);
+  const payoutRub = Math.round(taxiKmPayoutRub(distanceKm, orderTariff, demand.mult, cityMult) * incomeMult);
 
   return {
     id: `o-${Date.now()}-${randInt(1000, 9999)}`,
@@ -412,6 +414,7 @@ export type TaxiStatus = {
   payoutMax: number;
   availableCars: TaxiCarOption[];
   cityTariffs: string[];
+  incomeMultiplier: number;
   completedMessage?: string;
   completedPayout?: number;
 };
@@ -461,6 +464,7 @@ export function getTaxiStatus(player: PlayerRow, job: JobDef, now = Date.now()):
   });
 
   const carTariffDef = taxiConfig.tariffs[carTariff];
+  const incomeMult = getTaxiIncomeMultiplier(player.city_id, state?.taxiClass ?? null, now);
 
   return {
     carSelected: Boolean(selected),
@@ -482,6 +486,7 @@ export function getTaxiStatus(player: PlayerRow, job: JobDef, now = Date.now()):
     payoutMax: job.payoutMax ?? 0,
     availableCars: cars,
     cityTariffs: availableTariffsForCity(player.city_id),
+    incomeMultiplier: incomeMult,
     completedMessage,
     completedPayout,
   };

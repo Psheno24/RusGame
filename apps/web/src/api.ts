@@ -461,13 +461,30 @@ export async function fetchMap() {
   }>("/api/map/cities");
 }
 
+export type CityFeedWeather = {
+  condition: string;
+  tempC: number;
+  feelsLikeC: number;
+  windKmh: number;
+  icon: string;
+  label: string;
+  backgroundClass: string;
+  nextRefreshInMs: number;
+  nextRefreshLabel: string;
+};
+
 export type CityFeedEvent = {
-  id: number;
-  ts: number;
-  type: "city:random";
-  actorUserId: number | null;
-  actorName: string;
+  id: string;
+  title: string;
   text: string;
+  unique: boolean;
+};
+
+export type CityFeedPayload = {
+  weather: CityFeedWeather;
+  events: CityFeedEvent[];
+  nextEventsRefreshAt: number;
+  nextWeatherRefreshAt: number;
 };
 
 export type PlayerFeedEvent = {
@@ -510,7 +527,7 @@ export async function fetchCity() {
     } | null;
     traveling: boolean;
     travelArrivesAt: number | null;
-    feed: CityFeedEvent[];
+    feed: CityFeedPayload | null;
     actions: ActionPreview[];
   }>("/api/city");
 }
@@ -693,6 +710,7 @@ export type TaxiStatus = {
     tariffTitle: string;
   }>;
   cityTariffs: string[];
+  incomeMultiplier: number;
 };
 
 export async function fetchTaxiStatus() {
@@ -769,6 +787,7 @@ export type DeliveryStatus = {
   sessionIncomeRub: number;
   ordersCompleted: number;
   canTakeOrder: boolean;
+  incomeMultiplier: number;
   takeOrderBlockedReason?: string | null;
   completedMessage?: string;
   completedPayout?: number;

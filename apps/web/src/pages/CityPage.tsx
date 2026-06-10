@@ -1,10 +1,10 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ToastFn } from "../hooks/useToastRef";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCityNav } from "../cityNav";
 import { useNavBackSlot } from "../navBack";
 import {
-  type CityFeedEvent,
+  type CityFeedPayload,
   type HousingInfo,
   type CityLocalTimeView,
   type JobView,
@@ -76,7 +76,7 @@ export function CityPage() {
   const [activeEmployment, setActiveEmployment] = useState<Awaited<
     ReturnType<typeof fetchCityCached>
   >["activeEmployment"]>(null);
-  const [cityFeed, setCityFeed] = useState<CityFeedEvent[]>([]);
+  const [cityFeed, setCityFeed] = useState<CityFeedPayload | null>(null);
   const cityTimeRef = useRef<HTMLParagraphElement>(null);
   const load = useCallback(async (force = false) => {
     const data = await fetchCityCached(force);
@@ -91,7 +91,7 @@ export function CityPage() {
     setCityJobs(data.jobs ?? []);
     setWorkAccess(data.workAccess ?? null);
     setActiveEmployment(data.activeEmployment ?? null);
-    setCityFeed(data.feed ?? []);
+    setCityFeed(data.feed ?? null);
     setUser((prev) => (prev ? { ...prev, player: data.player } : prev));
   }, [setUser]);
 
@@ -113,6 +113,7 @@ export function CityPage() {
 
   const tickActive = traveling || section === "jobs" || section == null;
   const tick = useIntervalTick(tickActive);
+  const feedNowMs = useMemo(() => Date.now(), [tick]);
 
   const liveLocalTime = useMemo(() => {
     if (!cityTimezone) return cityLocalTime;
@@ -362,7 +363,7 @@ export function CityPage() {
         ))}
       </div>
 
-      <CityActivityFeed cityName={cityName} events={cityFeed} nowMs={Date.now()} />
+      <CityActivityFeed cityName={cityName} feed={cityFeed} nowMs={feedNowMs} />
     </>
   );
 }

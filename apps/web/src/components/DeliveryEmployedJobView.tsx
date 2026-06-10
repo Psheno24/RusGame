@@ -16,6 +16,11 @@ const TRANSPORT_LABELS: Record<string, string> = {
   car: "Автомобиль",
 };
 
+function formatIncomeMult(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  return `×${rounded.toFixed(1).replace(/\.0$/, "")}`;
+}
+
 type Props = {
   selected: JobView;
   user: User;
@@ -53,6 +58,7 @@ export function DeliveryEmployedJobView({
     sessionIncomeRub,
     ordersCompleted,
     activeTrip,
+    incomeMultiplier,
   } = delivery;
 
   const requirementsMet = jobRequirementsMet(jobRequirements);
@@ -86,6 +92,10 @@ export function DeliveryEmployedJobView({
               <dd>
                 {formatRub(sessionIncomeRub)} · {ordersCompleted} заказов
               </dd>
+            </div>
+            <div>
+              <dt>Текущий коэффициент дохода</dt>
+              <dd>{formatIncomeMult(incomeMultiplier ?? 1)}</dd>
             </div>
             <JobRequirementsList requirements={jobRequirements} />
           </dl>

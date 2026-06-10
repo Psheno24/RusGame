@@ -135,7 +135,7 @@ import {
   type Car3dDisplayEntry,
 } from "./car3dDisplay.js";
 import { listAccountsForTestAdmin, resetPlayerAccount, setPlayerRublesForTestAdmin } from "./playerReset.js";
-import { listCityFeed } from "./cityFeed.js";
+import { getCityFeed } from "./cityFeed.js";
 import { listPlayerFeed } from "./playerFeed.js";
 import { formatSimFromPlayer, playerHasSim } from "./simNumber.js";
 import { refreshPlayerState } from "./playerSync.js";
@@ -339,7 +339,7 @@ export async function registerRoutes(app: FastifyInstance) {
       activeEmployment,
       traveling: player.status === "traveling",
       travelArrivesAt: player.travel_arrives_at,
-      feed: city ? listCityFeed(city.id) : [],
+      feed: city ? getCityFeed(city.id, now) : null,
       actions: listActionPreviews(player),
     };
   });

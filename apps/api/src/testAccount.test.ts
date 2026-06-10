@@ -10,7 +10,6 @@ describe("test account", () => {
       await import("./db.js");
     const { hashPassword } = await import("./auth.js");
     const { jobCooldownState } = await import("./workCooldown.js");
-    const { appendCityFeed, listCityFeed } = await import("./cityFeed.js");
     const { appendPlayerFeed, listPlayerFeed } = await import("./playerFeed.js");
 
     const normalId = createUser("player1", hashPassword("secret12"));
@@ -55,8 +54,11 @@ describe("test account", () => {
     appendPlayerFeed(normalId, "shop:car", "обычный");
     assert.equal(listPlayerFeed(normalId).length, 1);
 
-    appendCityFeed("omsk", "city:random", "Событие в городе");
-    assert.equal(listCityFeed("omsk").length, 0);
+    const { getCityFeed } = await import("./cityFeed.js");
+    const feed = getCityFeed("omsk");
+    assert.ok(feed.weather);
+    assert.ok(Array.isArray(feed.events));
+    assert.ok(feed.nextEventsRefreshAt > Date.now());
 
     assert.equal(countPlayersInCity("omsk"), 1);
   });
