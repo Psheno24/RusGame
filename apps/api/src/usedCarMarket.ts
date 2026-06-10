@@ -9,6 +9,7 @@ import {
   getCityCarMarketLevel,
   getMaxCarClassForMarketLevel,
 } from "./carMarket.js";
+import { applyUsedCarLotsCount, usedCarLotsModifier } from "./cityEffectModifiers.js";
 import { getCar, getCars, type CarModel } from "./gameData.js";
 import type { PlayerCarCondition } from "./playerCars.js";
 
@@ -91,6 +92,7 @@ type CityMarketRow = {
   city_id: string;
   refreshed_at: number;
   listings_json: string;
+  lots_modifier_pct: number;
 };
 
 function classIndex(carClass: string): number {
@@ -154,13 +156,15 @@ function pickWeighted<T extends { weight: number }>(rng: () => number, items: T[
   return items[items.length - 1]!;
 }
 
-function listingCountForCity(cityId: string, refreshSlot: number): number {
+export function listingCountForCity(cityId: string, refreshSlot: number, now = refreshSlot): number {
   const override = config.listingCountByCity[cityId];
   const level = getCityCarMarketLevel(cityId);
   const range =
     override ?? config.listingCountByMarketLevel[String(level)] ?? [6, 10];
   const rng = mulberry32(hashCitySlot(cityId, refreshSlot) ^ 0x9e3779b9);
-  return randInt(rng, range[0], range[1]);
+  const base = randInt(rng, range[0], range[1]);
+  const { totalPct } = usedCarLotsModifier(cityId, now);
+  return applyUsedCarLotsCount(base, totalPct);
 }
 
 function hashListingId(listingId: string): number {
@@ -338,12 +342,16 @@ function eligibleCarsForCity(cityId: string): CarModel[] {
   return getCars().filter((c) => isCarClassOnUsedMarket(cityId, c.carClass ?? "economy"));
 }
 
-export function generateCityListings(cityId: string, refreshedAt: number): UsedCarListing[] {
+export function generateCityListings(
+  cityId: string,
+  refreshedAt: number,
+  now = refreshedAt,
+): UsedCarListing[] {
   const rng = mulberry32(hashCitySlot(cityId, refreshedAt));
   const pool = eligibleCarsForCity(cityId);
   if (pool.length === 0) return [];
 
-  const count = listingCountForCity(cityId, refreshedAt);
+  const count = listingCountForCity(cityId, refreshedAt, now);
   const listings: UsedCarListing[] = [];
   const usedModels = new Set<string>();
 
@@ -393,40 +401,57 @@ function parseListings(json: string): UsedCarListing[] {
 
 function loadCityRow(cityId: string): CityMarketRow | undefined {
   return getDb()
-    .prepare("SELECT city_id, refreshed_at, listings_json FROM city_used_car_markets WHERE city_id = ?")
+    .prepare(
+      "SELECT city_id, refreshed_at, listings_json, lots_modifier_pct FROM city_used_car_markets WHERE city_id = ?",
+    )
     .get(cityId) as CityMarketRow | undefined;
 }
 
-function saveCityRow(cityId: string, refreshedAt: number, listings: UsedCarListing[]) {
+function saveCityRow(
+  cityId: string,
+  refreshedAt: number,
+  listings: UsedCarListing[],
+  lotsModifierPct: number,
+) {
   getDb()
     .prepare(
-      `INSERT INTO city_used_car_markets (city_id, refreshed_at, listings_json)
-       VALUES (?, ?, ?)
-       ON CONFLICT(city_id) DO UPDATE SET refreshed_at = excluded.refreshed_at, listings_json = excluded.listings_json`,
+      `INSERT INTO city_used_car_markets (city_id, refreshed_at, listings_json, lots_modifier_pct)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(city_id) DO UPDATE SET
+         refreshed_at = excluded.refreshed_at,
+         listings_json = excluded.listings_json,
+         lots_modifier_pct = excluded.lots_modifier_pct`,
     )
-    .run(cityId, refreshedAt, JSON.stringify(listings));
+    .run(cityId, refreshedAt, JSON.stringify(listings), lotsModifierPct);
 }
 
 export function ensureCityUsedMarket(cityId: string, now = Date.now()): {
   refreshedAt: number;
   nextRefreshAt: number;
   listings: UsedCarListing[];
+  lotsModifierPct: number;
+  lotsModifierHints: string[];
 } {
   const slotStart = currentRefreshSlotStart(now);
+  const { totalPct, hints } = usedCarLotsModifier(cityId, now);
   const row = loadCityRow(cityId);
-  if (row && row.refreshed_at >= slotStart) {
+  if (row && row.refreshed_at >= slotStart && row.lots_modifier_pct === totalPct) {
     return {
       refreshedAt: row.refreshed_at,
       nextRefreshAt: nextRefreshAt(now),
       listings: parseListings(row.listings_json),
+      lotsModifierPct: totalPct,
+      lotsModifierHints: hints,
     };
   }
-  const listings = generateCityListings(cityId, slotStart);
-  saveCityRow(cityId, slotStart, listings);
+  const listings = generateCityListings(cityId, slotStart, now);
+  saveCityRow(cityId, slotStart, listings, totalPct);
   return {
     refreshedAt: slotStart,
     nextRefreshAt: nextRefreshAt(now),
     listings,
+    lotsModifierPct: totalPct,
+    lotsModifierHints: hints,
   };
 }
 
@@ -444,7 +469,7 @@ export function removeCityListing(cityId: string, listingId: string, now = Date.
   if (!row) return false;
   const listings = parseListings(row.listings_json).filter((l) => l.id !== listingId);
   if (listings.length === parseListings(row.listings_json).length) return false;
-  saveCityRow(cityId, row.refreshed_at, listings);
+  saveCityRow(cityId, row.refreshed_at, listings, row.lots_modifier_pct ?? 0);
   return true;
 }
 

@@ -1,12 +1,15 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { applyUsedCarLotsCount } from "./cityEffectModifiers.js";
 import {
+  currentRefreshSlotStart,
   ensureCityUsedMarket,
   generateCityListings,
   getMaxUsedCarClassForCity,
   getMileageWearMultiplier,
   isCarClassOnUsedMarket,
   buildDiagnosisRanges,
+  listingCountForCity,
   listingDiagnoseCostRub,
 } from "./usedCarMarket.js";
 import { isCarClassAvailableInCity } from "./carMarket.js";
@@ -93,8 +96,24 @@ describe("usedCarMarket", () => {
   });
 
   it("ensureCityUsedMarket persists listings", () => {
-    const market = ensureCityUsedMarket("kazan", Date.now());
-    assert.ok(market.listings.length >= 8);
+    const now = Date.now();
+    const slot = currentRefreshSlotStart(now);
+    const expected = listingCountForCity("kazan", slot, now);
+    const market = ensureCityUsedMarket("kazan", now);
+    assert.equal(market.listings.length, expected);
     assert.ok(market.nextRefreshAt > market.refreshedAt);
+  });
+
+  it("applyUsedCarLotsCount scales listing count from city events", () => {
+    assert.equal(applyUsedCarLotsCount(6, 50), 9);
+    assert.equal(applyUsedCarLotsCount(5, -30), 4);
+    assert.equal(applyUsedCarLotsCount(3, 0), 3);
+  });
+
+  it("listingCountForCity matches generated listings length", () => {
+    const refreshedAt = 2_880_000_000;
+    const count = listingCountForCity("omsk", refreshedAt, refreshedAt);
+    const listings = generateCityListings("omsk", refreshedAt, refreshedAt);
+    assert.equal(listings.length, count);
   });
 });

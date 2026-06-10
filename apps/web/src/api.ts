@@ -1127,6 +1127,8 @@ export type UsedCarMarket = {
   refreshedAt: number;
   nextRefreshAt: number;
   maxClassLabel: string;
+  lotsModifierPct?: number;
+  lotsModifierHints?: string[];
   listings: UsedCarListing[];
 };
 

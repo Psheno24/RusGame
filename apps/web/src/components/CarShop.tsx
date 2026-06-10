@@ -532,10 +532,20 @@ export function CarShop({ user, setUser, onToast, onNavChange, registerBack }: P
       {nav === "usedList" && (
         <div className="phone-catalog">
           {usedMarket && (
-            <p className="shop-owned">
-              Рынок обновится {formatRefreshAt(usedMarket.nextRefreshAt)}. До класса «
-              {usedMarket.maxClassLabel}» (+2 к салону).
-            </p>
+            <>
+              <p className="shop-owned">
+                Рынок обновится {formatRefreshAt(usedMarket.nextRefreshAt)}. До класса «
+                {usedMarket.maxClassLabel}» (+2 к салону).
+                {usedMarket.listings.length > 0
+                  ? ` Сейчас ${usedMarket.listings.length} ${usedMarket.listings.length === 1 ? "лот" : usedMarket.listings.length < 5 ? "лота" : "лотов"}.`
+                  : ""}
+              </p>
+              {usedMarket.lotsModifierHints && usedMarket.lotsModifierHints.length > 0 && (
+                <p className="shop-owned city-feed-refresh">
+                  События города: {usedMarket.lotsModifierHints.join("; ")}
+                </p>
+              )}
+            </>
           )}
           {!usedMarket ? (
             <p className="shop-stub">Загрузка…</p>

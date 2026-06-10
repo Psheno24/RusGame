@@ -107,3 +107,28 @@ function formatMultDelta(value: number): string {
 export function getCityEffects(cityId: string, now = Date.now()): RolledEffect[] {
   return collectActiveEffects(getCityEventState(cityId, now));
 }
+
+/** Суммарный % к числу лотов на б/у рынке из активных событий города. */
+export function usedCarLotsModifier(
+  cityId: string,
+  now = Date.now(),
+): { totalPct: number; hints: string[] } {
+  const state = getCityEventState(cityId, now);
+  const hints: string[] = [];
+  let totalPct = 0;
+
+  for (const ev of state.events) {
+    for (const fx of ev.effects) {
+      if (fx.type !== "usedCarLots") continue;
+      totalPct += fx.value;
+      hints.push(formatPctHint(fx.value, ev.title));
+    }
+  }
+
+  return { totalPct: Math.round(totalPct * 10) / 10, hints };
+}
+
+export function applyUsedCarLotsCount(baseCount: number, totalPct: number): number {
+  if (!totalPct) return baseCount;
+  return Math.max(1, Math.round(baseCount * (1 + totalPct / 100)));
+}
