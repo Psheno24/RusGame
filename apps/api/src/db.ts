@@ -591,6 +591,18 @@ function migrate(database: Database.Database) {
     );
   `);
 
+  const colsUsedMarket = database
+    .prepare("PRAGMA table_info(city_used_car_markets)")
+    .all() as { name: string }[];
+  if (
+    colsUsedMarket.length > 0 &&
+    !colsUsedMarket.some((c) => c.name === "lots_modifier_pct")
+  ) {
+    database.exec(
+      "ALTER TABLE city_used_car_markets ADD COLUMN lots_modifier_pct REAL NOT NULL DEFAULT 0",
+    );
+  }
+
   database.exec(`
     CREATE TABLE IF NOT EXISTS player_feed (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

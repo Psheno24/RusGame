@@ -51,6 +51,8 @@ export type UsedCarMarketView = {
   refreshedAt: number;
   nextRefreshAt: number;
   maxClassLabel: string;
+  lotsModifierPct: number;
+  lotsModifierHints: string[];
   listings: UsedCarListingView[];
 };
 
@@ -124,6 +126,8 @@ export function getUsedCarMarket(player: PlayerRow, now = Date.now()): UsedCarMa
     refreshedAt: market.refreshedAt,
     nextRefreshAt: market.nextRefreshAt,
     maxClassLabel: getCarClassLabel(getMaxUsedCarClassForCity(cityId)),
+    lotsModifierPct: market.lotsModifierPct,
+    lotsModifierHints: market.lotsModifierHints,
     listings,
   };
 }
