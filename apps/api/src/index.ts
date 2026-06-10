@@ -39,6 +39,22 @@ async function main() {
     await app.register(fastifyStatic, {
       root: webDist,
       prefix: "/",
+      setHeaders(res, filePath) {
+        const normalized = filePath.replace(/\\/g, "/");
+        const entry =
+          normalized.endsWith("/index.html") ||
+          normalized.endsWith("/sw.js") ||
+          normalized.endsWith("/registerSW.js") ||
+          normalized.endsWith("/manifest.webmanifest");
+        if (entry) {
+          res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+          res.setHeader("Pragma", "no-cache");
+          return;
+        }
+        if (normalized.includes("/assets/")) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      },
     });
     app.setNotFoundHandler((req, reply) => {
       if (req.url.startsWith("/api")) return reply.code(404).send({ error: "Not found" });
