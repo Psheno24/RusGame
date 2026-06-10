@@ -83,9 +83,9 @@ export function computeTravelRoute(
   return { mode, priceRub, durationMs, graphDistance };
 }
 
-export function getTravelOptions(fromId: string, toId: string): TravelRoute[] {
-  const train = computeTravelRoute(fromId, toId, "train");
+export function getTravelOptions(fromId: string, toId: string, now = Date.now()): TravelRoute[] {
+  const train = computeTravelRoute(fromId, toId, "train", now);
   if (!train) return [];
-  const plane = computeTravelRoute(fromId, toId, "plane");
+  const plane = computeTravelRoute(fromId, toId, "plane", now);
   return plane ? [train, plane] : [train];
 }
