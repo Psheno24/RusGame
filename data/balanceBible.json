@@ -196,7 +196,7 @@
       "bike": { "minKm": 1, "maxKm": 8, "speedMinPerKm": 5, "speedMaxPerKm": 8 },
       "scooter": { "minKm": 2, "maxKm": 8, "speedMinPerKm": 4, "speedMaxPerKm": 6.5 },
       "moped": { "minKm": 3, "maxKm": 15, "speedMinPerKm": 2.8, "speedMaxPerKm": 4.5 },
-      "car": { "minKm": 5, "maxKm": 30, "speedMinPerKm": 2, "speedMaxPerKm": 3.5 }
+      "car": { "minKm": 5, "maxKm": 20, "speedMinPerKm": 2, "speedMaxPerKm": 3.5 }
     },
     "autoTraffic": {
       "free": { "weight": 0.15, "speedMinPerKm": 1.8, "speedMaxPerKm": 2.4 },
@@ -235,7 +235,7 @@
       { "minKm": 2, "maxKm": 5, "weight": 0.35 },
       { "minKm": 5, "maxKm": 12, "weight": 0.4 },
       { "minKm": 12, "maxKm": 25, "weight": 0.2 },
-      { "minKm": 25, "maxKm": 50, "weight": 0.05 }
+      { "minKm": 25, "maxKm": 30, "weight": 0.05 }
     ],
     "demand": [
       { "key": "normal", "mult": 1, "weight": 0.7 },

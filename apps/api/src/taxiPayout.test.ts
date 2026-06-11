@@ -70,7 +70,7 @@ describe("taxiPayout", () => {
     for (let i = 0; i < 200; i++) {
       const { tripMinutes, distanceKm } = rollTaxiOrderTrip("omsk");
       assert.ok(tripMinutes >= 3);
-      assert.ok(distanceKm >= 2 && distanceKm <= 50);
+      assert.ok(distanceKm >= 2 && distanceKm <= 30);
       if (tripMinutes > 45) sawLongTrip = true;
     }
     assert.ok(sawLongTrip, "expected some trips longer than 45 min");
