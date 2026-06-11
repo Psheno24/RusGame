@@ -86,10 +86,11 @@ export function rollTaxiOrderTrip(
   const { minPerKm, trafficTitle } = rollAutoTrafficSpeed(cfg.autoTraffic, cityId, now);
   let tripMinutes = tripMinutesFromKm(distanceKm, minPerKm, pickupMinutes);
 
-  const maxTrip = cfg.maxTripMinutes ?? 45;
-  const capped = capTripByMaxMinutes(distanceKm, tripMinutes, maxTrip);
-  distanceKm = capped.distanceKm;
-  tripMinutes = capped.tripMinutes;
+  if (cfg.maxTripMinutes != null) {
+    const capped = capTripByMaxMinutes(distanceKm, tripMinutes, cfg.maxTripMinutes);
+    distanceKm = capped.distanceKm;
+    tripMinutes = capped.tripMinutes;
+  }
 
   return { tripMinutes, distanceKm, demand, pickupMinutes, trafficTitle };
 }

@@ -211,7 +211,6 @@
       "night": 1.5
     },
     "modifierWeights": { "short": 0.15, "normal": 0.45, "urgent": 0.2, "heavy": 0.12, "night": 0.08 },
-    "maxTripMinutes": 45,
     "events": {
       "tips": { "chance": 0.15, "bonusMin": 500, "bonusMax": 3000 },
       "regularClient": { "chance": 0.05, "payMult": 1.5 },
@@ -246,7 +245,6 @@
     ],
     "pickupMinMin": 2,
     "pickupMaxMin": 6,
-    "maxTripMinutes": 45,
     "autoTraffic": {
       "free": { "weight": 0.15, "speedMinPerKm": 1.8, "speedMaxPerKm": 2.4 },
       "normal": { "weight": 0.58, "speedMinPerKm": 2.5, "speedMaxPerKm": 3.5 },

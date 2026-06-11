@@ -106,10 +106,11 @@ function generateOrder(player: PlayerRow, now: number): DeliveryOrder {
   );
   let tripMinutes = tripMinutesFromKm(distanceKm, speedRoll.minPerKm);
 
-  const maxTripMinutes = bible.maxTripMinutes ?? 45;
-  const capped = capTripByMaxMinutes(distanceKm, tripMinutes, maxTripMinutes);
-  distanceKm = capped.distanceKm;
-  tripMinutes = capped.tripMinutes;
+  if (bible.maxTripMinutes != null) {
+    const capped = capTripByMaxMinutes(distanceKm, tripMinutes, bible.maxTripMinutes);
+    distanceKm = capped.distanceKm;
+    tripMinutes = capped.tripMinutes;
+  }
 
   const ratePerKm = bible.baseRatePerKm;
   const ordersMod = deliveryOrdersModifier(player.city_id, now);

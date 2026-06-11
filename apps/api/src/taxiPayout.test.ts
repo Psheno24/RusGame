@@ -65,12 +65,15 @@ describe("taxiPayout", () => {
     assert.equal(taxiTariffRatePerKm("comfort"), 500);
   });
 
-  it("rollTaxiOrderTrip derives time from km and caps at 45 min", () => {
+  it("rollTaxiOrderTrip derives time from km without a minute cap", () => {
+    let sawLongTrip = false;
     for (let i = 0; i < 200; i++) {
       const { tripMinutes, distanceKm } = rollTaxiOrderTrip("omsk");
-      assert.ok(tripMinutes >= 3 && tripMinutes <= 45);
-      assert.ok(distanceKm >= 0.5 && distanceKm <= 50);
+      assert.ok(tripMinutes >= 3);
+      assert.ok(distanceKm >= 2 && distanceKm <= 50);
+      if (tripMinutes > 45) sawLongTrip = true;
     }
+    assert.ok(sawLongTrip, "expected some trips longer than 45 min");
   });
 
   it("payout scales with city multiplier", () => {
